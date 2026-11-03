@@ -1,7 +1,28 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 export type Locale = 'es' | 'va'
-export const locale = ref<Locale>('es')
+const STORAGE_KEY = 'edustudio.locale'
+
+// Saved choice first; otherwise the first browser language we support (Catalan/Valencian -> 'va').
+export function detectLocale(languages: readonly string[], saved: string | null): Locale {
+  if (saved === 'es' || saved === 'va') return saved
+  for (const language of languages) {
+    const base = language.toLowerCase().split('-')[0]
+    if (base === 'ca') return 'va'
+    if (base === 'es') return 'es'
+  }
+  return 'es'
+}
+
+function storedLocale(): string | null {
+  try { return localStorage.getItem(STORAGE_KEY) } catch { return null }
+}
+
+export const locale = ref<Locale>(detectLocale(typeof navigator === 'undefined' ? [] : navigator.languages ?? [], storedLocale()))
+watch(locale, value => {
+  try { localStorage.setItem(STORAGE_KEY, value) } catch { /* private mode */ }
+  if (typeof document !== 'undefined') document.documentElement.lang = value === 'va' ? 'ca' : 'es'
+}, { immediate: true })
 const messages = {
   es: {
     title: 'EduStudio AI', projects: 'Mis proyectos', login: 'Entrar', register: 'Crear cuenta',

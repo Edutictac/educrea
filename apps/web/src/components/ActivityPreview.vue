@@ -13,8 +13,11 @@ async function toggle() {
   error.value = ''
   try {
     const files = await props.loadFiles()
-    if (files['index.html'] === undefined) { error.value = t('previewNoIndex'); return }
-    doc.value = buildPreview(files['index.html'], files)
+    // index.html first; otherwise the only (or first alphabetical) HTML file, e.g. activity.html.
+    const entry = files['index.html'] !== undefined ? 'index.html'
+      : Object.keys(files).filter(path => path.toLowerCase().endsWith('.html')).sort()[0]
+    if (entry === undefined) { error.value = t('previewNoIndex'); return }
+    doc.value = buildPreview(files[entry], files)
     open.value = true
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 }

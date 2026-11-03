@@ -30,11 +30,12 @@ function Image(el) return el.caption end
 _slots = threading.BoundedSemaphore(2)
 
 
-def _sandbox(workdir: Path, command: list[str]) -> list[str]:
+def _sandbox(workdir: Path, command: list[str], extra_ro: tuple[str, ...] = ()) -> list[str]:
+    extra = [part for path in extra_ro for part in ("--ro-bind", path, path)]
     return ["bwrap", "--unshare-all", "--die-with-parent", "--new-session",
             "--ro-bind", "/usr", "/usr", "--ro-bind", "/etc", "/etc", "--ro-bind", "/var/lib", "/var/lib",
             "--symlink", "usr/bin", "/bin", "--symlink", "usr/lib", "/lib", "--symlink", "usr/lib64", "/lib64",
-            "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--bind", str(workdir), "/work",
+            "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", *extra, "--bind", str(workdir), "/work",
             "--chdir", "/work", "--clearenv", "--setenv", "HOME", "/tmp", "--setenv", "PATH", "/usr/bin", *command]
 
 

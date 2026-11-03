@@ -75,6 +75,23 @@ class FileVersion(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class CapabilityCall(Base):
+    """Audit record of a capability invocation. Stores sizes and outcome, never the content."""
+
+    __tablename__ = "capability_calls"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    capability: Mapped[str] = mapped_column(String(160))
+    status: Mapped[str] = mapped_column(String(10))
+    detail: Mapped[str] = mapped_column(String(200), default="")
+    input_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    output_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
 class AiCredential(Base):
     __tablename__ = "ai_credentials"
     __table_args__ = (UniqueConstraint("user_id", "provider"),)

@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     ollama_free_models: str = ""
     ollama_base_url: str = ""
     paid_models_json: str = "{}"
+    mcp_servers_json: str = "{}"
     ai_max_user_budget_microusd: int = 20000000
     ai_daily_user_requests: int = 20
     ai_daily_installation_requests: int = 200

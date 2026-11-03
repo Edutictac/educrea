@@ -14,6 +14,7 @@ function language(path: string) {
   if (path.endsWith('.html')) return 'html'
   if (path.endsWith('.css')) return 'css'
   if (path.endsWith('.json')) return 'json'
+  if (path.endsWith('.md')) return 'plaintext'
   return 'javascript'
 }
 

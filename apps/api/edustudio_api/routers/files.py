@@ -13,7 +13,7 @@ from ..security import current_user, require_csrf
 from .projects import project_for_owner
 
 router = APIRouter(prefix="/projects/{project_id}/files", tags=["files"])
-ALLOWED_EXTENSIONS = (".html", ".css", ".js", ".json")
+ALLOWED_EXTENSIONS = (".html", ".css", ".js", ".json", ".md")
 MAX_FILE_BYTES = 256 * 1024
 MAX_FILES = 30
 SEGMENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")

@@ -6,6 +6,8 @@ La web sirve la interfaz y consume `/api` en el mismo origen. Nginx envía la AP
 
 La autenticación sigue siendo local. Una integración futura con Authentik usará OIDC y deberá vincular las identidades existentes sin perder proyectos; el núcleo no dependerá de EduTicTac Commons.
 
+**Fase 6, primer tramo implementado:** `.md` se admite como tipo de archivo; `services/materials.py` renderiza con markdown-it-py (HTML crudo escapado, enlaces limitados a http/https/mailto, imágenes sustituidas por su texto alternativo mientras no exista biblioteca de imágenes). La web muestra el resultado en un `iframe` con `sandbox` vacío y CSP restrictiva; `GET .../files/{id}/export.html` descarga un documento con CSP `default-src 'none'` y `GET .../export.zip` el proyecto completo. PDF y DOCX quedan pendientes del trabajador aislado.
+
 La Fase 6 incorporará materiales de aula en Markdown y exportación a HTML, PDF y DOCX. El editor y el conversor compartirán el mismo contenido fuente; la conversión se aislará del servidor de la API y no ejecutará scripts ni accederá a recursos externos por defecto. Las actividades HTML y los materiales Markdown tendrán flujos de vista previa distintos.
 
 La misma fase añadirá una biblioteca de imágenes por proyecto para recursos generados o incorporados por el docente. Los binarios se almacenarán fuera de `project_files`, que seguirá reservado a texto; la API comprobará propiedad, tipo, tamaño y dimensiones antes de servirlos o exportarlos. El motor de IA tratará la generación de imágenes como una capacidad distinta de la generación de texto y código, sometida a las cuotas y autorizaciones del usuario.

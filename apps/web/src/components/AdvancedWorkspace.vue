@@ -14,6 +14,9 @@ const drafts = ref<Record<string, string>>({})
 const diagnostics = ref<string[]>([])
 const error = ref('')
 const status = ref('')
+const reading = ref(false)
+const readingHtml = ref('')
+const isMarkdown = computed(() => !!activeFile.value?.path.toLowerCase().endsWith('.md'))
 const activeFile = computed(() => activeId.value ? documents.value[activeId.value] : undefined)
 const activeContent = computed(() => activeId.value ? drafts.value[activeId.value] ?? '' : '')
 const activeDirty = computed(() => !!activeId.value && !!activeFile.value && activeContent.value !== activeFile.value.content)
@@ -23,7 +26,7 @@ defineExpose({ hasUnsavedChanges: () => anyDirty.value })
 onMounted(async () => { try { await files.load(props.projectId) } catch (cause) { showError(cause) } })
 function showError(cause: unknown) { error.value = cause instanceof Error ? cause.message : t('error') }
 async function openFile(id: string) {
-  error.value = ''; status.value = ''; diagnostics.value = []
+  error.value = ''; status.value = ''; diagnostics.value = []; reading.value = false
   try {
     if (!documents.value[id]) {
       const file = await files.get(props.projectId, id)
@@ -49,6 +52,19 @@ async function createFile() {
     newPath.value = ''
     documents.value[file.id] = file; drafts.value[file.id] = file.content
     tabs.value.push(file.id); activeId.value = file.id
+  } catch (cause) { showError(cause) }
+}
+async function toggleReading() {
+  if (reading.value) { reading.value = false; return }
+  if (!activeFile.value) return
+  error.value = ''
+  if (activeDirty.value) { status.value = t('saveBeforeReading'); return }
+  try {
+    const response = await fetch(`/api/projects/${props.projectId}/files/${activeFile.value.id}/render`, { credentials: 'same-origin' })
+    if (!response.ok) throw new Error(((await response.json().catch(() => ({}))) as { detail?: string }).detail ?? t('error'))
+    const data = await response.json() as { html: string }
+    readingHtml.value = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><style>body{font-family:system-ui,sans-serif;line-height:1.6;margin:1rem}table{border-collapse:collapse}th,td{border:1px solid #888;padding:.3rem .6rem}pre{background:#f3f3f3;padding:.6rem;overflow:auto}</style>${data.html}`
+    reading.value = true
   } catch (cause) { showError(cause) }
 }
 async function saveFile() {
@@ -77,6 +93,7 @@ async function deleteFile() {
         <h3>{{ t('fileExplorer') }}</h3>
         <form @submit.prevent="createFile"><label>{{ t('newFile') }}<input v-model="newPath" placeholder="index.html" required maxlength="200" /></label>
           <button type="submit">{{ t('createFile') }}</button></form>
+        <p><a class="button secondary" :href="`/api/projects/${projectId}/export.zip`">{{ t('exportZip') }}</a></p>
         <ul><li v-for="file in files.items" :key="file.id"><button type="button" class="file-button" :aria-current="activeId === file.id ? 'true' : undefined" @click="openFile(file.id)">{{ file.path }}</button></li></ul>
       </aside>
       <div class="editor-area">
@@ -87,8 +104,11 @@ async function deleteFile() {
         <template v-if="activeFile">
           <div class="editor-actions"><strong>{{ activeFile.path }}</strong><span v-if="activeDirty">{{ t('unsaved') }}</span>
             <button type="button" :disabled="!activeDirty" @click="saveFile">{{ t('save') }}</button>
+            <button v-if="isMarkdown" type="button" class="secondary" @click="toggleReading">{{ reading ? t('editView') : t('readingView') }}</button>
+            <a v-if="isMarkdown" class="button secondary" :href="`/api/projects/${projectId}/files/${activeFile.id}/export.html`">{{ t('exportHtml') }}</a>
             <button type="button" class="danger" @click="deleteFile">{{ t('delete') }}</button></div>
-          <MonacoEditor :key="activeFile.id" :model-value="activeContent" :path="activeFile.path"
+          <iframe v-if="reading" class="reading-frame" sandbox="" :srcdoc="readingHtml" :title="t('readingView')"></iframe>
+          <MonacoEditor v-else :key="activeFile.id" :model-value="activeContent" :path="activeFile.path"
             @update:model-value="onEdit" @diagnostics="diagnostics = $event" />
         </template>
         <p v-else class="empty-editor">{{ t('selectFile') }}</p>

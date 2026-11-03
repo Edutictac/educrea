@@ -1,0 +1,57 @@
+import re
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from ..db import get_db
+from ..models import ProjectFile, User
+from ..security import current_user
+from ..services import materials
+from .files import file_for_owner
+from .projects import project_for_owner
+
+router = APIRouter(prefix="/projects/{project_id}", tags=["materials"])
+
+
+def markdown_for_owner(db: Session, project_id: UUID, file_id: UUID, user: User) -> ProjectFile:
+    file = file_for_owner(db, project_id, file_id, user.id)
+    if not file.path.lower().endswith(".md"):
+        raise HTTPException(422, "Solo se pueden mostrar archivos Markdown")
+    return file
+
+
+def download_name(value: str, extension: str) -> str:
+    return re.sub(r"[^A-Za-z0-9._-]", "-", value).strip("-.")[:80] + extension
+
+
+def attachment(content: bytes | str, media_type: str, filename: str) -> Response:
+    return Response(content, media_type=media_type, headers={
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store"})
+
+
+@router.get("/files/{file_id}/render")
+def render_file(project_id: UUID, file_id: UUID, user: User = Depends(current_user),
+                db: Session = Depends(get_db)) -> dict:
+    file = markdown_for_owner(db, project_id, file_id, user)
+    return {"html": materials.render_markdown(file.content), "title": materials.title_of(file.path, file.content),
+            "version": file.version}
+
+
+@router.get("/files/{file_id}/export.html")
+def export_file_html(project_id: UUID, file_id: UUID, user: User = Depends(current_user),
+                     db: Session = Depends(get_db)) -> Response:
+    file = markdown_for_owner(db, project_id, file_id, user)
+    return attachment(materials.export_html(file.path, file.content), "text/html; charset=utf-8",
+                      download_name(file.path.rsplit(".", 1)[0], ".html"))
+
+
+@router.get("/export.zip")
+def export_project_zip(project_id: UUID, user: User = Depends(current_user),
+                       db: Session = Depends(get_db)) -> Response:
+    project = project_for_owner(db, project_id, user.id)
+    rows = db.scalars(select(ProjectFile).where(ProjectFile.project_id == project_id).order_by(ProjectFile.path))
+    return attachment(materials.export_zip([(row.path, row.content) for row in rows]), "application/zip",
+                      download_name(project.slug, ".zip"))

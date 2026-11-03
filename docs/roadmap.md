@@ -5,7 +5,7 @@
 3. **Motor y Gemini (hecho)**: credenciales personales cifradas, propuestas estructuradas, revisión, aplicación y restauración condicionada.
 4. **Cuotas y gratuitos (hecho)**: OpenRouter, Groq, Ollama, reservas internas y alternancia autorizada.
 5. **Pago (hecho)**: modelos de pago BYOK, OpenAI, Anthropic, estimaciones y presupuestos internos.
-6. **Vista previa, historial, materiales y MCP**: origen aislado, versiones, exportación de actividades, flujo Markdown → HTML, PDF y DOCX, infografías editables HTML/SVG, exportación PNG, generación de imágenes educativas cuando aporte valor pedagógico e integración MCP controlada.
+6. **Vista previa, historial, materiales y MCP** (en curso; hecho: Markdown `.md`, vista de lectura sin HTML/JS, exportación HTML y ZIP; pendiente: PDF/DOCX con trabajador aislado, vista previa de actividades, historial, imágenes, MCP): origen aislado, versiones, exportación de actividades, flujo Markdown → HTML, PDF y DOCX, infografías editables HTML/SVG, exportación PNG, generación de imágenes educativas cuando aporte valor pedagógico e integración MCP controlada.
 7. **Plantillas y beta**: ocho plantillas, idiomas, accesibilidad, divulgación progresiva de contenidos, flujos guiados de creación y pruebas docentes.
 8. **Servicio alojado de pago (propuesta posterior a la beta)**: modelos avanzados mediante una cuenta institucional de OpenRouter, cobro al usuario, controles de gasto y margen transparente. La edición libre y la instalación propia seguirán disponibles.
 

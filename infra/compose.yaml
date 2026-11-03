@@ -1,0 +1,72 @@
+name: edustudio-ai
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: edustudio
+      POSTGRES_USER: edustudio
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edustudio -d edustudio"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+  api:
+    build: ../apps/api
+    environment:
+      EDUSTUDIO_DATABASE_URL_FILE: /run/secrets/database_url
+      EDUSTUDIO_CREDENTIAL_KEYS_FILE: /run/secrets/credential_keys
+      EDUSTUDIO_COOKIE_SECURE: "true"
+      EDUSTUDIO_GEMINI_FREE_MODELS: ${EDUSTUDIO_GEMINI_FREE_MODELS:-}
+      EDUSTUDIO_OPENROUTER_FREE_MODELS: ${EDUSTUDIO_OPENROUTER_FREE_MODELS:-}
+      EDUSTUDIO_GROQ_FREE_MODELS: ${EDUSTUDIO_GROQ_FREE_MODELS:-}
+      EDUSTUDIO_OLLAMA_FREE_MODELS: ${EDUSTUDIO_OLLAMA_FREE_MODELS:-}
+      EDUSTUDIO_OLLAMA_BASE_URL: ${EDUSTUDIO_OLLAMA_BASE_URL:-}
+      EDUSTUDIO_PAID_MODELS_JSON: ${EDUSTUDIO_PAID_MODELS_JSON:-{}}
+      EDUSTUDIO_AI_MAX_USER_BUDGET_MICROUSD: ${EDUSTUDIO_AI_MAX_USER_BUDGET_MICROUSD:-20000000}
+      EDUSTUDIO_AI_DAILY_USER_REQUESTS: ${EDUSTUDIO_AI_DAILY_USER_REQUESTS:-20}
+      EDUSTUDIO_AI_DAILY_INSTALLATION_REQUESTS: ${EDUSTUDIO_AI_DAILY_INSTALLATION_REQUESTS:-200}
+      EDUSTUDIO_AI_DAILY_USER_TOKENS: ${EDUSTUDIO_AI_DAILY_USER_TOKENS:-400000}
+      EDUSTUDIO_AI_DAILY_INSTALLATION_TOKENS: ${EDUSTUDIO_AI_DAILY_INSTALLATION_TOKENS:-4000000}
+    secrets: [database_url, credential_keys]
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+  web:
+    build: ../apps/web
+    depends_on:
+      api: { condition: service_healthy }
+    networks: [internal]
+  proxy:
+    image: caddy:2-alpine
+    environment:
+      EDUSTUDIO_DOMAIN: ${EDUSTUDIO_DOMAIN:?Set EDUSTUDIO_DOMAIN}
+    volumes:
+      - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports: ["80:80", "443:443"]
+    depends_on: [web]
+    networks: [internal]
+secrets:
+  db_password:
+    file: ../secrets/db_password
+  database_url:
+    file: ../secrets/database_url
+  credential_keys:
+    file: ../secrets/credential_keys
+networks:
+  internal: {}
+volumes:
+  postgres_data: {}
+  caddy_data: {}
+  caddy_config: {}
+

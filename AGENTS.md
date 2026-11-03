@@ -1,0 +1,10 @@
+# EduStudio AI: instrucciones para agentes
+
+Trabaja por fases. La Fase 5, autorizada por el usuario, incorpora modelos de pago BYOK, estimaciones y presupuestos internos. MCP queda planificado para la Fase 6. No avances a la vista previa ejecutable, publicación, materiales, MCP operativo ni historial general de versiones sin confirmación explícita. Examina el código y esta documentación antes de editar. Mantén la API y la web separadas. Ejecuta las pruebas del área modificada y actualiza la documentación. Nunca guardes claves, contraseñas, datos personales ni archivos `.env` en Git. Los proveedores de pago permanecen desactivados por defecto; no uses claves reales durante el desarrollo ni ejecutes código generado por IA en el servidor. Las migraciones de base de datos deben ser revisables y reversibles. No despliegues públicamente sin autorización.
+
+Las rutas de proyectos deben comprobar la propiedad en cada operación. Las mutaciones con cookie de sesión requieren CSRF. El origen de vista previa de futuras fases debe estar separado del editor. La licencia objetivo es AGPL-3.0 y sigue pendiente de auditoría de dependencias.
+
+Visión de producto confirmada por el usuario: EduStudio debe ofrecer desde una interfaz docente sencilla una capacidad de creación y revisión comparable a la de un agente de programación en CLI. Debe coordinar las aplicaciones necesarias del servidor (conversión de documentos, renderizado y exportación, según las fases autorizadas) mediante herramientas tipadas y trabajadores aislados. El modelo no recibe shell ni acceso directo al host. El docente conserva el control de archivos, costes y publicación. Consulta `docs/architecture.md`, `docs/ai-engine.md` y `docs/roadmap.md` antes de ampliar estas capacidades.
+
+Cuando se autorice la Fase 6, sigue la estrategia de [recursos visuales](docs/visual-resources.md): HTML/SVG editable por defecto, imagen generada solo por elección del docente y sometida a cuotas, autorización y revisión. No introduzcas Bootstrap ni una CDN de iconos como dependencia obligatoria. El cursor con IA queda para una exploración posterior a la beta dirigida al docente.
+

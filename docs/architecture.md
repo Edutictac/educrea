@@ -1,0 +1,28 @@
+# Arquitectura
+
+La web sirve la interfaz y consume `/api` en el mismo origen. Nginx envía la API a FastAPI; Caddy termina TLS. PostgreSQL solo está en la red interna de Compose. La API usa modelos SQLAlchemy y migraciones Alembic. La fase actual guarda usuarios, sesiones, proyectos y archivos de proyecto. Ningún archivo se ejecuta en el servidor.
+
+`project_files` contiene ruta, contenido y número de versión. La API solo acepta HTML, CSS, JavaScript y JSON, con rutas relativas validadas, 256 KiB por archivo y 30 archivos por proyecto. Cada operación comprueba el propietario. Una operación de cambio de modo solo cambia la interfaz; no escribe en la API. Cada guardado exige la versión base y devuelve 409 si otro editor la modificó. El modo docente representa `activity.json` mediante un formulario y conserva campos adicionales cuando guarda. El motor de IA propone cambios estructurados con proveedores gratuitos autorizados y el usuario los aprueba antes de aplicarlos. Las propuestas, credenciales y sus migraciones viven en la API; el adaptador del proveedor está separado del flujo de validación. La vista previa tendrá origen distinto y almacenamiento aislado.
+
+La autenticación sigue siendo local. Una integración futura con Authentik usará OIDC y deberá vincular las identidades existentes sin perder proyectos; el núcleo no dependerá de EduTicTac Commons.
+
+La Fase 6 incorporará materiales de aula en Markdown y exportación a HTML, PDF y DOCX. El editor y el conversor compartirán el mismo contenido fuente; la conversión se aislará del servidor de la API y no ejecutará scripts ni accederá a recursos externos por defecto. Las actividades HTML y los materiales Markdown tendrán flujos de vista previa distintos.
+
+La misma fase añadirá una biblioteca de imágenes por proyecto para recursos generados o incorporados por el docente. Los binarios se almacenarán fuera de `project_files`, que seguirá reservado a texto; la API comprobará propiedad, tipo, tamaño y dimensiones antes de servirlos o exportarlos. El motor de IA tratará la generación de imágenes como una capacidad distinta de la generación de texto y código, sometida a las cuotas y autorizaciones del usuario.
+
+La estrategia visual será HTML/SVG editable por defecto. Las ilustraciones rasterizadas serán una alternativa elegida por el docente. El PNG se producirá en un renderizador aislado a partir de una versión estática validada; el HTML/SVG seguirá siendo la fuente. El detalle de seguridad, atribución y pruebas está en [visual-resources.md](visual-resources.md).
+
+## Potencia del agente desde una interfaz docente
+
+La meta es que una instrucción como «crea una ficha sobre fracciones, revísala y expórtala a PDF y DOCX» active un flujo completo sin pedir al docente comandos ni conocimientos de programación. La interfaz mostrará el plan, los archivos y recursos que se usarán, el proveedor de IA, el coste estimado cuando proceda y los resultados para revisión. El modo avanzado seguirá trabajando sobre los mismos archivos.
+
+El motor incorporará un registro de **capacidades tipadas** del backend: leer archivos autorizados, proponer cambios, validar, crear versiones, convertir documentos, renderizar infografías y exportar. Cada capacidad tendrá un esquema de entrada, permisos por proyecto y usuario, límites de tamaño y tiempo, registro de uso y una respuesta estructurada. El modelo podrá solicitar una capacidad; el backend decidirá si está permitida y la ejecutará. Las operaciones que cambien archivos o incurran en gastos requerirán la autorización definida para el proyecto y la cuenta. No se dará al modelo una terminal ni acceso directo a Docker, al sistema de archivos del host o a credenciales.
+
+En la Fase 6, MCP será un adaptador opcional de este registro. El backend validará las herramientas de servidores aprobados y mediará cada llamada con permisos, límites y auditoría; el modelo nunca accederá directamente al servidor MCP ni a sus credenciales. Una respuesta de MCP se tratará como dato no confiable y no podrá ampliar permisos ni ejecutar instrucciones por sí misma.
+
+Las aplicaciones de conversión y renderizado se empaquetarán en trabajadores aislados, con versiones fijadas y auditadas. Pandoc, LibreOffice y un renderizador de navegador son candidatos a evaluar para Markdown, DOCX, PDF y PNG; su elección dependerá de pruebas de fidelidad, accesibilidad, licencia, mantenimiento y superficie de ataque. El trabajador recibirá solo los archivos necesarios en un directorio temporal, sin secretos ni acceso a la base de datos, con red desactivada por defecto, límites de CPU, memoria, tiempo y salida. El código HTML/JavaScript generado se visualizará en el origen aislado de vista previa; no se ejecutará como proceso del servidor.
+
+La ejecución larga utilizará trabajos con estados y cancelación. PostgreSQL puede coordinar inicialmente la cola y la reserva de recursos; se añadirá otro componente solo si la carga real lo exige. Los resultados serán artefactos del proyecto con trazabilidad y podrán recuperarse o exportarse. Una conversión fallida dejará el proyecto original intacto y mostrará al docente un error comprensible.
+
+Riesgos principales: contenido generado malicioso, acceso entre usuarios, concurrencia de edición, costes imprevistos, cuota de proveedores y tratamiento de datos de menores. Los límites actuales son la ausencia de historial general recuperable, vista previa segura, cuotas y proveedores adicionales. La versión por archivo detecta conflictos de guardado, y las propuestas de IA aplicadas se pueden restaurar si los archivos afectados no han cambiado después.
+

@@ -1,0 +1,17 @@
+# Motor de IA: Fases 3 a 5
+
+`apps/api/edustudio_api/services/ai` separa la preparación de contexto, los adaptadores de proveedores y la aplicación de propuestas. Solo admite HTML, CSS, JavaScript y JSON. No ofrece shell, instalación de paquetes ni ejecución del código generado.
+
+El docente elige los archivos que compartir. La API verifica propiedad, modelo permitido, credencial personal y confirmación de gratuidad; limita el contexto a 96 KiB y la respuesta a 512 KiB. Envía al proveedor elegido la instrucción, los archivos elegidos y las rutas disponibles. Los archivos del proyecto se tratan como datos, aunque una inyección en el contenido todavía puede influir en la salida del modelo; la validación y revisión humana son controles necesarios.
+
+El proveedor devuelve JSON estructurado. El backend valida esquema, rutas, extensiones, tamaño, duplicados y número total de archivos. Una propuesta puede crear archivos nuevos y modificar únicamente archivos existentes que el docente haya seleccionado. Nunca borra archivos. La propuesta queda pendiente hasta que el usuario la apruebe; el servidor bloquea el proyecto y comprueba versiones base antes de aplicar todos los cambios en una transacción. Se puede rechazar o restaurar la propuesta si ningún archivo afectado ha cambiado después. Esto no sustituye al historial general de la Fase 6.
+
+El endpoint SSE transmite fragmentos y emite `proposal` solo tras recibir una respuesta completa y válida. Los errores producen un evento `error` y no guardan propuestas. Cancelar la petición cierra la conexión; la reserva de cuota interna sigue contando de forma conservadora si se desconoce el uso real. El uso de tokens comunicado por el proveedor se guarda con cada propuesta, sin interpretarlo como saldo disponible.
+
+La Fase 4 añade OpenRouter, Groq y Ollama, todos desactivados por defecto, reservas internas y alternancia gratuita autorizada. La Fase 5 añade modelos de pago BYOK con estimación previa, aceptación por solicitud y presupuesto mensual interno.
+
+## Evolución prevista: flujos de trabajo
+
+El objetivo funcional es acercar la capacidad de un agente de programación al profesorado mediante instrucciones naturales: crear, revisar, corregir, convertir y exportar en un mismo proyecto. El motor separará la propuesta del modelo de las acciones del servidor. Las herramientas serán operaciones tipadas, auditables y autorizadas por el backend; ninguna respuesta del modelo se interpretará como un comando.
+
+Ejemplo: el docente pide una ficha de lectura en valenciano con ilustración y PDF. El motor propone archivos y recursos; el docente aprueba los cambios. Un trabajador aislado convierte el Markdown y genera los formatos solicitados. La interfaz muestra el resultado y sus límites antes de guardar o compartir. Cada paso registra proveedor, modelo, herramienta, versión de archivos y consumo correspondiente. Esta orquestación todavía no está implementada.

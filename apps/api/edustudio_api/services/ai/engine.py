@@ -112,6 +112,7 @@ def apply(db: Session, project_id: UUID, proposal_id: UUID, user_id: UUID) -> Ai
     proposal = proposal_for_owner(db, project_id, proposal_id, user_id, lock=True)
     if proposal.status != "pending":
         raise HTTPException(409, "La propuesta ya no está pendiente")
+    db.info["version_source"] = "ai"
     current = {file.path: file for file in db.scalars(
         select(ProjectFile).where(ProjectFile.project_id == project_id))}
     additions = sum(1 for change in proposal.changes if change["base_version"] == 0)
@@ -134,6 +135,7 @@ def apply(db: Session, project_id: UUID, proposal_id: UUID, user_id: UUID) -> Ai
     proposal.applied_at = utcnow()
     project.updated_at = utcnow()
     db.commit()
+    db.info.pop("version_source", None)
     db.refresh(proposal)
     return proposal
 
@@ -155,6 +157,7 @@ def restore(db: Session, project_id: UUID, proposal_id: UUID, user_id: UUID) -> 
     proposal = proposal_for_owner(db, project_id, proposal_id, user_id, lock=True)
     if proposal.status != "applied":
         raise HTTPException(409, "La propuesta no puede restaurarse")
+    db.info["version_source"] = "restore"
     current = {file.path: file for file in db.scalars(
         select(ProjectFile).where(ProjectFile.project_id == project_id))}
     for change in proposal.changes:

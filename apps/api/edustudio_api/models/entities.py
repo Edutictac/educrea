@@ -60,6 +60,21 @@ class ProjectFile(Base):
     project: Mapped[Project] = relationship(back_populates="files")
 
 
+class FileVersion(Base):
+    """Immutable snapshot of a project file; history is keyed by path so deleted files stay recoverable."""
+
+    __tablename__ = "file_versions"
+    __table_args__ = (UniqueConstraint("project_id", "path", "version"),)
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    path: Mapped[str] = mapped_column(String(200))
+    version: Mapped[int] = mapped_column(Integer)
+    content: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String(10), default="manual")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class AiCredential(Base):
     __tablename__ = "ai_credentials"
     __table_args__ = (UniqueConstraint("user_id", "provider"),)

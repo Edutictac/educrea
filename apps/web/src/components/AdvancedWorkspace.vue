@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import MonacoEditor from './MonacoEditor.vue'
 import { t } from '../i18n'
+import { buildPreview } from '../services/preview'
 import { useFilesStore, type ProjectFile } from '../stores/files'
 
 const props = defineProps<{ projectId: string }>()
@@ -16,6 +17,9 @@ const error = ref('')
 const status = ref('')
 const reading = ref(false)
 const readingHtml = ref('')
+const previewing = ref(false)
+const previewDoc = ref('')
+const isHtml = computed(() => !!activeFile.value?.path.toLowerCase().endsWith('.html'))
 const isMarkdown = computed(() => !!activeFile.value?.path.toLowerCase().endsWith('.md'))
 const activeFile = computed(() => activeId.value ? documents.value[activeId.value] : undefined)
 const activeContent = computed(() => activeId.value ? drafts.value[activeId.value] ?? '' : '')
@@ -26,7 +30,7 @@ defineExpose({ hasUnsavedChanges: () => anyDirty.value })
 onMounted(async () => { try { await files.load(props.projectId) } catch (cause) { showError(cause) } })
 function showError(cause: unknown) { error.value = cause instanceof Error ? cause.message : t('error') }
 async function openFile(id: string) {
-  error.value = ''; status.value = ''; diagnostics.value = []; reading.value = false
+  error.value = ''; status.value = ''; diagnostics.value = []; reading.value = false; previewing.value = false
   try {
     if (!documents.value[id]) {
       const file = await files.get(props.projectId, id)
@@ -65,6 +69,20 @@ async function toggleReading() {
     const data = await response.json() as { html: string }
     readingHtml.value = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><style>body{font-family:system-ui,sans-serif;line-height:1.6;margin:1rem}table{border-collapse:collapse}th,td{border:1px solid #888;padding:.3rem .6rem}pre{background:#f3f3f3;padding:.6rem;overflow:auto}</style>${data.html}`
     reading.value = true
+  } catch (cause) { showError(cause) }
+}
+async function togglePreview() {
+  if (previewing.value) { previewing.value = false; return }
+  if (!activeFile.value) return
+  error.value = ''
+  try {
+    const contents: Record<string, string> = {}
+    for (const item of files.items) {
+      const open = documents.value[item.id]
+      contents[item.path] = open ? drafts.value[item.id] : (await files.get(props.projectId, item.id)).content
+    }
+    previewDoc.value = buildPreview(activeContent.value, contents)
+    previewing.value = true
   } catch (cause) { showError(cause) }
 }
 async function saveFile() {
@@ -106,8 +124,13 @@ async function deleteFile() {
             <button type="button" :disabled="!activeDirty" @click="saveFile">{{ t('save') }}</button>
             <button v-if="isMarkdown" type="button" class="secondary" @click="toggleReading">{{ reading ? t('editView') : t('readingView') }}</button>
             <a v-if="isMarkdown" class="button secondary" :href="`/api/projects/${projectId}/files/${activeFile.id}/export.html`">{{ t('exportHtml') }}</a>
+            <button v-if="isHtml" type="button" class="secondary" @click="togglePreview">{{ previewing ? t('editView') : t('activityPreview') }}</button>
+            <a v-if="isMarkdown" class="button secondary" :href="`/api/projects/${projectId}/files/${activeFile.id}/export.docx`">{{ t('exportDocx') }}</a>
+            <a v-if="isMarkdown" class="button secondary" :href="`/api/projects/${projectId}/files/${activeFile.id}/export.pdf`">{{ t('exportPdf') }}</a>
             <button type="button" class="danger" @click="deleteFile">{{ t('delete') }}</button></div>
           <iframe v-if="reading" class="reading-frame" sandbox="" :srcdoc="readingHtml" :title="t('readingView')"></iframe>
+          <template v-else-if="previewing"><p class="notice">{{ t('previewNote') }}</p>
+            <iframe class="reading-frame" sandbox="allow-scripts" :srcdoc="previewDoc" :title="t('activityPreview')"></iframe></template>
           <MonacoEditor v-else :key="activeFile.id" :model-value="activeContent" :path="activeFile.path"
             @update:model-value="onEdit" @diagnostics="diagnostics = $event" />
         </template>

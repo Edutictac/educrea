@@ -54,3 +54,23 @@ def test_zip_export_contains_project_files(client: TestClient):
     assert response.status_code == 200
     with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
         assert archive.namelist() == ["ficha.md"]
+
+
+def test_docx_and_pdf_export_run_in_sandbox(client: TestClient):
+    import shutil
+    import pytest
+
+    if not (shutil.which("pandoc") and shutil.which("bwrap")):
+        pytest.skip("pandoc/bwrap no disponibles")
+    _, base, file = setup(client)
+    docx = client.get(f"{base}/files/{file['id']}/export.docx")
+    assert docx.status_code == 200 and docx.content[:2] == b"PK"
+    with zipfile.ZipFile(io.BytesIO(docx.content)) as archive:
+        body = archive.read("word/document.xml").decode()
+        everything = "".join(archive.read(name).decode("utf-8", "ignore") for name in archive.namelist()
+                             if name.endswith((".xml", ".rels")))
+    assert "Fracciones" in body and "<script" not in everything and "javascript:" not in everything and "evil.test" not in everything
+    assert client.get(f"{base}/files/{file['id']}/export.exe").status_code == 404
+    if shutil.which("xelatex"):
+        pdf = client.get(f"{base}/files/{file['id']}/export.pdf")
+        assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")

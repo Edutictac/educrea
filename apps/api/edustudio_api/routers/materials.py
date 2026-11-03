@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..models import ProjectFile, User
 from ..security import current_user
-from ..services import materials
+from ..services import converter, materials
 from .files import file_for_owner
 from .projects import project_for_owner
 
@@ -46,6 +46,16 @@ def export_file_html(project_id: UUID, file_id: UUID, user: User = Depends(curre
     file = markdown_for_owner(db, project_id, file_id, user)
     return attachment(materials.export_html(file.path, file.content), "text/html; charset=utf-8",
                       download_name(file.path.rsplit(".", 1)[0], ".html"))
+
+
+@router.get("/files/{file_id}/export.{fmt}")
+def export_file_converted(project_id: UUID, file_id: UUID, fmt: str, user: User = Depends(current_user),
+                          db: Session = Depends(get_db)) -> Response:
+    if fmt not in converter.FORMATS:
+        raise HTTPException(404, "Formato no encontrado")
+    file = markdown_for_owner(db, project_id, file_id, user)
+    data = converter.convert(file.content, materials.title_of(file.path, file.content), fmt)
+    return attachment(data, converter.FORMATS[fmt][1], download_name(file.path.rsplit(".", 1)[0], f".{fmt}"))
 
 
 @router.get("/export.zip")

@@ -1,0 +1,105 @@
+{
+  "source": "lucide-static",
+  "version": "1.67.0",
+  "repository": "https://github.com/lucide-icons/lucide",
+  "license_file": "LICENSE",
+  "audited": "2026-11-03",
+  "icons": [
+    {
+      "name": "atom",
+      "license": "ISC"
+    },
+    {
+      "name": "book-open",
+      "license": "ISC"
+    },
+    {
+      "name": "calculator",
+      "license": "ISC"
+    },
+    {
+      "name": "check",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
+      "name": "circle-help",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
+      "name": "clock",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
+      "name": "flask-conical",
+      "license": "ISC"
+    },
+    {
+      "name": "globe",
+      "license": "ISC"
+    },
+    {
+      "name": "graduation-cap",
+      "license": "ISC"
+    },
+    {
+      "name": "heart",
+      "license": "ISC"
+    },
+    {
+      "name": "languages",
+      "license": "ISC"
+    },
+    {
+      "name": "leaf",
+      "license": "ISC"
+    },
+    {
+      "name": "lightbulb",
+      "license": "ISC"
+    },
+    {
+      "name": "mic-vocal",
+      "license": "ISC"
+    },
+    {
+      "name": "music",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
+      "name": "palette",
+      "license": "ISC"
+    },
+    {
+      "name": "pencil",
+      "license": "ISC"
+    },
+    {
+      "name": "puzzle",
+      "license": "ISC"
+    },
+    {
+      "name": "ruler",
+      "license": "ISC"
+    },
+    {
+      "name": "shapes",
+      "license": "ISC"
+    },
+    {
+      "name": "star",
+      "license": "ISC"
+    },
+    {
+      "name": "sun",
+      "license": "ISC"
+    },
+    {
+      "name": "trophy",
+      "license": "ISC"
+    },
+    {
+      "name": "volume-2",
+      "license": "ISC"
+    }
+  ]
+}

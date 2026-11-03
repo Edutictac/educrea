@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import MonacoEditor from './MonacoEditor.vue'
 import { t } from '../i18n'
 import { buildPreview } from '../services/preview'
+import { INFOGRAPHIC_PATH, infographicTemplate } from '../services/templates'
 import { useFilesStore, type ProjectFile } from '../stores/files'
 
 const props = defineProps<{ projectId: string }>()
@@ -85,6 +86,16 @@ async function togglePreview() {
     previewing.value = true
   } catch (cause) { showError(cause) }
 }
+async function createInfographic() {
+  error.value = ''; status.value = ''
+  try {
+    let path = INFOGRAPHIC_PATH
+    for (let n = 2; files.items.some(item => item.path === path); n++) path = INFOGRAPHIC_PATH.replace('.html', `-${n}.html`)
+    const file = await files.create(props.projectId, path, infographicTemplate(t('infographicTitle')))
+    documents.value[file.id] = file; drafts.value[file.id] = file.content
+    tabs.value.push(file.id); activeId.value = file.id
+  } catch (cause) { showError(cause) }
+}
 async function saveFile() {
   if (!activeFile.value || !activeId.value) return
   error.value = ''; status.value = ''
@@ -111,6 +122,7 @@ async function deleteFile() {
         <h3>{{ t('fileExplorer') }}</h3>
         <form @submit.prevent="createFile"><label>{{ t('newFile') }}<input v-model="newPath" placeholder="index.html" required maxlength="200" /></label>
           <button type="submit">{{ t('createFile') }}</button></form>
+        <p><button type="button" class="secondary" @click="createInfographic">{{ t('newInfographic') }}</button></p>
         <p><a class="button secondary" :href="`/api/projects/${projectId}/export.zip`">{{ t('exportZip') }}</a></p>
         <ul><li v-for="file in files.items" :key="file.id"><button type="button" class="file-button" :aria-current="activeId === file.id ? 'true' : undefined" @click="openFile(file.id)">{{ file.path }}</button></li></ul>
       </aside>
@@ -125,6 +137,7 @@ async function deleteFile() {
             <button v-if="isMarkdown" type="button" class="secondary" @click="toggleReading">{{ reading ? t('editView') : t('readingView') }}</button>
             <a v-if="isMarkdown" class="button secondary" :href="`/api/projects/${projectId}/files/${activeFile.id}/export.html`">{{ t('exportHtml') }}</a>
             <button v-if="isHtml" type="button" class="secondary" @click="togglePreview">{{ previewing ? t('editView') : t('activityPreview') }}</button>
+            <a v-if="isHtml && !activeDirty" class="button secondary" :href="`/api/projects/${projectId}/files/${activeFile.id}/export.png`">{{ t('exportPng') }}</a>
             <a v-if="isMarkdown" class="button secondary" :href="`/api/projects/${projectId}/files/${activeFile.id}/export.docx`">{{ t('exportDocx') }}</a>
             <a v-if="isMarkdown" class="button secondary" :href="`/api/projects/${projectId}/files/${activeFile.id}/export.pdf`">{{ t('exportPdf') }}</a>
             <button type="button" class="danger" @click="deleteFile">{{ t('delete') }}</button></div>

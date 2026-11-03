@@ -74,3 +74,32 @@ def test_docx_and_pdf_export_run_in_sandbox(client: TestClient):
     if shutil.which("xelatex"):
         pdf = client.get(f"{base}/files/{file['id']}/export.pdf")
         assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+
+
+def test_static_document_strips_scripts_handlers_and_external_resources():
+    from edustudio_api.services.render import static_document
+
+    page = ('<html><head><link rel="stylesheet" href="s.css"><link rel="stylesheet" href="https://evil.test/a.css">'
+            '<script>fetch("https://evil.test")</script></head><body onload="x()"><svg onclick="y()"><text>Hola</text></svg>'
+            '<script src="a.js"></script><iframe src="https://evil.test"></iframe></body></html>')
+    out = static_document(page, {"s.css": "svg{fill:red}"})
+    assert "svg{fill:red}" in out and "Hola" in out
+    for forbidden in ("<script", "onload", "onclick", "evil.test", "<iframe"):
+        assert forbidden not in out
+    assert "default-src 'none'" in out
+
+
+def test_png_export_renders_html_in_sandbox(client: TestClient):
+    import shutil
+    import pytest
+
+    if not (shutil.which("chromium") and shutil.which("bwrap")):
+        pytest.skip("chromium/bwrap no disponibles")
+    headers, base, _ = setup(client)
+    page = client.post(f"{base}/files", headers=headers, json={
+        "path": "info.html", "content": "<h1>Notas</h1><svg width='100' height='50'><rect width='100' height='50'/></svg>"}).json()
+    response = client.get(f"{base}/files/{page['id']}/export.png?width=600&height=300")
+    assert response.status_code == 200 and response.content[:8] == b"\x89PNG\r\n\x1a\n"
+    assert client.get(f"{base}/files/{page['id']}/export.png?width=99999").status_code == 422
+    md = client.get(f"{base}/files").json()[0]
+    assert client.get(f"{base}/files/{md['id']}/export.png").status_code == 422

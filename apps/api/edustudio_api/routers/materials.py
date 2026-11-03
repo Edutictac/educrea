@@ -1,14 +1,14 @@
 import re
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import ProjectFile, User
 from ..security import current_user
-from ..services import converter, materials
+from ..services import converter, materials, render
 from .files import file_for_owner
 from .projects import project_for_owner
 
@@ -46,6 +46,18 @@ def export_file_html(project_id: UUID, file_id: UUID, user: User = Depends(curre
     file = markdown_for_owner(db, project_id, file_id, user)
     return attachment(materials.export_html(file.path, file.content), "text/html; charset=utf-8",
                       download_name(file.path.rsplit(".", 1)[0], ".html"))
+
+
+@router.get("/files/{file_id}/export.png")
+def export_infographic_png(project_id: UUID, file_id: UUID, width: int = Query(1200, ge=100, le=2000),
+                           height: int = Query(900, ge=100, le=4000), user: User = Depends(current_user),
+                           db: Session = Depends(get_db)) -> Response:
+    file = file_for_owner(db, project_id, file_id, user.id)
+    if not file.path.lower().endswith(".html"):
+        raise HTTPException(422, "Solo se pueden exportar a PNG archivos HTML")
+    files = {row.path: row.content for row in db.scalars(select(ProjectFile).where(ProjectFile.project_id == project_id))}
+    data = render.render_png(file.content, files, width, height)
+    return attachment(data, "image/png", download_name(file.path.rsplit(".", 1)[0], ".png"))
 
 
 @router.get("/files/{file_id}/export.{fmt}")

@@ -4,6 +4,8 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import TeacherWorkspace from '../components/TeacherWorkspace.vue'
 import AdvancedWorkspace from '../components/AdvancedWorkspace.vue'
 import AiAssistant from '../components/AiAssistant.vue'
+import ActivityPreview from '../components/ActivityPreview.vue'
+import { useFilesStore } from '../stores/files'
 import { t } from '../i18n'
 import { useProjectsStore } from '../stores/projects'
 
@@ -46,6 +48,12 @@ function switchMode(next: 'teacher' | 'advanced') {
 }
 function canGenerate() { return !hasUnsavedChanges() }
 function canApply() { return !hasUnsavedChanges() || confirm(t('discardChanges')) }
+const filesStore = useFilesStore()
+async function loadPreviewFiles(): Promise<Record<string, string>> {
+  await filesStore.load(id)
+  const entries = await Promise.all(filesStore.items.map(async item => [item.path, (await filesStore.get(id, item.id)).content] as const))
+  return Object.fromEntries(entries)
+}
 function refreshWorkspace() { workspaceKey.value += 1 }
 async function saveProject() {
   error.value = ''; status.value = ''
@@ -79,7 +87,7 @@ async function remove() {
       <TeacherWorkspace v-if="mode === 'teacher'" :key="workspaceKey" ref="workspace" :project-id="id" />
       <AdvancedWorkspace v-else :key="workspaceKey" ref="workspace" :project-id="id" />
       <AiAssistant :project-id="id" :can-generate="canGenerate" :can-apply="canApply" @project-changed="refreshWorkspace" />
-      <p class="notice">{{ t('previewLater') }}</p>
+      <ActivityPreview :key="workspaceKey" :load-files="loadPreviewFiles" />
     </template>
   </section>
 </template>

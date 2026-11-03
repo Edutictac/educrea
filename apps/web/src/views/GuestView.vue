@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import MonacoEditor from '../components/MonacoEditor.vue'
+import ActivityPreview from '../components/ActivityPreview.vue'
 import { t } from '../i18n'
 import { useAuthStore } from '../stores/auth'
 import { guestPaths, useGuestStore, type GuestPath } from '../stores/guest'
@@ -85,6 +86,6 @@ async function saveDraft() {
         </div>
       </div>
     </section>
-    <p class="notice">{{ t('previewLater') }}</p>
+    <ActivityPreview :load-files="async () => ({ ...guest.files })" />
   </section>
 </template>

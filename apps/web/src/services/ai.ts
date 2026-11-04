@@ -8,8 +8,8 @@ export interface BudgetStatus { monthly_limit_microusd: number; spent_or_reserve
 export interface PaidEstimate { provider: ProviderName; model: string; max_input_tokens: number;
   max_output_tokens: number; maximum_cost_microusd: number; input_rate_microusd: number;
   output_rate_microusd: number; fingerprint: string }
-export interface QuotaStatus { requests_used: number; requests_limit: number;
-  tokens_used_or_reserved: number; tokens_limit: number }
+export interface QuotaStatus { requests_used: number; requests_limit: number; tokens_used_or_reserved: number;
+  shared: { requests_used: number; requests_limit: number; tokens_used_or_reserved: number; tokens_limit: number } }
 export interface ProposalChange { path: string; before_content: string | null; after_content: string; base_version: number }
 export interface Proposal { id: string; project_id: string; provider: string; model: string; summary: string;
   changes: ProposalChange[]; status: 'pending' | 'applied' | 'rejected' | 'restored';

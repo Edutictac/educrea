@@ -156,7 +156,9 @@ function stateLabel(value: Proposal['status']) {
           <label class="check"><input v-model="paidConfirmed" type="checkbox" />{{ t('approvePaid') }}</label>
         </div>
       </template>
-      <p v-if="quota">{{ t('quotaToday') }}: {{ quota.requests_used }}/{{ quota.requests_limit }} · {{ quota.tokens_used_or_reserved }}/{{ quota.tokens_limit }} {{ t('tokens') }}</p>
+      <p v-if="quota">{{ t('quotaToday') }}: {{ quota.requests_used }} {{ t('requestsToday') }} · {{ quota.tokens_used_or_reserved }} {{ t('tokens') }}
+        <template v-if="quota.shared.requests_used"> · {{ t('sharedServer') }}: {{ quota.shared.requests_used }}/{{ quota.shared.requests_limit }}</template></p>
+      <p class="hint">{{ t('quotaProviderNote') }}</p>
       <div class="actions"><button type="submit" :disabled="busy || !model || (mode === 'paid' && !paidConfirmed)">{{ t('proposeChanges') }}</button>
         <button v-if="busy" type="button" class="secondary" @click="cancel">{{ t('cancel') }}</button></div>
     </form>

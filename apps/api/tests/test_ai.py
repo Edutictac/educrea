@@ -4,6 +4,7 @@ import json
 import httpx
 import pytest
 from cryptography.fernet import Fernet
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
@@ -285,7 +286,7 @@ def test_authorized_fallback_and_quota_limit(client: TestClient, monkeypatch):
     assert response.status_code == 201
     assert response.json()["provider"] == "groq"
     assert client.get("/api/ai/quota").json()["requests_used"] == 3
-    monkeypatch.setattr(quotas, "get_settings", lambda: Settings(ai_daily_user_requests=3))
+    monkeypatch.setattr(quotas, "get_settings", lambda: Settings(ai_daily_personal_requests=3))
     assert client.post(route, headers=headers, json=request).status_code == 429
 
 
@@ -492,3 +493,46 @@ def test_anthropic_stream_parses_tokens_and_usage():
             assert chunks[-1].finished
     asyncio.run(run())
 
+
+
+def test_limits_apply_by_resource_not_globally(client: TestClient, monkeypatch):
+    """Personal-key providers ignore the shared-server limits; Ollama is capped; one generation at a time."""
+    from datetime import datetime, timezone
+
+    from conftest import engine as test_engine
+    from edustudio_api.models import AiUsage, User
+    from sqlalchemy import select
+    from sqlalchemy.orm import Session
+
+    setup_user(client)
+    done = {"input_tokens": 1, "output_tokens": 1}
+    with Session(test_engine) as db:
+        user_id = db.scalar(select(User.id))
+        other = User(email="other@example.org", password_hash="x")
+        db.add(other)
+        db.commit()
+        for _ in range(250):  # a crowd on a personal provider must not block anyone
+            db.add(AiUsage(user_id=other.id, provider="gemini", model="m", reserved_tokens=16384,
+                           actual_tokens=16384, status="completed", created_at=datetime.now(timezone.utc)))
+        db.commit()
+        monkeypatch.setattr(quotas, "get_settings",
+                            lambda: Settings(ai_daily_user_requests=2, ai_daily_installation_requests=3))
+        quotas.reconcile(db, quotas.reserve(db, user_id, "gemini", "gemini-test-free"), done)
+        first = quotas.reserve(db, user_id, "ollama", "qwen")
+        with pytest.raises(HTTPException) as busy:
+            quotas.reserve(db, user_id, "ollama", "qwen")
+        assert "en curso" in busy.value.detail
+        quotas.reconcile(db, first, done)
+        quotas.reconcile(db, quotas.reserve(db, user_id, "ollama", "qwen"), done)
+        with pytest.raises(HTTPException) as per_user:
+            quotas.reserve(db, user_id, "ollama", "qwen")
+        assert per_user.value.status_code == 429 and "compartido" in per_user.value.detail
+        quotas.reconcile(db, quotas.reserve(db, other.id, "ollama", "qwen"), done)  # 3rd shared request overall
+        with pytest.raises(HTTPException) as per_installation:
+            quotas.reserve(db, other.id, "ollama", "qwen")
+        assert "compartido" in per_installation.value.detail
+        quotas.reconcile(db, quotas.reserve(db, user_id, "groq", "g"), done)  # personal still fine
+        monkeypatch.setattr(quotas, "get_settings", lambda: Settings(ai_daily_personal_requests=1))
+        with pytest.raises(HTTPException) as guard:
+            quotas.reserve(db, user_id, "groq", "g")
+        assert guard.value.status_code == 429 and "seguridad" in guard.value.detail

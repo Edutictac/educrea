@@ -1,4 +1,11 @@
-"""Conservative daily reservations; counts are internal limits, not provider balances."""
+"""Internal limits. Only resources nobody else limits are capped here:
+
+- Shared resources (the administrator's Ollama): per-user and per-installation daily limits.
+- Personal-key providers (Gemini, OpenRouter, Groq, OpenAI, Anthropic): the provider enforces the real quota on the
+  user's own account. We keep one generation at a time and a high daily request cap against runaway loops.
+- Paid models: additionally bounded by the user's monthly budget.
+Counts are internal estimates, never provider balances.
+"""
 
 from datetime import datetime, time, timezone
 from uuid import UUID
@@ -12,6 +19,11 @@ from ...models import AiBudget, AiUsage, User
 from .pricing import Price, cost
 
 RESERVED_TOKENS = 16384
+SHARED_PROVIDERS = frozenset({"ollama"})
+
+
+def _tokens(item: AiUsage) -> int:
+    return item.actual_tokens if item.actual_tokens is not None else item.reserved_tokens
 
 
 def reserve(db: Session, user_id: UUID, provider: str, model: str,
@@ -29,13 +41,16 @@ def reserve(db: Session, user_id: UUID, provider: str, model: str,
     mine = [item for item in usage if item.user_id == user_id]
     if any(item.status == "reserved" for item in mine):
         raise HTTPException(429, "Ya tienes una generación en curso")
-    if (len(mine) >= settings.ai_daily_user_requests or
-            len(usage) >= settings.ai_daily_installation_requests or
-            sum(item.actual_tokens if item.actual_tokens is not None else item.reserved_tokens for item in mine)
-            + maximum_tokens > settings.ai_daily_user_tokens or
-            sum(item.actual_tokens if item.actual_tokens is not None else item.reserved_tokens for item in usage)
-            + maximum_tokens > settings.ai_daily_installation_tokens):
-        raise HTTPException(429, "Límite interno diario de IA alcanzado")
+    if provider in SHARED_PROVIDERS:
+        shared = [item for item in usage if item.provider in SHARED_PROVIDERS]
+        shared_mine = [item for item in shared if item.user_id == user_id]
+        if (len(shared_mine) >= settings.ai_daily_user_requests
+                or len(shared) >= settings.ai_daily_installation_requests
+                or sum(map(_tokens, shared_mine)) + maximum_tokens > settings.ai_daily_user_tokens
+                or sum(map(_tokens, shared)) + maximum_tokens > settings.ai_daily_installation_tokens):
+            raise HTTPException(429, "Límite diario del servidor de modelos compartido alcanzado")
+    elif len([item for item in mine if item.provider not in SHARED_PROVIDERS]) >= settings.ai_daily_personal_requests:
+        raise HTTPException(429, "Límite de seguridad diario alcanzado")
     if maximum_cost_microusd:
         if price is None:
             raise HTTPException(500, "Precio no disponible")
@@ -80,11 +95,19 @@ def reconcile(db: Session, reservation_id: UUID, usage: dict | None = None, fail
 def summary(db: Session, user_id: UUID) -> dict:
     settings = get_settings()
     today = datetime.combine(datetime.now(timezone.utc).date(), time.min, tzinfo=timezone.utc)
-    mine = list(db.scalars(select(AiUsage).where(AiUsage.user_id == user_id, AiUsage.created_at >= today)))
-    return {"requests_used": len(mine), "requests_limit": settings.ai_daily_user_requests,
-            "tokens_used_or_reserved": sum(item.actual_tokens if item.actual_tokens is not None
-                                           else item.reserved_tokens for item in mine),
-            "tokens_limit": settings.ai_daily_user_tokens}
+    usage = list(db.scalars(select(AiUsage).where(AiUsage.created_at >= today)))
+    mine = [item for item in usage if item.user_id == user_id]
+    personal = [item for item in mine if item.provider not in SHARED_PROVIDERS]
+    shared = [item for item in usage if item.provider in SHARED_PROVIDERS]
+    shared_mine = [item for item in shared if item.user_id == user_id]
+    return {"requests_used": len(mine), "requests_limit": settings.ai_daily_personal_requests,
+            "tokens_used_or_reserved": sum(map(_tokens, mine)),
+            "personal_requests_used": len(personal),
+            "shared": {"requests_used": len(shared_mine), "requests_limit": settings.ai_daily_user_requests,
+                       "tokens_used_or_reserved": sum(map(_tokens, shared_mine)),
+                       "tokens_limit": settings.ai_daily_user_tokens,
+                       "installation_requests_used": len(shared),
+                       "installation_requests_limit": settings.ai_daily_installation_requests}}
 
 
 def budget_summary(db: Session, user_id: UUID) -> dict:

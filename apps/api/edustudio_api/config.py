@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     paid_models_json: str = "{}"
     mcp_servers_json: str = "{}"
     ai_max_user_budget_microusd: int = 20000000
+    ai_daily_personal_requests: int = 200  # loop guard for personal-key providers; the provider sets the real quota
     ai_daily_user_requests: int = 20
     ai_daily_installation_requests: int = 200
     ai_daily_user_tokens: int = 400000

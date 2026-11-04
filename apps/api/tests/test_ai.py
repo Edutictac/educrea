@@ -698,3 +698,46 @@ def test_first_version_from_brief(client: TestClient, monkeypatch):
     assert "primera versión" in response.json()["summary"].lower()
     brief_file = next(f for f in client.get(f"/api/projects/{project_id}/files").json() if f["path"] == "activity.json")
     assert json.loads(client.get(f"/api/projects/{project_id}/files/{brief_file['id']}").json()["content"])["level"] == "infantil"
+
+
+SITUATION_MD = "\n\n".join(f"## {section}\n\nContenido de {section}." for section in (
+    "Datos de la situación", "Contexto y justificación", "Reto y producto final",
+    "Competencias específicas y criterios de evaluación", "Saberes básicos", "Secuencia de sesiones",
+    "Evaluación", "Atención a la diversidad (DUA)", "Materiales y recursos"))
+
+
+def test_situation_from_brief_generates_markdown_and_requires_all_sections(client: TestClient, monkeypatch):
+    headers, project_id = setup_user(client)
+    brief = {"kind": "situacion", "title": "L'hort escolar", "language": "va", "level": "primaria", "course": "4t",
+             "area": "Coneixement del medi", "sessions": 6, "challenge": "Com podem cuidar l'hort?", "final_product": "Guia",
+             "accessibility": {"large_text": False, "high_contrast": False}}
+    client.post(f"/api/projects/{project_id}/files", headers=headers, json={"path": "activity.json", "content": json.dumps(brief)})
+    captured = {}
+
+    class Capture(StubGemini):
+        async def generate(self, key, model, prompt):
+            captured["prompt"] = prompt
+            return await super().generate(key, model, prompt)
+
+    good = {"summary": "Situació", "changes": [{"path": "situacion.md", "content": SITUATION_MD}]}
+    app.dependency_overrides[get_gemini_provider] = lambda: Capture(json.dumps(good))
+    route = f"/api/projects/{project_id}/ai/from-brief"
+    response = client.post(route, headers=headers)
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["status"] == "applied" and body["grounding"]["sections_missing"] == []
+    assert body["grounding"]["kind"] == "situacion" and body["grounding"]["supported"] is True
+    md = next(f for f in client.get(f"/api/projects/{project_id}/files").json() if f["path"] == "situacion.md")
+    assert "## Atención a la diversidad (DUA)" in client.get(f"/api/projects/{project_id}/files/{md['id']}").json()["content"]
+    prompt = captured["prompt"]
+    for expected in ("SITUACIÓN DE APRENDIZAJE", "situacion.md", "## Secuencia de sesiones", "valenciano",
+                     "Curso o ciclo: 4t", "L'hort escolar", "6", "Guia" if False else "Guia"):
+        assert expected in prompt, expected
+
+    # A model that skips a section must not be applied automatically.
+    partial = {"summary": "Incompleta", "changes": [{"path": "situacion.md", "content": SITUATION_MD.split("## Evaluación")[0]}]}
+    app.dependency_overrides[get_gemini_provider] = lambda: StubGemini(json.dumps(partial))
+    pending = client.post(route, headers=headers).json()
+    assert pending["status"] == "pending" and "Evaluación" in pending["grounding"]["sections_missing"]
+    content = client.get(f"/api/projects/{project_id}/files/{md['id']}").json()["content"]
+    assert "## Evaluación" in content  # previous good version untouched

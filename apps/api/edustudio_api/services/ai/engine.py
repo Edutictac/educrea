@@ -1,4 +1,6 @@
 import json
+import re
+import unicodedata
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -111,6 +113,76 @@ def prepare(db: Session, project_id: UUID, user_id: UUID,
 
 
 BRIEF_FIELDS = {"title", "activity_type", "language", "level", "instructions", "accessibility"}
+SITUATION_SECTIONS = (
+    "Datos de la situación",
+    "Contexto y justificación",
+    "Reto y producto final",
+    "Competencias específicas y criterios de evaluación",
+    "Saberes básicos",
+    "Secuencia de sesiones",
+    "Evaluación",
+    "Atención a la diversidad (DUA)",
+    "Materiales y recursos",
+)
+SITUATION_PATH = "situacion.md"
+HEADING = re.compile(r"^#{1,6}\s+(.+?)\s*$", re.MULTILINE)
+
+
+def brief_kind(brief: dict | None) -> str:
+    return str((brief or {}).get("kind") or "actividad")
+
+
+def normalise(text: str) -> str:
+    folded = unicodedata.normalize("NFD", text.lower())
+    return "".join(c for c in folded if not unicodedata.combining(c)).strip(" .:")
+
+
+def missing_sections(markdown: str) -> list[str]:
+    """Situation templates must contain every required heading; the check is on headings, not prose."""
+    headings = {normalise(match.group(1)) for match in HEADING.finditer(markdown)}
+    return [section for section in SITUATION_SECTIONS if normalise(section) not in headings]
+
+
+def situation_instruction(brief: dict) -> str:
+    language = str(brief.get("language") or "es")
+    lang = "valenciano (catalán)" if language == "va" else "castellano"
+    wants = []
+    accessibility = brief.get("accessibility") if isinstance(brief.get("accessibility"), dict) else {}
+    if accessibility.get("large_text"):
+        wants.append("texto grande")
+    if accessibility.get("high_contrast"):
+        wants.append("alto contraste")
+    details = [
+        f"Nivel educativo: {LEVEL_NAMES.get(str(brief.get('level')), str(brief.get('level')))}.",
+        f"Curso o ciclo: {str(brief.get('course') or 'no indicado')}. Área o materia: {str(brief.get('area') or 'no indicada')}.",
+        f"Número de sesiones: {str(brief.get('sessions') or 'las que consideres, entre 3 y 8')}.",
+        f"Contexto o escenario: {str(brief.get('context') or '').strip() or 'dedúcelo del reto y del nivel'}",
+        f"Reto o pregunta motriz: {str(brief.get('challenge') or '').strip() or 'propón uno adecuado al nivel'}",
+        f"Producto final del alumnado: {str(brief.get('final_product') or '').strip() or 'propón uno'}",
+        f"Instrumentos de evaluación pedidos: {str(brief.get('evaluation') or '').strip() or 'rúbrica y observación'}",
+        f"Notas de diversidad y DUA: {str(brief.get('diversity') or '').strip() or 'ninguna indicada'}",
+    ]
+    skeleton = "\n".join(f"## {section}" for section in SITUATION_SECTIONS)
+    return (
+        f"Diseña una SITUACIÓN DE APRENDIZAJE completa titulada «{str(brief.get('title') or '').strip() or 'sin título'}». "
+        f"Todo el documento debe estar en {lang}. Devuelve un único archivo Markdown llamado {SITUATION_PATH} cuyo "
+        "contenido siga EXACTAMENTE esta plantilla: las cabeceras de nivel 2 en este orden y con estos títulos, sin "
+        "cambiarles el texto, y rellenas debajo de cada una. No añadas ni quites secciones.\n\n"
+        f"{skeleton}\n\n"
+        "Requisitos de contenido: la secuencia de sesiones irá en una tabla (sesión, objetivo, tareas, agrupamiento, "
+        "materiales y tiempo); la evaluación incluirá al menos una rúbrica en tabla con niveles de desempeño; usa el "
+        "currículo de las fuentes para competencias específicas, criterios de evaluación y saberes básicos y cita los "
+        "fragmentos; la sección DUA debe recoger medidas de representación, acción y expresión e implicación, y las "
+        "barreras que eliminan. No inventes referencias normativas que no estén en las fuentes. Escribe en Markdown "
+        "limpio (tablas con |), sin HTML ni bloques de código.\n\nDatos del encargo:\n"
+        + "\n".join(details)
+        + ("\nAccesibilidad del documento: " + " y ".join(wants) + "." if wants else "")
+        + f"\nSi el encargo incluye más instrucciones, respétalas:\n{str(brief.get('instructions') or '').strip()}"
+    )
+
+
+def instruction_for(brief: dict) -> str:
+    return situation_instruction(brief) if brief_kind(brief) == "situacion" else brief_instruction(brief)
 LANGUAGE_NAMES = {"es": "castellano", "va": "valenciano (catalán)"}
 LEVEL_NAMES = {"infantil": "Educación Infantil", "primaria": "Educación Primaria", "secundaria": "Educación Secundaria",
                "otros": "otro nivel"}
@@ -165,16 +237,21 @@ def sources_instructions(passages: list[dict]) -> str:
 
 
 def build_grounding(db: Session, project_id: UUID, source_ids: list[UUID], draft: DraftProposal,
-                    used: list[dict]) -> dict:
+                    used: list[dict], kind: str = "actividad") -> dict:
     checks = source_service.verify_quotes(db, project_id, source_ids, [c.quote for c in draft.citations])
     citations = [{"quote": c.quote[:400], "chunk": c.chunk, "used_for": c.used_for, **check}
                  for c, check in zip(draft.citations, checks)]
     verified = sum(1 for c in citations if c["verified"])
     unverified = len(citations) - verified
     titles = list(db.scalars(select(Source.title).where(Source.id.in_(source_ids))))
-    return {"mode": "sources_only", "sources": titles, "passages_used": used, "citations": citations,
+    markdown = next((change.content for change in draft.changes if change.path.lower().endswith(".md")), "")
+    missing = missing_sections(markdown) if kind == "situacion" else []
+    with_sources = bool(source_ids)
+    supported = (not with_sources or (verified >= 1 and unverified == 0)) and not missing
+    return {"mode": "sources_only" if with_sources else "template", "kind": kind,
+            "sources": titles, "passages_used": used, "citations": citations,
             "verified": verified, "unverified": unverified, "not_covered": draft.not_covered,
-            "supported": verified >= 1 and unverified == 0}
+            "sections_missing": missing, "supported": supported}
 
 
 def parse_draft(text: str) -> DraftProposal:
@@ -211,8 +288,9 @@ def persist(db: Session, project_id: UUID, user_id: UUID, model: str, text: str,
         raise HTTPException(409, "La propuesta supera el límite de archivos")
     proposal = AiProposal(project_id=project_id, user_id=user_id, provider=provider, model=model,
                           summary=draft.summary, changes=changes, usage=usage, status="pending",
-                          grounding=build_grounding(db, project_id, source_ids, draft, passages_used or [])
-                          if source_ids else None)
+                          grounding=build_grounding(db, project_id, source_ids or [], draft, passages_used or [],
+                                                    brief_kind(read_brief(db, project_id)))
+                          if source_ids or brief_kind(read_brief(db, project_id)) == "situacion" else None)
     db.add(proposal)
     db.commit()
     db.refresh(proposal)

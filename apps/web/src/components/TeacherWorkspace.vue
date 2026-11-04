@@ -13,10 +13,13 @@ const generating = ref(false)
 const generated = ref(false)
 const needsProvider = ref(false)
 const files = useFilesStore()
-type Activity = { title: string; instructions: string; language: string; level: string; activity_type: string;
-  accessibility: { large_text: boolean; high_contrast: boolean } }
-const defaults: Activity = { title: '', instructions: '', language: 'es', level: 'primaria',
-  activity_type: 'cuestionario', accessibility: { large_text: false, high_contrast: false } }
+type Activity = { kind: 'actividad' | 'situacion'; title: string; instructions: string; language: string; level: string;
+  activity_type: string; accessibility: { large_text: boolean; high_contrast: boolean }
+  area: string; course: string; sessions: number; context: string; challenge: string; final_product: string;
+  evaluation: string; diversity: string }
+const defaults: Activity = { kind: 'actividad', title: '', instructions: '', language: 'es', level: 'primaria',
+  activity_type: 'cuestionario', accessibility: { large_text: false, high_contrast: false },
+  area: '', course: '', sessions: 4, context: '', challenge: '', final_product: '', evaluation: '', diversity: '' }
 const activity = ref<Activity>(structuredClone(defaults))
 const baseline = ref(JSON.stringify(defaults))
 const original = ref<Record<string, unknown>>({})
@@ -41,12 +44,21 @@ onMounted(async () => {
       const accessibility = typeof source.accessibility === 'object' && source.accessibility !== null
         ? source.accessibility as Record<string, unknown> : {}
       activity.value = {
+        kind: source.kind === 'situacion' ? 'situacion' : 'actividad',
         title: typeof source.title === 'string' ? source.title : '',
         instructions: typeof source.instructions === 'string' ? source.instructions : '',
         language: typeof source.language === 'string' ? source.language : 'es',
         level: typeof source.level === 'string' ? source.level : 'primaria',
         activity_type: typeof source.activity_type === 'string' ? source.activity_type : 'cuestionario',
         accessibility: { large_text: accessibility.large_text === true, high_contrast: accessibility.high_contrast === true },
+        area: typeof source.area === 'string' ? source.area : '',
+        course: typeof source.course === 'string' ? source.course : '',
+        sessions: typeof source.sessions === 'number' ? source.sessions : 4,
+        context: typeof source.context === 'string' ? source.context : '',
+        challenge: typeof source.challenge === 'string' ? source.challenge : '',
+        final_product: typeof source.final_product === 'string' ? source.final_product : '',
+        evaluation: typeof source.evaluation === 'string' ? source.evaluation : '',
+        diversity: typeof source.diversity === 'string' ? source.diversity : '',
       }
       baseline.value = JSON.stringify(activity.value)
     }
@@ -94,6 +106,11 @@ async function generateFirstVersion() {
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="success" role="status">{{ success }}</p>
     <form v-if="!loading && !blocked" class="form-grid" @submit.prevent="save">
+      <label class="full">{{ t('productionKind') }}<select v-model="activity.kind" :disabled="!!file">
+        <option value="actividad">{{ t('kindActivity') }}</option>
+        <option value="situacion">{{ t('kindSituation') }}</option>
+      </select></label>
+      <p v-if="file" class="hint full">{{ t('kindFixed') }}</p>
       <label>{{ t('activityTitle') }}<input v-model="activity.title" maxlength="160" required /></label>
       <label>{{ t('activityType') }}<select v-model="activity.activity_type">
         <option value="cuestionario">{{ t('quiz') }}</option><option value="juego">{{ t('game') }}</option>
@@ -103,6 +120,16 @@ async function generateFirstVersion() {
       <label>{{ t('educationLevel') }}<select v-model="activity.level"><option value="infantil">{{ t('earlyYears') }}</option>
         <option value="primaria">{{ t('primary') }}</option><option value="secundaria">{{ t('secondary') }}</option>
         <option value="otros">{{ t('other') }}</option></select></label>
+      <template v-if="activity.kind === 'situacion'">
+        <label>{{ t('area') }}<input v-model="activity.area" maxlength="120" :placeholder="t('areaPlaceholder')" /></label>
+        <label>{{ t('course') }}<input v-model="activity.course" maxlength="40" :placeholder="t('coursePlaceholder')" /></label>
+        <label>{{ t('sessions') }}<input v-model.number="activity.sessions" type="number" min="1" max="20" /></label>
+        <label>{{ t('finalProduct') }}<input v-model="activity.final_product" maxlength="200" :placeholder="t('finalProductPlaceholder')" /></label>
+        <label class="full">{{ t('context') }}<textarea v-model="activity.context" maxlength="2000" rows="3" /></label>
+        <label class="full">{{ t('challenge') }}<input v-model="activity.challenge" maxlength="300" /></label>
+        <label class="full">{{ t('evaluationInstruments') }}<input v-model="activity.evaluation" maxlength="300" :placeholder="t('evaluationPlaceholder')" /></label>
+        <label class="full">{{ t('diversityNotes') }}<textarea v-model="activity.diversity" maxlength="2000" rows="2" /></label>
+      </template>
       <label class="full">{{ t('instructions') }}<textarea v-model="activity.instructions" maxlength="10000" rows="6" /></label>
       <fieldset class="full"><legend>{{ t('accessibility') }}</legend>
         <label class="check"><input v-model="activity.accessibility.large_text" type="checkbox" />{{ t('largeText') }}</label>
@@ -113,10 +140,11 @@ async function generateFirstVersion() {
     </form>
     <div v-if="!dirty && file" class="actions first-version">
       <button type="button" :disabled="generating" @click="generateFirstVersion">
-        {{ generating ? t('generatingFirstVersion') : generated ? t('regenerateFirstVersion') : t('generateFirstVersion') }}</button>
+        {{ generating ? t('generatingFirstVersion') : generated ? t('regenerateFirstVersion')
+          : activity.kind === 'situacion' ? t('generateSituation') : t('generateFirstVersion') }}</button>
       <span v-if="generating" role="status">{{ t('mayTakeAMinute') }}</span>
     </div>
-    <p v-if="generated" class="notice ok" role="status">{{ t('firstVersionReady') }}</p>
+    <p v-if="generated" class="notice ok" role="status">{{ activity.kind === 'situacion' ? t('situationReady') : t('firstVersionReady') }}</p>
     <p v-if="needsProvider" class="notice">{{ t('needProviderFirst') }} <RouterLink to="/ai/providers">{{ t('myProviders') }}</RouterLink></p>
     <p v-if="!generated && !generating && !dirty && file" class="hint">{{ t('teacherNext') }}</p>
   </section>

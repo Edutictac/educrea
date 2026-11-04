@@ -4,6 +4,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import TeacherWorkspace from '../components/TeacherWorkspace.vue'
 import AdvancedWorkspace from '../components/AdvancedWorkspace.vue'
 import AiAssistant from '../components/AiAssistant.vue'
+import MaterialsPanel from '../components/MaterialsPanel.vue'
 import SourcesPanel from '../components/SourcesPanel.vue'
 import HistoryPanel from '../components/HistoryPanel.vue'
 import ActivityPreview from '../components/ActivityPreview.vue'
@@ -91,6 +92,7 @@ async function remove() {
       <AdvancedWorkspace v-else :key="workspaceKey" ref="workspace" :project-id="id" />
       <AiAssistant :project-id="id" :automatic="mode === 'teacher'" :sources-version="sourcesVersion" :can-generate="canGenerate" :can-apply="canApply" @project-changed="refreshWorkspace" />
       <SourcesPanel :project-id="id" @changed="sourcesVersion += 1" />
+      <MaterialsPanel :project-id="id" :refresh-key="workspaceKey" />
       <HistoryPanel :project-id="id" @restored="refreshWorkspace" />
       <ActivityPreview :key="workspaceKey" :load-files="loadPreviewFiles" />
     </template>

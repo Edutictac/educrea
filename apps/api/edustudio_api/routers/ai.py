@@ -185,7 +185,7 @@ async def generate_from_brief(project_id: UUID, user: User = Depends(require_csr
     if available is None:
         raise HTTPException(409, "Configura un proveedor gratuito y confirma un modelo antes de generar")
     name, model, key = available
-    data = engine.GenerateInput(instruction=engine.brief_instruction(brief), provider=name, model=model,
+    data = engine.GenerateInput(instruction=engine.instruction_for(brief), provider=name, model=model,
                                 automatic=True, auto_apply=True, mode="free")
     prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)[1:]
     reservation = quotas.reserve(db, user_id, name, model)

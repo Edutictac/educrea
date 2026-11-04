@@ -119,11 +119,11 @@ export async function streamProposal(projectId: string, instruction: string, pro
   contextPaths: string[], allowFallback: boolean, csrf: string,
   signal: AbortSignal, onEvent: (event: AiStreamEvent) => void,
   mode: 'free' | 'paid' = 'free', approvedMaxCost?: number, approvedFingerprint?: string,
-  automatic = false): Promise<void> {
+  automatic = false, autoApply = false): Promise<void> {
   const response = await checked(await fetch(`/api/projects/${projectId}/ai/proposals/stream`, {
     method: 'POST', signal,
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-    body: JSON.stringify({ instruction, provider, model, context_paths: automatic ? [] : contextPaths, automatic, allow_fallback: allowFallback,
+    body: JSON.stringify({ instruction, provider, model, context_paths: automatic ? [] : contextPaths, automatic, auto_apply: autoApply, allow_fallback: allowFallback,
       mode, paid_authorized: mode === 'paid', approved_max_cost_microusd: approvedMaxCost,
       approved_estimate_fingerprint: approvedFingerprint }),
   }))

@@ -83,9 +83,13 @@ async function generate() {
         proposals.value.unshift(event.data)
         selectedId.value = event.data.id
         streaming.value = ''
-        message.value = t('proposalReady')
+        if (event.data.status === 'applied') {
+          message.value = t('proposalAutoApplied')
+          emit('projectChanged')
+          void listContextFiles(props.projectId).then(paths => { filePaths.value = paths }).catch(() => {})
+        } else message.value = props.automatic === true ? t('proposalAutoPending') : t('proposalReady')
       }
-    }, mode.value, estimate.value?.maximum_cost_microusd, estimate.value?.fingerprint, useAutomatic.value)
+    }, mode.value, estimate.value?.maximum_cost_microusd, estimate.value?.fingerprint, useAutomatic.value, props.automatic === true)
   } catch (cause) {
     if (controller.signal.aborted) message.value = t('generationCancelled')
     else error.value = cause instanceof Error ? cause.message : t('error')
@@ -143,7 +147,7 @@ function stateLabel(value: Proposal['status']) {
       </select></label>
       <label v-if="mode === 'free' && availableProviders.length > 1" class="check"><input v-model="allowFallback" type="checkbox" />{{ t('allowFallback') }}</label>
       <label v-if="!automatic" class="check"><input v-model="autoChoice" type="checkbox" />{{ t('aiDecidesFiles') }}</label>
-      <p v-if="useAutomatic" class="hint">{{ t('automaticContextNote') }}</p>
+      <p v-if="useAutomatic" class="hint">{{ automatic ? t('automaticApplyNote') : t('automaticContextNote') }}</p>
       <fieldset v-else-if="filePaths.length" class="full"><legend>{{ t('contextFiles') }}</legend>
         <p>{{ t('contextPrivacy') }}</p>
         <label v-for="path in filePaths" :key="path" class="check"><input v-model="selectedPaths" type="checkbox" :value="path" />{{ path }}</label>

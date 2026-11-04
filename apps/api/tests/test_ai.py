@@ -597,3 +597,37 @@ def test_gemini_overload_and_timeout_give_actionable_errors():
     with pytest.raises(ProviderError) as caught:
         asyncio.run(run())
     assert caught.value.status_code == 504 and "tardó" in str(caught.value)
+
+
+def test_auto_apply_applies_once_and_can_be_undone(client: TestClient, monkeypatch):
+    headers, project_id = setup_user(client)
+    client.put("/api/ai/providers/groq/key", headers=headers, json={"api_key": "test-groq-secret"})
+    client.post("/api/ai/providers/groq/free-models/groq-test-free/confirm", headers=headers, json={"acknowledged": True})
+    draft = {"summary": "Portada", "changes": [{"path": "index.html", "content": "<h1>Música</h1>"}]}
+    monkeypatch.setattr(registry, "adapter", lambda _name: StubGemini(json.dumps(draft)))
+    route = f"/api/projects/{project_id}/ai/proposals"
+    request = {"instruction": "Crea una portada de música", "provider": "groq", "model": "groq-test-free", "automatic": True}
+    pending = client.post(route, headers=headers, json=request).json()
+    assert pending["status"] == "pending"  # without auto_apply nothing changes
+    assert client.get(f"/api/projects/{project_id}/files").json() == []
+    client.post(f"{route}/{pending['id']}/reject", headers=headers)
+    applied = client.post(route, headers=headers, json={**request, "auto_apply": True})
+    assert applied.status_code == 201 and applied.json()["status"] == "applied"
+    index = next(f for f in client.get(f"/api/projects/{project_id}/files").json() if f["path"] == "index.html")
+    assert client.get(f"/api/projects/{project_id}/files/{index['id']}").json()["content"] == "<h1>Música</h1>"
+    undone = client.post(f"{route}/{applied.json()['id']}/restore", headers=headers)
+    assert undone.status_code == 200 and undone.json()["status"] == "restored"
+    assert "index.html" not in {f["path"] for f in client.get(f"/api/projects/{project_id}/files").json()}
+
+
+def test_auto_apply_also_in_streaming(client: TestClient, monkeypatch):
+    headers, project_id = setup_user(client)
+    client.put("/api/ai/providers/groq/key", headers=headers, json={"api_key": "test-groq-secret"})
+    client.post("/api/ai/providers/groq/free-models/groq-test-free/confirm", headers=headers, json={"acknowledged": True})
+    draft = {"summary": "Portada", "changes": [{"path": "index.html", "content": "<h1>Música</h1>"}]}
+    monkeypatch.setattr(registry, "adapter", lambda _name: StubGemini(json.dumps(draft)))
+    request = {"instruction": "Crea una portada de música", "provider": "groq", "model": "groq-test-free",
+               "automatic": True, "auto_apply": True}
+    response = client.post(f"/api/projects/{project_id}/ai/proposals/stream", headers=headers, json=request)
+    assert response.status_code == 200 and '"status": "applied"' in response.text
+    assert [f["path"] for f in client.get(f"/api/projects/{project_id}/files").json()] == ["index.html"]

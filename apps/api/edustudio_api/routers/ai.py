@@ -155,7 +155,7 @@ async def generate_proposal(project_id: UUID, data: GenerateInput,
             proposal = engine.persist(db, project_id, user_id, model, result.text, result.usage,
                                       snapshot, selected, provider=name)
             quotas.reconcile(db, reservation, result.usage)
-            return proposal
+            return engine.apply_if_requested(db, project_id, proposal, data.auto_apply)
         except ProviderError as exc:
             db.rollback()
             quotas.reconcile(db, reservation, failed=True)
@@ -207,6 +207,7 @@ async def stream_proposal(project_id: UUID, data: GenerateInput,
                 proposal = engine.persist(db, project_id, user_id, model, "".join(parts), usage,
                                           snapshot, selected, provider=name)
                 quotas.reconcile(db, reservation, usage)
+                proposal = engine.apply_if_requested(db, project_id, proposal, data.auto_apply)
                 yield event("proposal", ProposalOut.model_validate(proposal).model_dump(mode="json"))
                 return
             except (ProviderError, HTTPException) as exc:

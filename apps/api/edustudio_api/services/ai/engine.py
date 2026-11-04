@@ -179,6 +179,18 @@ def apply(db: Session, project_id: UUID, proposal_id: UUID, user_id: UUID) -> Ai
     return proposal
 
 
+def apply_if_requested(db: Session, project_id: UUID, proposal: AiProposal, requested: bool) -> AiProposal:
+    """Teacher mode applies automatically. If the project changed meanwhile the proposal stays pending for review."""
+    if not requested:
+        return proposal
+    try:
+        return apply(db, project_id, proposal.id, proposal.user_id)
+    except HTTPException:
+        db.rollback()
+        db.refresh(proposal)
+        return proposal
+
+
 def reject(db: Session, project_id: UUID, proposal_id: UUID, user_id: UUID) -> AiProposal:
     proposal = proposal_for_owner(db, project_id, proposal_id, user_id, lock=True)
     if proposal.status != "pending":

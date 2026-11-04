@@ -25,6 +25,7 @@ class GenerateInput(BaseModel):
     model: str = Field(min_length=1, max_length=100)
     context_paths: list[str] = Field(default_factory=list, max_length=30)
     automatic: bool = False  # the backend picks the context files; context_paths is ignored
+    auto_apply: bool = False  # teacher mode: apply the proposal right away (still undoable and kept in history)
     allow_fallback: bool = False
     mode: Literal["free", "paid"] = "free"
     paid_authorized: bool = False

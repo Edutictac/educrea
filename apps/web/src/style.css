@@ -7,3 +7,4 @@
 
 .history-list{list-style:none;padding:0}.history-list li{padding:.4rem 0;border-bottom:1px solid #e3eaee}.history-list button{margin-left:.4rem}.history-view{background:#f3f3f3;padding:.8rem;max-height:300px;overflow:auto;white-space:pre-wrap}
 .icon-form{display:flex;gap:.7rem;align-items:end;flex-wrap:wrap;padding:.5rem .6rem;background:#f6f9fa}.icon-form label{margin:0}
+.notice.ok{border-left-color:#2f855a;background:#eaf6ee;color:#1d4e32}.notice ul{margin:.4rem 0;padding-left:1.2rem}

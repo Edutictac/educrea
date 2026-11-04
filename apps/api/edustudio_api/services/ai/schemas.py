@@ -25,6 +25,7 @@ class GenerateInput(BaseModel):
     model: str = Field(min_length=1, max_length=100)
     context_paths: list[str] = Field(default_factory=list, max_length=30)
     automatic: bool = False  # the backend picks the context files; context_paths is ignored
+    source_ids: list[UUID] = Field(default_factory=list, max_length=5)  # work only with these sources
     auto_apply: bool = False  # teacher mode: apply the proposal right away (still undoable and kept in history)
     allow_fallback: bool = False
     mode: Literal["free", "paid"] = "free"
@@ -43,9 +44,18 @@ class DraftChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class Citation(BaseModel):
+    quote: str = Field(min_length=1, max_length=800)
+    chunk: str = Field(default="", max_length=20)
+    used_for: str = Field(default="", max_length=300)
+    model_config = ConfigDict(extra="ignore")
+
+
 class DraftProposal(BaseModel):
     summary: str = Field(min_length=1, max_length=1000)
     changes: list[DraftChange] = Field(min_length=1, max_length=10)
+    citations: list[Citation] = Field(default_factory=list, max_length=40)
+    not_covered: list[str] = Field(default_factory=list, max_length=20)
     model_config = ConfigDict(extra="forbid")
 
 
@@ -67,5 +77,6 @@ class ProposalOut(BaseModel):
     usage: dict
     created_at: datetime
     applied_at: datetime | None
+    grounding: dict | None = None
     model_config = ConfigDict(from_attributes=True)
 

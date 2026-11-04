@@ -15,6 +15,10 @@ RESPONSE_SCHEMA = {
         "changes": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
             "path": {"type": "STRING"}, "content": {"type": "STRING"}},
             "required": ["path", "content"]}},
+        "citations": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
+            "chunk": {"type": "STRING"}, "quote": {"type": "STRING"}, "used_for": {"type": "STRING"}},
+            "required": ["quote"]}},
+        "not_covered": {"type": "ARRAY", "items": {"type": "STRING"}},
     },
     "required": ["summary", "changes"],
 }

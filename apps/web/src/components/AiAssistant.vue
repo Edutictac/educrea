@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { t } from '../i18n'
+import { listSources, type Source } from '../services/sources'
 import { useAuthStore } from '../stores/auth'
 import { budgetStatus, changeProposal, estimatePaid, providersStatus, quotaStatus,
   listContextFiles, listProposals, streamProposal,
   type BudgetStatus, type PaidEstimate, type ProviderStatuses, type ProviderName, type QuotaStatus, type Proposal } from '../services/ai'
 
-const props = defineProps<{ projectId: string; canGenerate: () => boolean; canApply: () => boolean; automatic?: boolean }>()
+const props = defineProps<{ projectId: string; canGenerate: () => boolean; canApply: () => boolean; automatic?: boolean; sourcesVersion?: number }>()
 const emit = defineEmits<{ projectChanged: [] }>()
 const auth = useAuthStore()
 const statuses = ref<ProviderStatuses | null>(null)
@@ -29,6 +30,13 @@ const selected = computed(() => proposals.value.find(item => item.id === selecte
 const instruction = ref('')
 const filePaths = ref<string[]>([])
 const selectedPaths = ref<string[]>([])
+const sources = ref<Source[]>([])
+const selectedSources = ref<string[]>([])
+async function loadSources() {
+  try { sources.value = await listSources(props.projectId)
+    selectedSources.value = sources.value.map(item => item.id) } catch { sources.value = [] }
+}
+watch(() => props.sourcesVersion, loadSources)
 // Teacher mode: the AI always decides which files to read and change. Advanced mode: manual by default, optional switch.
 const autoChoice = ref(false)
 const useAutomatic = computed(() => props.automatic === true || autoChoice.value)
@@ -40,6 +48,7 @@ const message = ref('')
 let controller: AbortController | null = null
 
 onMounted(async () => {
+  void loadSources()
   try {
     const [providerStatus, quotaStatusValue, budgetValue, recent, available] = await Promise.all([
       providersStatus(), quotaStatus(), budgetStatus(), listProposals(props.projectId), listContextFiles(props.projectId)])
@@ -55,13 +64,13 @@ onMounted(async () => {
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 })
 onBeforeUnmount(() => controller?.abort())
-watch([instruction, provider, model, selectedPaths, mode, useAutomatic], () => { estimate.value = null; paidConfirmed.value = false }, { deep: true })
+watch([instruction, provider, model, selectedPaths, mode, useAutomatic, selectedSources], () => { estimate.value = null; paidConfirmed.value = false }, { deep: true })
 
 async function calculateEstimate() {
   if (!props.canGenerate()) { error.value = t('saveBeforeAi'); return }
   error.value = ''; estimate.value = null; paidConfirmed.value = false
   try { estimate.value = await estimatePaid(props.projectId, instruction.value, provider.value,
-    model.value, selectedPaths.value, auth.csrf, useAutomatic.value) }
+    model.value, selectedPaths.value, auth.csrf, useAutomatic.value, selectedSources.value) }
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 }
 
@@ -87,9 +96,10 @@ async function generate() {
           message.value = t('proposalAutoApplied')
           emit('projectChanged')
           void listContextFiles(props.projectId).then(paths => { filePaths.value = paths }).catch(() => {})
-        } else message.value = props.automatic === true ? t('proposalAutoPending') : t('proposalReady')
+        } else message.value = event.data.grounding && !event.data.grounding.supported ? t('proposalUnsupported')
+          : props.automatic === true ? t('proposalAutoPending') : t('proposalReady')
       }
-    }, mode.value, estimate.value?.maximum_cost_microusd, estimate.value?.fingerprint, useAutomatic.value, props.automatic === true)
+    }, mode.value, estimate.value?.maximum_cost_microusd, estimate.value?.fingerprint, useAutomatic.value, props.automatic === true, selectedSources.value)
   } catch (cause) {
     if (controller.signal.aborted) message.value = t('generationCancelled')
     else error.value = cause instanceof Error ? cause.message : t('error')
@@ -152,6 +162,10 @@ function stateLabel(value: Proposal['status']) {
         <p>{{ t('contextPrivacy') }}</p>
         <label v-for="path in filePaths" :key="path" class="check"><input v-model="selectedPaths" type="checkbox" :value="path" />{{ path }}</label>
       </fieldset>
+      <fieldset v-if="sources.length" class="full"><legend>{{ t('onlySources') }}</legend>
+        <p class="hint">{{ t('sourcesNote') }}</p>
+        <label v-for="source in sources" :key="source.id" class="check"><input v-model="selectedSources" type="checkbox" :value="source.id" />{{ source.title }}</label>
+      </fieldset>
       <p v-if="mode === 'free'">{{ t('freeOnly') }}</p>
       <template v-else>
         <p v-if="budget">{{ t('monthlyBudget') }}: ${{ (budget.monthly_limit_microusd / 1000000).toFixed(2) }} ·
@@ -180,6 +194,11 @@ function stateLabel(value: Proposal['status']) {
         {{ item.summary }} · {{ stateLabel(item.status) }}</option></select></label>
       <div v-if="selected" class="proposal-review">
         <p><strong>{{ selected.summary }}</strong> · {{ stateLabel(selected.status) }} · {{ selected.provider }} / {{ selected.model }}</p>
+        <div v-if="selected.grounding" class="notice" :class="{ ok: selected.grounding.supported }"><strong>{{ t('grounding') }}:</strong>
+          {{ selected.grounding.sources.join(', ') }} · {{ selected.grounding.verified }} {{ t('citationsVerified') }}, {{ selected.grounding.unverified }} {{ t('citationsUnverified') }}
+          <ul><li v-for="(citation, index) in selected.grounding.citations" :key="index">{{ citation.verified ? '✓' : '✗' }} «{{ citation.quote }}»
+            <span v-if="citation.page">({{ t('page') }} {{ citation.page }})</span><span v-if="citation.used_for"> — {{ citation.used_for }}</span></li></ul>
+          <p v-if="selected.grounding.not_covered.length">{{ t('notCovered') }}: {{ selected.grounding.not_covered.join('; ') }}</p></div>
         <details v-for="change in selected.changes" :key="change.path"><summary>{{ change.path }}</summary>
           <div class="change-compare"><section><h4>{{ t('before') }}</h4><pre>{{ change.before_content ?? t('createdFile') }}</pre></section>
             <section><h4>{{ t('after') }}</h4><pre>{{ change.after_content }}</pre></section></div>

@@ -113,7 +113,7 @@ def estimate_paid(project_id: UUID, data: GenerateInput, user: User = Depends(re
                   db: Session = Depends(get_db)) -> dict:
     if data.mode != "paid":
         raise HTTPException(422, "La estimación requiere un modelo de pago")
-    _, prompt, _, _ = engine.prepare(db, project_id, user.id, data)
+    _, prompt, _, _, _ = engine.prepare(db, project_id, user.id, data)
     price = pricing.price_for(data.provider, data.model)
     return {"provider": data.provider, "model": data.model,
             **pricing.estimate(prompt, price), "fingerprint": estimate_fingerprint(data, prompt, price)}
@@ -143,7 +143,7 @@ async def generate_proposal(project_id: UUID, data: GenerateInput,
                             user: User = Depends(require_csrf), db: Session = Depends(get_db),
                             provider: GeminiProvider = Depends(get_gemini_provider)) -> AiProposal:
     user_id = user.id
-    key, prompt, snapshot, selected = engine.prepare(db, project_id, user_id, data)
+    key, prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)
     maximum_cost, price, maximum_tokens = paid_terms(data, prompt)
     name, model = data.provider, data.model
     used = {name}
@@ -153,7 +153,8 @@ async def generate_proposal(project_id: UUID, data: GenerateInput,
             adapter = provider if name == "gemini" else registry.adapter(name)
             result = await adapter.generate(key, model, prompt)
             proposal = engine.persist(db, project_id, user_id, model, result.text, result.usage,
-                                      snapshot, selected, provider=name)
+                                      snapshot, selected, provider=name, source_ids=data.source_ids,
+                                      passages_used=passages)
             quotas.reconcile(db, reservation, result.usage)
             return engine.apply_if_requested(db, project_id, proposal, data.auto_apply)
         except ProviderError as exc:
@@ -177,7 +178,7 @@ async def stream_proposal(project_id: UUID, data: GenerateInput,
                           user: User = Depends(require_csrf), db: Session = Depends(get_db),
                           provider: GeminiProvider = Depends(get_gemini_provider)) -> StreamingResponse:
     user_id = user.id
-    key, prompt, snapshot, selected = engine.prepare(db, project_id, user_id, data)
+    key, prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)
     maximum_cost, price, maximum_tokens = paid_terms(data, prompt)
 
     def event(name: str, value: dict) -> str:
@@ -205,7 +206,8 @@ async def stream_proposal(project_id: UUID, data: GenerateInput,
                     if chunk.usage:
                         usage = chunk.usage
                 proposal = engine.persist(db, project_id, user_id, model, "".join(parts), usage,
-                                          snapshot, selected, provider=name)
+                                          snapshot, selected, provider=name, source_ids=data.source_ids,
+                                          passages_used=passages)
                 quotas.reconcile(db, reservation, usage)
                 proposal = engine.apply_if_requested(db, project_id, proposal, data.auto_apply)
                 yield event("proposal", ProposalOut.model_validate(proposal).model_dump(mode="json"))

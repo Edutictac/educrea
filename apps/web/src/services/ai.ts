@@ -1,3 +1,4 @@
+import type { Grounding } from './sources'
 export interface PaidModel { model: string; input_rate_microusd: number; output_rate_microusd: number }
 export interface GeminiStatus { configured: boolean; verified_free_models: string[];
   confirmed_free_models: string[]; paid_models: PaidModel[] }
@@ -13,7 +14,7 @@ export interface QuotaStatus { requests_used: number; requests_limit: number; to
 export interface ProposalChange { path: string; before_content: string | null; after_content: string; base_version: number }
 export interface Proposal { id: string; project_id: string; provider: string; model: string; summary: string;
   changes: ProposalChange[]; status: 'pending' | 'applied' | 'rejected' | 'restored';
-  usage: Record<string, number>; created_at: string; applied_at: string | null }
+  usage: Record<string, number>; created_at: string; applied_at: string | null; grounding?: Grounding | null }
 
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {
@@ -47,10 +48,11 @@ export async function updateBudget(limit: number, csrf: string): Promise<BudgetS
 }
 
 export async function estimatePaid(projectId: string, instruction: string, provider: ProviderName,
-  model: string, contextPaths: string[], csrf: string, automatic = false): Promise<PaidEstimate> {
+  model: string, contextPaths: string[], csrf: string, automatic = false,
+  sourceIds: string[] = []): Promise<PaidEstimate> {
   return await (await checked(await fetch(`/api/projects/${projectId}/ai/estimate`, { method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-    body: JSON.stringify({ instruction, provider, model, context_paths: automatic ? [] : contextPaths, automatic, mode: 'paid' }),
+    body: JSON.stringify({ instruction, provider, model, context_paths: automatic ? [] : contextPaths, automatic, source_ids: sourceIds, mode: 'paid' }),
   }))).json() as PaidEstimate
 }
 
@@ -119,11 +121,11 @@ export async function streamProposal(projectId: string, instruction: string, pro
   contextPaths: string[], allowFallback: boolean, csrf: string,
   signal: AbortSignal, onEvent: (event: AiStreamEvent) => void,
   mode: 'free' | 'paid' = 'free', approvedMaxCost?: number, approvedFingerprint?: string,
-  automatic = false, autoApply = false): Promise<void> {
+  automatic = false, autoApply = false, sourceIds: string[] = []): Promise<void> {
   const response = await checked(await fetch(`/api/projects/${projectId}/ai/proposals/stream`, {
     method: 'POST', signal,
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-    body: JSON.stringify({ instruction, provider, model, context_paths: automatic ? [] : contextPaths, automatic, auto_apply: autoApply, allow_fallback: allowFallback,
+    body: JSON.stringify({ instruction, provider, model, context_paths: automatic ? [] : contextPaths, automatic, auto_apply: autoApply, source_ids: sourceIds, allow_fallback: allowFallback,
       mode, paid_authorized: mode === 'paid', approved_max_cost_microusd: approvedMaxCost,
       approved_estimate_fingerprint: approvedFingerprint }),
   }))

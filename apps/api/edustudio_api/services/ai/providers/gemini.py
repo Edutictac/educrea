@@ -62,6 +62,12 @@ class GeminiProvider:
     def check_response(response: httpx.Response) -> None:
         if response.status_code == 429:
             raise ProviderError("Cuota o límite de Gemini alcanzado", 429)
+        if response.status_code == 503:
+            raise ProviderError("Gemini está saturado ahora mismo. Reintenta en un momento o elige otro modelo", 503)
+        if response.status_code in (401, 403):
+            raise ProviderError("Gemini ha rechazado la clave o el modelo no está permitido para tu cuenta", 502)
+        if response.status_code == 404:
+            raise ProviderError("Gemini no reconoce ese modelo", 502)
         if response.status_code >= 400:
             raise ProviderError("Gemini no pudo completar la solicitud", 502)
 
@@ -78,6 +84,8 @@ class GeminiProvider:
             if not text:
                 raise ProviderError("Respuesta vacía de Gemini")
             return ProviderResult(text=text, usage=usage_from(data))
+        except httpx.TimeoutException as exc:
+            raise ProviderError("Gemini tardó demasiado en responder. Prueba otro modelo", 504) from exc
         except (httpx.RequestError, ValueError, KeyError, TypeError) as exc:
             raise ProviderError("Error de comunicación con Gemini") from exc
         finally:
@@ -108,6 +116,8 @@ class GeminiProvider:
                         raise ProviderError("Respuesta incompleta de Gemini") from exc
             if not finished:
                 raise ProviderError("Respuesta incompleta de Gemini")
+        except httpx.TimeoutException as exc:
+            raise ProviderError("Gemini tardó demasiado en responder. Prueba otro modelo", 504) from exc
         except httpx.RequestError as exc:
             raise ProviderError("Error de comunicación con Gemini") from exc
         finally:

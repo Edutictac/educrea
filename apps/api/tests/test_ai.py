@@ -580,3 +580,20 @@ def test_automatic_mode_needs_no_selection_and_never_exceeds_context(client: Tes
     assert "not_included_paths" in captured["prompt"] and "Decide tú qué archivos" in captured["prompt"]
     manual = client.post(f"/api/projects/{project_id}/ai/proposals", headers=headers, json={**request, "automatic": False})
     assert manual.status_code == 201  # manual mode with an empty selection is still allowed
+
+
+def test_gemini_overload_and_timeout_give_actionable_errors():
+    for status, expected in ((503, 503), (403, 502), (404, 502)):
+        with pytest.raises(ProviderError) as caught:
+            GeminiProvider.check_response(httpx.Response(status))
+        assert caught.value.status_code == expected
+
+    def slow(_request):
+        raise httpx.ReadTimeout("slow")
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(slow)) as client:
+            await GeminiProvider(client).generate("key", "gemini-test-free", "hola")
+    with pytest.raises(ProviderError) as caught:
+        asyncio.run(run())
+    assert caught.value.status_code == 504 and "tardó" in str(caught.value)

@@ -17,6 +17,14 @@ class Settings(BaseSettings):
     ollama_free_models: str = ""
     ollama_base_url: str = ""
     paid_models_json: str = "{}"
+    # Single sign-on (OpenID Connect, e.g. Authentik at id.edutictac.es). Disabled until issuer and client are set.
+    oidc_issuer: str = ""
+    oidc_client_id: str = ""
+    oidc_client_secret: SecretStr | None = None
+    oidc_redirect_uri: str = ""
+    oidc_scopes: str = "openid email profile"
+    oidc_link_by_email: bool = True
+    local_auth_enabled: bool = True
     mcp_servers_json: str = "{}"
     ai_max_user_budget_microusd: int = 20000000
     ai_daily_personal_requests: int = 200  # loop guard for personal-key providers; the provider sets the real quota
@@ -36,5 +44,8 @@ def get_settings() -> Settings:
     credential_keys_file = os.environ.get("EDUSTUDIO_CREDENTIAL_KEYS_FILE")
     if credential_keys_file:
         overrides["credential_keys"] = Path(credential_keys_file).read_text().strip()
+    oidc_secret_file = os.environ.get("EDUSTUDIO_OIDC_CLIENT_SECRET_FILE")
+    if oidc_secret_file:
+        overrides["oidc_client_secret"] = Path(oidc_secret_file).read_text().strip()
     return Settings(**overrides)
 

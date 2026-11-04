@@ -20,6 +20,8 @@ def set_cookie(response: Response, token: str) -> None:
 
 @router.post("/register", response_model=SessionOut, status_code=201)
 def register(data: Credentials, response: Response, db: Session = Depends(get_db)) -> SessionOut:
+    if not get_settings().local_auth_enabled:
+        raise HTTPException(403, "El registro local está desactivado: usa el inicio de sesión único")
     email = data.email.lower()
     if db.scalar(select(User).where(User.email == email)):
         raise HTTPException(409, "Correo ya registrado")
@@ -34,6 +36,8 @@ def register(data: Credentials, response: Response, db: Session = Depends(get_db
 
 @router.post("/login", response_model=SessionOut)
 def login(data: Credentials, response: Response, db: Session = Depends(get_db)) -> SessionOut:
+    if not get_settings().local_auth_enabled:
+        raise HTTPException(403, "El acceso local está desactivado: usa el inicio de sesión único")
     user = db.scalar(select(User).where(User.email == data.email.lower()))
     if user is None or not verify_password(user.password_hash, data.password):
         raise HTTPException(401, "Credenciales no válidas")

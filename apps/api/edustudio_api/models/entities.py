@@ -92,6 +92,33 @@ class CapabilityCall(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
 
+class OidcIdentity(Base):
+    """Link between an external identity (issuer + subject) and a local user."""
+
+    __tablename__ = "oidc_identities"
+    __table_args__ = (UniqueConstraint("issuer", "subject"),)
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    issuer: Mapped[str] = mapped_column(String(300))
+    subject: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str] = mapped_column(String(320), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class OidcFlow(Base):
+    """Server-side state of one login attempt, bound to the browser by a random cookie."""
+
+    __tablename__ = "oidc_flows"
+
+    cookie_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    state: Mapped[str] = mapped_column(String(64))
+    nonce: Mapped[str] = mapped_column(String(64))
+    verifier: Mapped[str] = mapped_column(String(128))
+    next_path: Mapped[str] = mapped_column(String(300), default="/projects")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class AiCredential(Base):
     __tablename__ = "ai_credentials"
     __table_args__ = (UniqueConstraint("user_id", "provider"),)

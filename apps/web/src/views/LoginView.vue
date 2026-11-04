@@ -1,9 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { t } from '../i18n'
 import { useAuthStore } from '../stores/auth'
 
+const oidcEnabled = ref(false)
+const localEnabled = ref(true)
+onMounted(async () => {
+  try {
+    const config = await (await fetch('/api/auth/config')).json() as { oidc_enabled: boolean; local_auth_enabled: boolean }
+    oidcEnabled.value = config.oidc_enabled; localEnabled.value = config.local_auth_enabled
+  } catch { /* keep local form */ }
+})
+const ssoUrl = () => `/api/auth/oidc/login?next=${encodeURIComponent(route.query.save === 'guest' ? '/explore' : '/projects')}`
 const email = ref('')
 const password = ref('')
 const error = ref('')
@@ -24,7 +33,9 @@ async function submit(kind: 'login' | 'register') {
     <h1>{{ t('title') }}</h1>
     <p>{{ route.query.save === 'guest' ? t('guestSignIn') : t('welcome') }}</p>
     <p><RouterLink to="/explore">{{ t('exploreWithoutAccount') }}</RouterLink></p>
-    <form @submit.prevent="submit('login')">
+    <p v-if="oidcEnabled"><a class="button" :href="ssoUrl()">{{ t('ssoLogin') }}</a></p>
+    <p v-if="oidcEnabled && localEnabled" class="hint">{{ t('orWithAccount') }}</p>
+    <form v-if="localEnabled" @submit.prevent="submit('login')">
       <label>{{ t('email') }}<input v-model="email" type="email" autocomplete="email" required /></label>
       <label>{{ t('password') }}<input v-model="password" type="password" autocomplete="current-password" minlength="12" required /></label>
       <p v-if="error" role="alert">{{ error }}</p>

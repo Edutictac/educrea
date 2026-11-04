@@ -7,19 +7,17 @@
 5. **Pago (hecho)**: modelos de pago BYOK, OpenAI, Anthropic, estimaciones y presupuestos internos.
 6. **Vista previa, historial, materiales y MCP** (en curso; hecho: Markdown `.md`, vista de lectura sin HTML/JS, exportación HTML, ZIP, DOCX y PDF con Pandoc aislado, vista previa aislada de actividades, historial de versiones por archivo, infografías HTML/SVG con plantilla y exportación PNG; MCP y capacidades tipadas en backend (sin interfaz todavía); pendiente: biblioteca de imágenes generadas, iconos Lucide en la plantilla, selector de iconos y licencia en el ZIP (ver `docs/third-party-licenses.md`), interfaz y uso por el agente de IA de las capacidades): origen aislado, versiones, exportación de actividades, flujo Markdown → HTML, PDF y DOCX, infografías editables HTML/SVG, exportación PNG, generación de imágenes educativas cuando aporte valor pedagógico e integración MCP controlada.
 7. **Plantillas y beta**: ocho plantillas, idiomas, accesibilidad, divulgación progresiva de contenidos, flujos guiados de creación y pruebas docentes.
-8. **Identidad central (Authentik de EduTicTac) — pendiente de planificar**: inicio de sesión OIDC con vinculación de las cuentas locales existentes sin perder proyectos. Su fecha depende del plan de identidad de EduTicTac; se propone hacerlo tras la Fase 6 y antes de la beta con centros (Fase 7), porque la beta necesita cuentas reales.
+8. **Identidad única (SSO con Authentik de EduTicTac) — prioridad inmediata**: inicio de sesión OIDC implementado en código y probado con un proveedor simulado (PKCE, validación del ID token, vinculación de cuentas existentes sin perder proyectos). Pendiente: registrar la aplicación en Authentik, fijar el dominio de EduStudio y probar con el proveedor real; cierre de sesión único.
 9. **Servicio alojado de pago (propuesta posterior a la beta)**: modelos avanzados mediante una cuenta institucional de OpenRouter, cobro al usuario, controles de gasto y margen transparente. La edición libre y la instalación propia seguirán disponibles.
 
-## Integración con EduTicTac Commons: propuesta (sin decidir)
+## Integración con EduTicTac Commons
 
-Hasta ahora el roadmap solo contempla la **identidad** (fase 8: inicio de sesión OIDC con Authentik en `id.edutictac.es`, vinculando las cuentas locales) y fija que el núcleo de EduStudio **no depende** de Commons. No hay una definición de cómo «entrar» en Commons. Propuesta por niveles, de menor a mayor acoplamiento, para decidir con el usuario:
+Decisión del 2026-11-03: **de momento solo el nivel 1 (SSO)**; el resto queda aquí como hoja de ruta, de menor a mayor acoplamiento. El núcleo de EduStudio no depende de Commons y cada nivel funciona sin los siguientes.
 
-1. **Identidad única (fase 8):** misma cuenta que en el resto de EduTicTac, sin perder proyectos. Reutiliza el widget de cuenta y la sesión central ya diseñados para las apps propias (retorno a edutictac.es, idioma y tema compartidos).
-2. **Enlace desde el portal:** EduStudio aparece como una app más en edutictac.es, con el mismo pie y navegación comunes, sin compartir datos.
-3. **Publicar actividades en Commons:** exportar una actividad terminada (ZIP/HTML con licencia y atribución de iconos) a la biblioteca de recursos o Rebost, con revisión del docente. Requiere definir el formato de recurso y permisos.
-4. **Servicios compartidos (opcional, posterior):** cuotas y presupuestos a nivel de centro con la entidad «centro» de Commons, y el servicio alojado de pago (fase 9).
-
-Cada nivel funciona sin los siguientes, y la edición libre y la instalación propia siguen sin Commons.
+1. **Identidad única — en curso (fase 8):** misma cuenta que en el resto de EduTicTac mediante Authentik (`id.edutictac.es`), sin perder proyectos. Estado en la fase 8 y en [deployment.md](deployment.md). Ampliable después con el widget de cuenta común (retorno a edutictac.es, idioma y tema compartidos) y cierre de sesión único.
+2. **Enlace desde el portal — pendiente:** EduStudio aparece como una app más en edutictac.es, con el mismo pie y navegación comunes, sin compartir datos.
+3. **Publicar actividades en Commons — pendiente:** exportar una actividad terminada (ZIP/HTML con licencia y atribución de iconos) a la biblioteca de recursos o Rebost, con revisión del docente. Requiere definir el formato de recurso y los permisos.
+4. **Servicios compartidos — pendiente, posterior:** cuotas y presupuestos por centro con la entidad «centro» de Commons, y el servicio alojado de pago (fase 9).
 
 ## Servicio alojado de pago: propuesta de negocio
 

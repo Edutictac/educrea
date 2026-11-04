@@ -6,3 +6,13 @@ Copia `.env.example` a `.env` en la raíz y define `EDUSTUDIO_DOMAIN`. Desde `in
 
 Los volúmenes `postgres_data`, `caddy_data` y `caddy_config` persisten datos y certificados. La base de datos y la API solo viven en la red interna. Planifica copia periódica cifrada del volumen o `pg_dump` y ensaya una restauración. Define responsable, calendario y retención antes de producción. Los logs actuales son los de Docker; el formato JSON estructurado queda pendiente de endurecimiento para producción. El registro de usuarios sigue abierto; limitarlo es necesario antes de un despliegue institucional abierto.
 
+## Inicio de sesión único (SSO) con Authentik
+
+Crea siempre `secrets/oidc_client_secret` (`0600`); déjalo **vacío** si no usas SSO. Para activarlo:
+
+1. En Authentik (`id.edutictac.es`) crea un proveedor **OAuth2/OpenID** confidencial y una aplicación `edustudio`. Registra como URL de redirección, con coincidencia **estricta**, `https://TU_DOMINIO/api/auth/oidc/callback`. Ámbitos `openid email profile`. Con Authentik 2026.8 el proveedor debe tener explícitos los tipos de concesión `authorization_code` y `refresh_token` (por defecto vienen vacíos y falla con «Invalid grant_type»); crearlo con `ak shell`, como se hizo con Banc de recursos, si el blueprint falla. El emisor tiene la forma `https://id.edutictac.es/application/o/edustudio/` (con la barra final).
+2. Guarda el secreto del cliente en `pass` y escríbelo en `secrets/oidc_client_secret` sin mostrarlo (por ejemplo `pass show ruta > secrets/oidc_client_secret` con `umask 077`, y borra cualquier copia temporal).
+3. En `.env`: `EDUSTUDIO_OIDC_ISSUER`, `EDUSTUDIO_OIDC_CLIENT_ID` y `EDUSTUDIO_OIDC_REDIRECT_URI` (exactamente la URL registrada). Aplica la migración `0008` (`alembic upgrade head`).
+4. Opcional: `EDUSTUDIO_LOCAL_AUTH_ENABLED=false` desactiva el registro y el acceso con contraseña local (recomendado en una instalación institucional, porque el registro local está abierto y no verifica el correo).
+
+La pantalla de acceso muestra «Entrar con tu cuenta EduTicTac» cuando el SSO está configurado. **Vinculación de cuentas:** una persona con cuenta local previa conserva sus proyectos si Authentik entrega el mismo correo verificado (`email_verified`); en ese momento se invalida la contraseña local anterior y sus sesiones, porque el registro local no verifica el correo y alguien podría haber creado esa cuenta con una dirección ajena. Una identidad sin correo verificado se rechaza. Cerrar sesión en EduStudio no cierra la sesión central de Authentik (cierre único, pendiente).

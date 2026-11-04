@@ -41,7 +41,7 @@ def project(client):
 def test_chunking_keeps_headings_and_retrieval_finds_the_right_passage(client: TestClient):
     chunks = service.chunk_pages([(3, CURRICULUM)])
     assert len(chunks) > 10 and all(len(c["text"]) <= service.CHUNK_MAX + 200 for c in chunks)
-    assert any(c["heading"].startswith("Área de Educación Musical") for c in chunks)
+    assert any(c["heading"].endswith("Área de Educación Musical") and "Currículo de Educación Primaria" in c["heading"] for c in chunks)
     headers, base, _ = project(client)
     assert upload(client, headers, base, "curriculo.md", CURRICULUM.encode()).status_code == 201
     source = client.get(f"{base}/sources").json()[0]

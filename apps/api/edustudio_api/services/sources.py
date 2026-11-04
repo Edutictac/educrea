@@ -83,7 +83,7 @@ def extract(filename: str, data: bytes) -> list[tuple[int | None, str]]:
         if ext == ".pdf":
             _run(workdir, ["pdftotext", "-enc", "UTF-8", "input.pdf", "output.txt"], 180)
         else:
-            _run(workdir, ["pandoc", "--sandbox", "-f", PANDOC_FORMATS[ext], "-t", "markdown", "--wrap=none",
+            _run(workdir, ["pandoc", "--sandbox", "-f", PANDOC_FORMATS[ext], "-t", "markdown-header_attributes-link_attributes-bracketed_spans-fenced_divs-native_divs", "--wrap=none",
                            "-o", "output.txt", f"input{ext}"], 120)
         output = workdir / "output.txt"
         if not output.is_file() or output.stat().st_size > MAX_TEXT_CHARS * 4:
@@ -138,9 +138,19 @@ def _split_long(paragraph: str) -> list[str]:
     return pieces
 
 
+ATTRIBUTES = re.compile(r"\s*\{[#.][^{}]{0,80}\}")
+MD_HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
+
+
+def breadcrumb(stack: dict[int, str]) -> str:
+    path = " › ".join(stack[level] for level in sorted(stack))
+    return path if len(path) <= 300 else "…" + path[-299:]
+
+
 def chunk_pages(pages: list[tuple[int | None, str]]) -> list[dict]:
     """Heading-aware chunks of about CHUNK_TARGET characters; a new heading always starts a new chunk."""
     chunks: list[dict] = []
+    stack: dict[int, str] = {}
     heading = ""
     state = {"lines": [], "size": 0, "heading": "", "page": None, "body": False}
 
@@ -159,14 +169,18 @@ def chunk_pages(pages: list[tuple[int | None, str]]) -> list[dict]:
 
     for page, text in pages:
         for block in re.split(r"\n\s*\n", text):
-            paragraph = " ".join(block.split())
+            paragraph = ATTRIBUTES.sub("", " ".join(block.split()))
             if not paragraph:
                 continue
             title = is_heading(paragraph)
             if title:
                 if state["body"]:
                     flush()
-                heading = title
+                marked = MD_HEADING.match(paragraph)
+                level = len(marked.group(1)) if marked else 3  # heuristic headings (PDF) share one level
+                stack = {lvl: text for lvl, text in stack.items() if lvl < level}
+                stack[level] = title[:120]
+                heading = breadcrumb(stack)
                 add(paragraph, page, False)
                 continue
             for piece in _split_long(paragraph):
@@ -216,6 +230,8 @@ def retrieve(db: Session, project_id: UUID, source_ids: list[UUID], query: str,
     lengths = [sum(doc.values()) or 1 for doc in documents]
     average = sum(lengths) / len(lengths)
     frequency = Counter(term for doc in documents for term in query_terms if term in doc)
+    discriminative = {term for term in query_terms if frequency[term] <= 0.3 * len(documents)}
+    query_terms = discriminative or query_terms  # drop words that appear almost everywhere (e.g. "primaria")
     scored = []
     for index, doc in enumerate(documents):
         score = 0.0

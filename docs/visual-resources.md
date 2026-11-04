@@ -11,7 +11,7 @@ La alternativa «Ilustración generada» estará siempre disponible por elecció
 ## Fuente editable, interacción y exportación
 
 - La infografía conservará su fuente HTML con SVG y CSS locales. Los iconos iniciales serán una selección local de Lucide, auditada el 2026-11-03 (ISC; MIT los derivados de Feather), véase [third-party-licenses.md](third-party-licenses.md); no se cargará la biblioteca completa ni una CDN sin necesidad.
-- El proyecto y cada salida incluirán la identificación de la familia de iconos y su licencia. En imágenes PNG independientes se usará un crédito discreto y legible; los paquetes ZIP incluirán también el aviso de licencia.
+- El proyecto y cada salida incluirán la identificación de la familia de iconos y su licencia. Los PNG no llevan crédito visible (decisión del proyecto); el aviso va en un comentario del HTML fuente y los paquetes ZIP incluyen el texto de la licencia.
 - Los bloques desplegables usarán primero `<details>` y otros componentes accesibles sin dependencia obligatoria de Bootstrap. El HTML interactivo seguirá siendo el original; el PNG será una captura estática.
 - La exportación PNG renderizará una versión estática validada en un proceso aislado, sin red, cookies ni credenciales, con límites de tamaño, tiempo y resolución. No se ejecutará código generado en el proceso principal de la API. Las imágenes y fuentes externas estarán bloqueadas por defecto.
 - Los recursos visuales pertenecerán al proyecto y podrán reutilizarse en actividades y materiales Markdown, con controles de permisos, formato, tamaño y metadatos personales.

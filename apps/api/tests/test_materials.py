@@ -103,3 +103,21 @@ def test_png_export_renders_html_in_sandbox(client: TestClient):
     assert client.get(f"{base}/files/{page['id']}/export.png?width=99999").status_code == 422
     md = client.get(f"{base}/files").json()[0]
     assert client.get(f"{base}/files/{md['id']}/export.png").status_code == 422
+
+
+def test_zip_includes_lucide_license_only_when_icons_are_used(client: TestClient):
+    from pathlib import Path
+
+    headers, base, _ = setup(client)
+
+    def names():
+        with zipfile.ZipFile(io.BytesIO(client.get(f"{base}/export.zip").content)) as archive:
+            return archive.namelist(), archive
+    assert "LICENSES/lucide-LICENSE.txt" not in names()[0]
+    client.post(f"{base}/files", headers=headers, json={
+        "path": "info.html", "content": '<!-- Icons: Lucide (ISC) --><svg class="lucide lucide-music"></svg>'})
+    with zipfile.ZipFile(io.BytesIO(client.get(f"{base}/export.zip").content)) as archive:
+        assert "LICENSES/lucide-LICENSE.txt" in archive.namelist()
+        packaged = archive.read("LICENSES/lucide-LICENSE.txt")
+    official = Path(__file__).resolve().parents[3] / "third_party" / "lucide" / "LICENSE"
+    assert packaged == official.read_bytes()

@@ -15,11 +15,16 @@ encabezado `@license lucide-static … ISC`.
   librería `lucide` como dependencia ni cargar nada desde una CDN). `third_party/lucide/LICENSE` es copia literal.
   `manifest.json` indica la licencia de cada icono; hoy 24 iconos, 4 de ellos derivados de Feather
   (`music`, `check`, `clock`, `circle-help`; este último por ser el renombrado de `help-circle`).
-- **Obligaciones al exportar:** los HTML/SVG exportados que incluyan iconos deben llevar el aviso (comentario con el
-  texto de `LICENSE` o el crédito «Iconos: Lucide (ISC; MIT los derivados de Feather), https://lucide.dev»); los ZIP
-  incluirán `LICENSE`. En un PNG suelto se añadirá un crédito discreto y legible, como ya preveía
-  `docs/visual-resources.md`. Esta última práctica es la interpretación prudente para imágenes rasterizadas: los
-  textos de ISC/MIT hablan de «copias del software» y no tratan expresamente las capturas.
+- **Obligaciones al exportar (decisión del 2026-11-03):** el aviso viaja con el **código fuente**, no con la imagen.
+  - Al insertar un icono (o crear una infografía con la plantilla) se añade en el `<head>` un comentario HTML con el
+    crédito «Iconos: Lucide (ISC; MIT los derivados de Feather), https://lucide.dev» (una sola vez por archivo).
+  - El ZIP del proyecto incluye `LICENSES/lucide-LICENSE.txt` (copia literal del `LICENSE`) cuando algún archivo
+    menciona Lucide. La copia empaquetada en la API (`apps/api/edustudio_api/data/`) está protegida por un test que
+    exige que coincida con `third_party/lucide/LICENSE`.
+  - **Los PNG no llevan crédito visible.** Un PNG es una captura de una página; los textos de ISC/MIT hablan de
+    «copias del software» y no se pronuncian sobre capturas, así que se interpreta que basta con el aviso en el HTML
+    fuente y en el ZIP, que son los que contienen los SVG. Esta interpretación es una decisión de producto, no una
+    certeza jurídica; si se distribuyeran los SVG por separado, el aviso debe acompañarlos.
 - **Marca:** el nombre y logotipo de Lucide no se usan como marca del producto; solo se acredita al origen.
 - **Revisión periódica:** al actualizar la versión, repetir la comparación de `LICENSE`, la lista de iconos de Feather
   y la prueba `third_party.test.ts` (comprueba manifiesto, cabeceras ISC y coherencia de la lista de Feather).

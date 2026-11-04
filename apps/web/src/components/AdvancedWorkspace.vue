@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import MonacoEditor from './MonacoEditor.vue'
 import { t } from '../i18n'
 import { buildPreview } from '../services/preview'
+import { iconNames, insertIcon } from '../services/icons'
 import { INFOGRAPHIC_PATH, infographicTemplate } from '../services/templates'
 import { useFilesStore, type ProjectFile } from '../stores/files'
 
@@ -16,6 +17,8 @@ const drafts = ref<Record<string, string>>({})
 const diagnostics = ref<string[]>([])
 const error = ref('')
 const status = ref('')
+const iconName = ref(iconNames[0] ?? '')
+const iconLabel = ref('')
 const reading = ref(false)
 const readingHtml = ref('')
 const previewing = ref(false)
@@ -86,6 +89,11 @@ async function togglePreview() {
     previewing.value = true
   } catch (cause) { showError(cause) }
 }
+function addIcon() {
+  if (!activeId.value) return
+  drafts.value[activeId.value] = insertIcon(activeContent.value, iconName.value, iconLabel.value.trim())
+  iconLabel.value = ''; status.value = t('iconInserted')
+}
 async function createInfographic() {
   error.value = ''; status.value = ''
   try {
@@ -141,6 +149,10 @@ async function deleteFile() {
             <a v-if="isMarkdown" class="button secondary" :href="`/api/projects/${projectId}/files/${activeFile.id}/export.docx`">{{ t('exportDocx') }}</a>
             <a v-if="isMarkdown" class="button secondary" :href="`/api/projects/${projectId}/files/${activeFile.id}/export.pdf`">{{ t('exportPdf') }}</a>
             <button type="button" class="danger" @click="deleteFile">{{ t('delete') }}</button></div>
+          <form v-if="isHtml && !reading && !previewing" class="icon-form" @submit.prevent="addIcon">
+            <label>{{ t('insertIcon') }}<select v-model="iconName"><option v-for="name in iconNames" :key="name" :value="name">{{ name }}</option></select></label>
+            <label>{{ t('iconLabel') }}<input v-model="iconLabel" maxlength="120" /></label>
+            <button type="submit" class="secondary">{{ t('insertIcon') }}</button></form>
           <iframe v-if="reading" class="reading-frame" sandbox="" :srcdoc="readingHtml" :title="t('readingView')"></iframe>
           <template v-else-if="previewing"><p class="notice">{{ t('previewNote') }}</p>
             <iframe class="reading-frame" sandbox="allow-scripts" :srcdoc="previewDoc" :title="t('activityPreview')"></iframe></template>

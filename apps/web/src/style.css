@@ -6,3 +6,4 @@
 .reading-frame{width:100%;height:430px;border:1px solid #c9d6dc;background:white}a.button{display:inline-block;padding:.5rem .8rem;border-radius:.4rem;text-decoration:none;background:#dce7eb;color:#153d50}
 
 .history-list{list-style:none;padding:0}.history-list li{padding:.4rem 0;border-bottom:1px solid #e3eaee}.history-list button{margin-left:.4rem}.history-view{background:#f3f3f3;padding:.8rem;max-height:300px;overflow:auto;white-space:pre-wrap}
+.icon-form{display:flex;gap:.7rem;align-items:end;flex-wrap:wrap;padding:.5rem .6rem;background:#f6f9fa}.icon-form label{margin:0}

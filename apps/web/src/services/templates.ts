@@ -1,5 +1,7 @@
 // Starter infographic: plain HTML + inline SVG, editable by hand or with the AI assistant.
-// No external fonts, icons or scripts, so it previews and exports to PNG unchanged.
+// Icons are the vendored Lucide set (inline SVG, license notice included). No external fonts, icons or scripts, so it previews and exports to PNG unchanged.
+import { LUCIDE_NOTICE, iconSvg } from './icons'
+
 export const INFOGRAPHIC_PATH = 'infografia.html'
 
 export function infographicTemplate(title: string): string {
@@ -7,6 +9,7 @@ export function infographicTemplate(title: string): string {
   return `<!doctype html>
 <html lang="es">
 <head>
+${LUCIDE_NOTICE}
 <meta charset="utf-8">
 <title>${safe}</title>
 <style>
@@ -15,7 +18,7 @@ export function infographicTemplate(title: string): string {
   h1 { color: #126382; }
   .steps { display: flex; gap: 16px; flex-wrap: wrap; }
   .step { flex: 1 1 220px; border: 3px solid #126382; border-radius: 14px; padding: 16px; background: #eaf4f8; }
-  .step svg { display: block; margin: 0 auto 8px; }
+  .step svg { display: block; margin: 0 auto 8px; color: #126382; }
   .step h2 { font-size: 1.2rem; margin: 0 0 6px; }
   details { margin-top: 20px; }
 </style>
@@ -25,18 +28,15 @@ export function infographicTemplate(title: string): string {
   <h1>${safe}</h1>
   <div class="steps">
     <section class="step">
-      <svg role="img" aria-labelledby="t1" width="80" height="80" viewBox="0 0 80 80"><title id="t1">Círculo con el número 1</title>
-        <circle cx="40" cy="40" r="34" fill="#126382"/><text x="40" y="52" font-size="36" text-anchor="middle" fill="#fff">1</text></svg>
+      ${iconSvg('lightbulb', 'Bombilla: una idea', 64)}
       <h2>Primer paso</h2><p>Explica la idea principal con una frase corta.</p>
     </section>
     <section class="step">
-      <svg role="img" aria-labelledby="t2" width="80" height="80" viewBox="0 0 80 80"><title id="t2">Cuadrado con el número 2</title>
-        <rect x="6" y="6" width="68" height="68" rx="12" fill="#bd8b24"/><text x="40" y="52" font-size="36" text-anchor="middle" fill="#fff">2</text></svg>
+      ${iconSvg('music', 'Nota musical: un ejemplo', 64)}
       <h2>Segundo paso</h2><p>Añade un ejemplo que el alumnado reconozca.</p>
     </section>
     <section class="step">
-      <svg role="img" aria-labelledby="t3" width="80" height="80" viewBox="0 0 80 80"><title id="t3">Triángulo con el número 3</title>
-        <polygon points="40,6 76,72 4,72" fill="#2f855a"/><text x="40" y="62" font-size="32" text-anchor="middle" fill="#fff">3</text></svg>
+      ${iconSvg('check', 'Marca de verificación: lo que hay que recordar', 64)}
       <h2>Tercer paso</h2><p>Cierra con lo que se debe recordar.</p>
     </section>
   </div>

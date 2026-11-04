@@ -28,6 +28,9 @@ test = ["pytest>=8,<10", "httpx>=0.27,<1"]
 where = ["."]
 include = ["edustudio_api*"]
 
+[tool.setuptools.package-data]
+edustudio_api = ["data/*.txt"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

@@ -3,6 +3,7 @@
 import html
 import io
 import zipfile
+from pathlib import Path
 
 from markdown_it import MarkdownIt
 
@@ -60,9 +61,20 @@ def export_html(path: str, source: str, lang: str = "es") -> str:
             f"<main>\n{render_markdown(source)}</main>\n</body>\n</html>\n")
 
 
+LUCIDE_LICENSE = Path(__file__).resolve().parent.parent / "data" / "lucide-LICENSE.txt"
+LUCIDE_NOTICE_PATH = "LICENSES/lucide-LICENSE.txt"
+
+
+def uses_lucide(files: list[tuple[str, str]]) -> bool:
+    return any("lucide" in content.lower() for _, content in files)
+
+
 def export_zip(files: list[tuple[str, str]]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
         for path, content in files:
             archive.writestr(path, content.encode("utf-8"))
+        # ISC/MIT require the notice to travel with copies of the icons.
+        if uses_lucide(files) and LUCIDE_NOTICE_PATH not in {path for path, _ in files}:
+            archive.writestr(LUCIDE_NOTICE_PATH, LUCIDE_LICENSE.read_bytes())
     return buffer.getvalue()

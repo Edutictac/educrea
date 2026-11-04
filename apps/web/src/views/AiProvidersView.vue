@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import ProviderGuide from '../components/ProviderGuide.vue'
+import { suggestedProvider } from '../services/providerGuide'
 import { t } from '../i18n'
 import { useAuthStore } from '../stores/auth'
 import { budgetStatus, confirmProviderModel, providersStatus, revokeProviderKey, saveProviderKey, updateBudget,
@@ -22,7 +24,8 @@ const message = ref('')
 
 onMounted(async () => {
   if (!auth.user) { router.replace('/login'); return }
-  try { [statuses.value, budget.value] = await Promise.all([providersStatus(), budgetStatus()]);
+  try { [statuses.value, budget.value] = await Promise.all([providersStatus(), budgetStatus()])
+    provider.value = suggestedProvider(Object.fromEntries(names.map(name => [name, statuses.value![name].configured])))
     monthlyDollars.value = (budget.value.monthly_limit_microusd / 1000000).toFixed(2) }
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 })
@@ -63,6 +66,11 @@ async function saveBudget() {
     <RouterLink to="/projects">← {{ t('back') }}</RouterLink>
     <h1>{{ t('myProviders') }}</h1>
     <p>{{ t('byokIntro') }}</p>
+    <label>{{ t('providerLabel') }}<select v-model="provider">
+      <option v-for="name in names" :key="name" :value="name">{{ name }}</option>
+    </select></label>
+    <ProviderGuide v-if="status" :provider="provider" :configured="status.configured" :confirmed-free="status.confirmed_free_models.length > 0"
+      :has-free-models="status.verified_free_models.length > 0" />
     <form v-if="budget" @submit.prevent="saveBudget">
       <h2>{{ t('monthlyBudget') }}</h2>
       <p>{{ t('budgetIntro') }}</p>
@@ -71,9 +79,6 @@ async function saveBudget() {
       <p>{{ t('budgetUsed') }}: ${{ (budget.spent_or_reserved_microusd / 1000000).toFixed(4) }}</p>
       <button :disabled="busy" type="submit">{{ t('saveBudget') }}</button>
     </form>
-    <label>{{ t('providerLabel') }}<select v-model="provider">
-      <option v-for="name in names" :key="name" :value="name">{{ name }}</option>
-    </select></label>
     <p v-if="status && provider !== 'ollama'" role="status">{{ status.configured ? t('keyConfigured') : t('keyMissing') }}</p>
     <p v-if="provider === 'ollama'">{{ t('ollamaManaged') }}</p>
     <p v-if="status && !status.verified_free_models.length && !status.paid_models.length" class="notice">{{ t('noVerifiedModels') }}</p>

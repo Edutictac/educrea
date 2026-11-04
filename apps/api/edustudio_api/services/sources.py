@@ -21,6 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import Source, SourceChunk
+from ..models.entities import utcnow
 from .converter import _sandbox
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
@@ -191,7 +192,8 @@ def chunk_pages(pages: list[tuple[int | None, str]]) -> list[dict]:
     return chunks
 
 
-def ingest(db: Session, project_id: UUID, title: str, filename: str, pages: list[tuple[int | None, str]]) -> Source:
+def ingest(db: Session, project_id: UUID, title: str, filename: str, pages: list[tuple[int | None, str]],
+           url: str | None = None) -> Source:
     total = sum(len(text) for _, text in pages)
     if total > MAX_TEXT_CHARS:
         raise HTTPException(413, "El documento contiene demasiado texto (máximo unos 3 millones de caracteres)")
@@ -200,10 +202,31 @@ def ingest(db: Session, project_id: UUID, title: str, filename: str, pages: list
         raise HTTPException(422, "El documento no contiene texto utilizable")
     source = Source(project_id=project_id, title=title[:200], filename=filename[:200],
                     kind=Path(filename).suffix.lower().lstrip(".")[:10], pages=max((p or 0) for p, _ in pages),
-                    chars=total, chunk_count=len(chunks))
+                    chars=total, chunk_count=len(chunks), url=url, fetched_at=utcnow() if url else None)
     db.add(source)
     db.flush()
     db.add_all(SourceChunk(source_id=source.id, project_id=project_id, ordinal=index, heading=chunk["heading"],
+                           page=chunk["page"], text=chunk["text"]) for index, chunk in enumerate(chunks))
+    db.commit()
+    db.refresh(source)
+    return source
+
+
+def reingest(db: Session, source: Source) -> Source:
+    """Re-downloads a URL source and replaces its text, keeping the same id and title."""
+    from . import fetch_url  # local import: avoids a cycle at module import time
+
+    final_url, extension, data = fetch_url.fetch(source.url or "")
+    pages = extract(fetch_url.filename(final_url, extension), data)
+    total = sum(len(text) for _, text in pages)
+    chunks = chunk_pages(pages)
+    if not chunks:
+        raise HTTPException(422, "La URL no contiene texto utilizable")
+    db.query(SourceChunk).filter(SourceChunk.source_id == source.id).delete()
+    source.pages = max((p or 0) for p, _ in pages)
+    source.chars, source.chunk_count = total, len(chunks)
+    source.fetched_at = utcnow()
+    db.add_all(SourceChunk(source_id=source.id, project_id=source.project_id, ordinal=index, heading=chunk["heading"],
                            page=chunk["page"], text=chunk["text"]) for index, chunk in enumerate(chunks))
     db.commit()
     db.refresh(source)

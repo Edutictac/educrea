@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { t } from '../i18n'
-import { deleteSource, listSources, searchSource, uploadSource, type Passage, type Source } from '../services/sources'
+import { addSourceFromUrl, deleteSource, listSources, refreshSource, searchSource, uploadSource,
+  type Passage, type Source } from '../services/sources'
 import { useAuthStore } from '../stores/auth'
 
 const props = defineProps<{ projectId: string }>()
@@ -14,6 +15,7 @@ const rights = ref(false)
 const busy = ref(false)
 const error = ref('')
 const status = ref('')
+const url = ref('')
 const probe = ref('')
 const probeSource = ref('')
 const passages = ref<Passage[]>([])
@@ -30,6 +32,25 @@ async function pick(event: Event) {
     const created = await uploadSource(props.projectId, file, title.value.trim(), auth.csrf)
     sources.value.push(created); title.value = ''
     status.value = `${t('sourceAdded')}: ${created.title} (${created.chunk_count} ${t('fragments')})`
+    emit('changed')
+  } catch (cause) { fail(cause) } finally { busy.value = false }
+}
+async function addUrl() {
+  if (!rights.value) return
+  busy.value = true; error.value = ''; status.value = ''
+  try {
+    const created = await addSourceFromUrl(props.projectId, url.value.trim(), title.value.trim(), auth.csrf)
+    sources.value.push(created); url.value = ''; title.value = ''
+    status.value = `${t('sourceAdded')}: ${created.title} (${created.chunk_count} ${t('fragments')})`
+    emit('changed')
+  } catch (cause) { fail(cause) } finally { busy.value = false }
+}
+async function refresh(source: Source) {
+  busy.value = true; error.value = ''; status.value = ''
+  try {
+    const updated = await refreshSource(props.projectId, source.id, auth.csrf)
+    sources.value = sources.value.map(item => item.id === updated.id ? updated : item)
+    status.value = `${t('sourceRefreshed')}: ${updated.title} (${updated.chunk_count} ${t('fragments')})`
     emit('changed')
   } catch (cause) { fail(cause) } finally { busy.value = false }
 }
@@ -54,10 +75,16 @@ async function test() {
       <p>{{ t('sourcesIntro') }}</p>
       <ul class="history-list"><li v-for="source in sources" :key="source.id"><strong>{{ source.title }}</strong> ·
         {{ source.kind.toUpperCase() }}{{ source.pages ? ` · ${source.pages} ${t('pages')}` : '' }} · {{ source.chunk_count }} {{ t('fragments') }}
+        <a v-if="source.url" :href="source.url" target="_blank" rel="noopener noreferrer" class="hint">{{ t('sourceFromUrl') }}</a>
+        <button v-if="source.url" type="button" class="secondary" :disabled="busy" @click="refresh(source)">{{ t('refreshSource') }}</button>
         <button type="button" class="danger" @click="remove(source)">{{ t('delete') }}</button></li></ul>
       <p v-if="!sources.length">{{ t('noSources') }}</p>
       <label class="check"><input v-model="rights" type="checkbox" />{{ t('sourceRights') }}</label>
       <label>{{ t('sourceTitle') }}<input v-model="title" maxlength="200" :placeholder="t('sourceTitlePlaceholder')" /></label>
+      <form class="icon-form" @submit.prevent="addUrl">
+        <label>{{ t('sourceUrl') }}<input v-model="url" type="url" placeholder="https://" required maxlength="500" :disabled="busy || !rights" /></label>
+        <button type="submit" class="secondary" :disabled="busy || !rights || url.length < 10">{{ t('addFromUrl') }}</button></form>
+      <p class="hint">{{ t('sourceUrlNote') }}</p>
       <label>{{ t('sourceFile') }}<input type="file" accept=".pdf,.docx,.odt,.epub,.html,.htm,.md,.txt,.rtf" :disabled="busy || !rights" @change="pick" /></label>
       <p v-if="busy" role="status">{{ t('extracting') }}</p>
       <form v-if="sources.length" class="icon-form" @submit.prevent="test">

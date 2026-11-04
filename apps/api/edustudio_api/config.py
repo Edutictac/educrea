@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     oidc_scopes: str = "openid email profile"
     oidc_link_by_email: bool = True
     local_auth_enabled: bool = True
+    allow_insecure_urls: bool = False  # only for local development with http:// sources
     mcp_servers_json: str = "{}"
     ai_max_user_budget_microusd: int = 20000000
     ai_daily_personal_requests: int = 200  # loop guard for personal-key providers; the provider sets the real quota

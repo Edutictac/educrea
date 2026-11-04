@@ -162,6 +162,8 @@ class Source(Base):
     pages: Mapped[int] = mapped_column(Integer, default=0)
     chars: Mapped[int] = mapped_column(Integer, default=0)
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
+    url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

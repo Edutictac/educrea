@@ -3,14 +3,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import Source, User
 from ..security import current_user, require_csrf
-from ..services import sources as service
+from ..services import fetch_url, sources as service
 from .projects import project_for_owner
 
 router = APIRouter(prefix="/projects/{project_id}/sources", tags=["sources"])
@@ -25,6 +25,8 @@ class SourceOut(BaseModel):
     chars: int
     chunk_count: int
     created_at: datetime
+    url: str | None = None
+    fetched_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -56,6 +58,34 @@ async def upload_source(project_id: UUID, request: Request, filename: str = Quer
     data = await request.body()
     pages = await run_in_threadpool(service.extract, filename, data)
     return service.ingest(db, project_id, title.strip() or filename.rsplit(".", 1)[0], filename, pages)
+
+
+class UrlInput(BaseModel):
+    url: HttpUrl
+    title: str = Field(default="", max_length=200)
+
+
+@router.post("/url", response_model=SourceOut, status_code=201)
+def add_url_source(project_id: UUID, data: UrlInput, user: User = Depends(require_csrf),
+                   db: Session = Depends(get_db)) -> Source:
+    """Download a public document (HTML, text, Markdown or PDF) instead of uploading the file."""
+    project_for_owner(db, project_id, user.id)
+    if db.scalar(select(func.count(Source.id)).where(Source.project_id == project_id)) >= service.MAX_SOURCES:
+        raise HTTPException(409, f"Límite de {service.MAX_SOURCES} fuentes por proyecto alcanzado")
+    final_url, extension, content = fetch_url.fetch(str(data.url))
+    name = fetch_url.filename(final_url, extension)
+    title = data.title.strip() or fetch_url.suggested_title(content, extension, name.rsplit(".", 1)[0])
+    pages = service.extract(name, content)
+    return service.ingest(db, project_id, title, name, pages, url=final_url)
+
+
+@router.post("/{source_id}/refresh", response_model=SourceOut)
+def refresh_source(project_id: UUID, source_id: UUID, user: User = Depends(require_csrf),
+                   db: Session = Depends(get_db)) -> Source:
+    source = source_for_owner(db, project_id, source_id, user.id)
+    if not source.url:
+        raise HTTPException(409, "Esta fuente no viene de una URL")
+    return service.reingest(db, source)
 
 
 @router.delete("/{source_id}", status_code=204)

@@ -1,6 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
 import { estimatePaid, parseSseBlock, streamProposal } from './ai'
 
+describe('contexto automático', () => {
+  it('envía automatic y no manda rutas cuando la IA decide', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ maximum_cost_microusd: 1 }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await estimatePaid('p1', 'Crea una actividad', 'openai', 'm', ['index.html'], 'csrf', true)
+    const sent = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)
+    expect(sent.automatic).toBe(true)
+    expect(sent.context_paths).toEqual([])
+    vi.unstubAllGlobals()
+  })
+})
+
 describe('streaming de propuestas', () => {
   it('interpreta eventos SSE y fragmentos divididos entre lecturas', async () => {
     expect(parseSseBlock('event: token\ndata: {"text":"hola"}')).toEqual({ event: 'token', data: { text: 'hola' } })

@@ -24,6 +24,7 @@ class GenerateInput(BaseModel):
     provider: Literal["gemini", "openrouter", "groq", "ollama", "openai", "anthropic"] = "gemini"
     model: str = Field(min_length=1, max_length=100)
     context_paths: list[str] = Field(default_factory=list, max_length=30)
+    automatic: bool = False  # the backend picks the context files; context_paths is ignored
     allow_fallback: bool = False
     mode: Literal["free", "paid"] = "free"
     paid_authorized: bool = False

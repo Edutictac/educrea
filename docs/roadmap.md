@@ -10,6 +10,17 @@
 8. **Identidad central (Authentik de EduTicTac) — pendiente de planificar**: inicio de sesión OIDC con vinculación de las cuentas locales existentes sin perder proyectos. Su fecha depende del plan de identidad de EduTicTac; se propone hacerlo tras la Fase 6 y antes de la beta con centros (Fase 7), porque la beta necesita cuentas reales.
 9. **Servicio alojado de pago (propuesta posterior a la beta)**: modelos avanzados mediante una cuenta institucional de OpenRouter, cobro al usuario, controles de gasto y margen transparente. La edición libre y la instalación propia seguirán disponibles.
 
+## Integración con EduTicTac Commons: propuesta (sin decidir)
+
+Hasta ahora el roadmap solo contempla la **identidad** (fase 8: inicio de sesión OIDC con Authentik en `id.edutictac.es`, vinculando las cuentas locales) y fija que el núcleo de EduStudio **no depende** de Commons. No hay una definición de cómo «entrar» en Commons. Propuesta por niveles, de menor a mayor acoplamiento, para decidir con el usuario:
+
+1. **Identidad única (fase 8):** misma cuenta que en el resto de EduTicTac, sin perder proyectos. Reutiliza el widget de cuenta y la sesión central ya diseñados para las apps propias (retorno a edutictac.es, idioma y tema compartidos).
+2. **Enlace desde el portal:** EduStudio aparece como una app más en edutictac.es, con el mismo pie y navegación comunes, sin compartir datos.
+3. **Publicar actividades en Commons:** exportar una actividad terminada (ZIP/HTML con licencia y atribución de iconos) a la biblioteca de recursos o Rebost, con revisión del docente. Requiere definir el formato de recurso y permisos.
+4. **Servicios compartidos (opcional, posterior):** cuotas y presupuestos a nivel de centro con la entidad «centro» de Commons, y el servicio alojado de pago (fase 9).
+
+Cada nivel funciona sin los siguientes, y la edición libre y la instalación propia siguen sin Commons.
+
 ## Servicio alojado de pago: propuesta de negocio
 
 - Mantener dos caminos: instalación libre con claves propias (BYOK) y servicio gestionado de EduStudio. Una cuenta de pago no será necesaria para crear o exportar materiales con funciones locales.

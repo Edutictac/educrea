@@ -87,7 +87,7 @@ async function remove() {
       </div>
       <TeacherWorkspace v-if="mode === 'teacher'" :key="workspaceKey" ref="workspace" :project-id="id" />
       <AdvancedWorkspace v-else :key="workspaceKey" ref="workspace" :project-id="id" />
-      <AiAssistant :project-id="id" :can-generate="canGenerate" :can-apply="canApply" @project-changed="refreshWorkspace" />
+      <AiAssistant :project-id="id" :automatic="mode === 'teacher'" :can-generate="canGenerate" :can-apply="canApply" @project-changed="refreshWorkspace" />
       <HistoryPanel :project-id="id" @restored="refreshWorkspace" />
       <ActivityPreview :key="workspaceKey" :load-files="loadPreviewFiles" />
     </template>

@@ -47,10 +47,10 @@ export async function updateBudget(limit: number, csrf: string): Promise<BudgetS
 }
 
 export async function estimatePaid(projectId: string, instruction: string, provider: ProviderName,
-  model: string, contextPaths: string[], csrf: string): Promise<PaidEstimate> {
+  model: string, contextPaths: string[], csrf: string, automatic = false): Promise<PaidEstimate> {
   return await (await checked(await fetch(`/api/projects/${projectId}/ai/estimate`, { method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-    body: JSON.stringify({ instruction, provider, model, context_paths: contextPaths, mode: 'paid' }),
+    body: JSON.stringify({ instruction, provider, model, context_paths: automatic ? [] : contextPaths, automatic, mode: 'paid' }),
   }))).json() as PaidEstimate
 }
 
@@ -118,11 +118,12 @@ export function parseSseBlock(block: string): AiStreamEvent | null {
 export async function streamProposal(projectId: string, instruction: string, provider: ProviderName, model: string,
   contextPaths: string[], allowFallback: boolean, csrf: string,
   signal: AbortSignal, onEvent: (event: AiStreamEvent) => void,
-  mode: 'free' | 'paid' = 'free', approvedMaxCost?: number, approvedFingerprint?: string): Promise<void> {
+  mode: 'free' | 'paid' = 'free', approvedMaxCost?: number, approvedFingerprint?: string,
+  automatic = false): Promise<void> {
   const response = await checked(await fetch(`/api/projects/${projectId}/ai/proposals/stream`, {
     method: 'POST', signal,
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-    body: JSON.stringify({ instruction, provider, model, context_paths: contextPaths, allow_fallback: allowFallback,
+    body: JSON.stringify({ instruction, provider, model, context_paths: automatic ? [] : contextPaths, automatic, allow_fallback: allowFallback,
       mode, paid_authorized: mode === 'paid', approved_max_cost_microusd: approvedMaxCost,
       approved_estimate_fingerprint: approvedFingerprint }),
   }))

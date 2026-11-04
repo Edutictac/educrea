@@ -536,3 +536,47 @@ def test_limits_apply_by_resource_not_globally(client: TestClient, monkeypatch):
         with pytest.raises(HTTPException) as guard:
             quotas.reserve(db, user_id, "groq", "g")
         assert guard.value.status_code == 429 and "seguridad" in guard.value.detail
+
+
+def test_automatic_context_picks_files_within_budget(client: TestClient):
+    from edustudio_api.models import ProjectFile
+    from edustudio_api.services.ai import engine as e
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+
+    def file(path, size, age=0):
+        return ProjectFile(path=path, content="x" * size, version=1, updated_at=now - timedelta(minutes=age))
+
+    small = [file("index.html", 1000), file("style.css", 1000, 5), file("script.js", 1000, 1)]
+    chosen, skipped = e.automatic_context(small, "Mejora la actividad")
+    assert chosen == {"index.html", "style.css", "script.js"} and skipped == []
+    big = [file("index.html", 30000), file("notas.md", 30000, 9), file("huge.js", 60000, 1), file("a.css", 5000, 2)]
+    chosen, skipped = e.automatic_context(big, "Cambia los colores de a.css")
+    assert "a.css" in chosen and "index.html" in chosen   # named in the instruction, and the entry point
+    assert "huge.js" in skipped and len(json.dumps(sorted(chosen))) < e.MAX_CONTEXT_BYTES
+
+
+def test_automatic_mode_needs_no_selection_and_never_exceeds_context(client: TestClient, monkeypatch):
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}/files"
+    for index in range(8):
+        assert client.post(base, headers=headers, json={"path": f"datos{index}.json", "content": '{"v":"' + "é" * 40000 + '"}'}).status_code == 201
+    client.put("/api/ai/providers/groq/key", headers=headers, json={"api_key": "test-groq-secret"})
+    client.post("/api/ai/providers/groq/free-models/groq-test-free/confirm", headers=headers, json={"acknowledged": True})
+    draft = {"summary": "Cambio", "changes": [{"path": "nuevo.html", "content": "<p>Hola</p>"}]}
+    captured = {}
+
+    class Capture(StubGemini):
+        async def generate(self, key, model, prompt):
+            captured["prompt"] = prompt
+            return await super().generate(key, model, prompt)
+
+    monkeypatch.setattr(registry, "adapter", lambda _name: Capture(json.dumps(draft)))
+    request = {"instruction": "Crea una página nueva sobre las notas", "provider": "groq", "model": "groq-test-free",
+               "automatic": True}
+    response = client.post(f"/api/projects/{project_id}/ai/proposals", headers=headers, json=request)
+    assert response.status_code == 201, response.text
+    assert "not_included_paths" in captured["prompt"] and "Decide tú qué archivos" in captured["prompt"]
+    manual = client.post(f"/api/projects/{project_id}/ai/proposals", headers=headers, json={**request, "automatic": False})
+    assert manual.status_code == 201  # manual mode with an empty selection is still allowed

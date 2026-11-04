@@ -6,7 +6,7 @@ import { budgetStatus, changeProposal, estimatePaid, providersStatus, quotaStatu
   listContextFiles, listProposals, streamProposal,
   type BudgetStatus, type PaidEstimate, type ProviderStatuses, type ProviderName, type QuotaStatus, type Proposal } from '../services/ai'
 
-const props = defineProps<{ projectId: string; canGenerate: () => boolean; canApply: () => boolean }>()
+const props = defineProps<{ projectId: string; canGenerate: () => boolean; canApply: () => boolean; automatic?: boolean }>()
 const emit = defineEmits<{ projectChanged: [] }>()
 const auth = useAuthStore()
 const statuses = ref<ProviderStatuses | null>(null)
@@ -29,6 +29,9 @@ const selected = computed(() => proposals.value.find(item => item.id === selecte
 const instruction = ref('')
 const filePaths = ref<string[]>([])
 const selectedPaths = ref<string[]>([])
+// Teacher mode: the AI always decides which files to read and change. Advanced mode: manual by default, optional switch.
+const autoChoice = ref(false)
+const useAutomatic = computed(() => props.automatic === true || autoChoice.value)
 const model = ref('')
 const streaming = ref('')
 const busy = ref(false)
@@ -52,13 +55,13 @@ onMounted(async () => {
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 })
 onBeforeUnmount(() => controller?.abort())
-watch([instruction, provider, model, selectedPaths, mode], () => { estimate.value = null; paidConfirmed.value = false }, { deep: true })
+watch([instruction, provider, model, selectedPaths, mode, useAutomatic], () => { estimate.value = null; paidConfirmed.value = false }, { deep: true })
 
 async function calculateEstimate() {
   if (!props.canGenerate()) { error.value = t('saveBeforeAi'); return }
   error.value = ''; estimate.value = null; paidConfirmed.value = false
   try { estimate.value = await estimatePaid(props.projectId, instruction.value, provider.value,
-    model.value, selectedPaths.value, auth.csrf) }
+    model.value, selectedPaths.value, auth.csrf, useAutomatic.value) }
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 }
 
@@ -82,7 +85,7 @@ async function generate() {
         streaming.value = ''
         message.value = t('proposalReady')
       }
-    }, mode.value, estimate.value?.maximum_cost_microusd, estimate.value?.fingerprint)
+    }, mode.value, estimate.value?.maximum_cost_microusd, estimate.value?.fingerprint, useAutomatic.value)
   } catch (cause) {
     if (controller.signal.aborted) message.value = t('generationCancelled')
     else error.value = cause instanceof Error ? cause.message : t('error')
@@ -139,7 +142,9 @@ function stateLabel(value: Proposal['status']) {
         <option v-for="item in models" :key="item" :value="item">{{ item }}</option>
       </select></label>
       <label v-if="mode === 'free' && availableProviders.length > 1" class="check"><input v-model="allowFallback" type="checkbox" />{{ t('allowFallback') }}</label>
-      <fieldset v-if="filePaths.length" class="full"><legend>{{ t('contextFiles') }}</legend>
+      <label v-if="!automatic" class="check"><input v-model="autoChoice" type="checkbox" />{{ t('aiDecidesFiles') }}</label>
+      <p v-if="useAutomatic" class="hint">{{ t('automaticContextNote') }}</p>
+      <fieldset v-else-if="filePaths.length" class="full"><legend>{{ t('contextFiles') }}</legend>
         <p>{{ t('contextPrivacy') }}</p>
         <label v-for="path in filePaths" :key="path" class="check"><input v-model="selectedPaths" type="checkbox" :value="path" />{{ path }}</label>
       </fieldset>

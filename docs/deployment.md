@@ -16,3 +16,12 @@ Crea siempre `secrets/oidc_client_secret` (`0600`); déjalo **vacío** si no usa
 4. Opcional: `EDUSTUDIO_LOCAL_AUTH_ENABLED=false` desactiva el registro y el acceso con contraseña local (recomendado en una instalación institucional, porque el registro local está abierto y no verifica el correo).
 
 La pantalla de acceso muestra «Entrar con tu cuenta EduTicTac» cuando el SSO está configurado. **Vinculación de cuentas:** una persona con cuenta local previa conserva sus proyectos si Authentik entrega el mismo correo verificado (`email_verified`); en ese momento se invalida la contraseña local anterior y sus sesiones, porque el registro local no verifica el correo y alguien podría haber creado esa cuenta con una dirección ajena. Una identidad sin correo verificado se rechaza. Cerrar sesión en EduStudio no cierra la sesión central de Authentik (cierre único, pendiente).
+
+**Estado en EduTicTac (2026-11-03):** ya existen en Authentik dos aplicaciones OAuth2 confidenciales, ambas limitadas a los grupos `professorat` y `authentik Admins` y con el ámbito `email` servido por el mapeo propio «EduStudio verified email». El mapeo por defecto de Authentik devuelve siempre `email_verified: false`, y EduStudio rechaza esa identidad; el mapeo propio solo la da por verificada si el atributo `edutictac_verified_email` coincide con el correo actual (el mismo criterio que EduHoot). Una persona sin ese atributo ve «tu cuenta de identidad no tiene un correo verificado».
+
+| Aplicación | Emisor | Client ID | Retorno | Secreto en `pass` |
+|---|---|---|---|---|
+| `edustudio` (producción) | `https://id.edutictac.es/application/o/edustudio/` | `studio.edutictac.es` | `https://studio.edutictac.es/api/auth/oidc/callback` | `RUTA_EN_EL_GESTOR_DE_SECRETOS` |
+| `edustudio-pruebas` (solo tailnet, **borrar tras las pruebas**) | `https://id.edutictac.es/application/o/edustudio-pruebas/` | `edustudio-pruebas` | `http://IP_DE_LA_TAILNET:5173/api/auth/oidc/callback` | `RUTA_EN_EL_GESTOR_DE_SECRETOS` |
+
+Pendiente: crear el DNS y el despliegue de `studio.edutictac.es`. Hasta entonces solo la aplicación de pruebas es utilizable.

@@ -89,6 +89,11 @@ export async function confirmFreeModel(model: string, csrf: string): Promise<voi
   }))
 }
 
+export async function generateFromBrief(projectId: string, csrf: string): Promise<Proposal> {
+  return await (await checked(await fetch(`/api/projects/${projectId}/ai/from-brief`, {
+    method: 'POST', headers: { 'X-CSRF-Token': csrf } }))).json() as Proposal
+}
+
 export async function listProposals(projectId: string): Promise<Proposal[]> {
   return await (await checked(await fetch(`/api/projects/${projectId}/ai/proposals`))).json() as Proposal[]
 }

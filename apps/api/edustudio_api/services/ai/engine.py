@@ -110,6 +110,45 @@ def prepare(db: Session, project_id: UUID, user_id: UUID,
     return key, prompt, snapshot, selected, used
 
 
+BRIEF_FIELDS = {"title", "activity_type", "language", "level", "instructions", "accessibility"}
+LANGUAGE_NAMES = {"es": "castellano", "va": "valenciano (catalán)"}
+LEVEL_NAMES = {"infantil": "Educación Infantil", "primaria": "Educación Primaria", "secundaria": "Educación Secundaria",
+               "otros": "otro nivel"}
+
+
+def brief_instruction(brief: dict) -> str:
+    """Turns the teacher's activity.json brief into the instruction for the first version."""
+    language = str(brief.get("language") or "es")
+    lang = "valenciano" if language == "va" else "castellano"
+    accessibility = brief.get("accessibility") if isinstance(brief.get("accessibility"), dict) else {}
+    wants = [name for key, name in (("large_text", "texto grande"), ("high_contrast", "alto contraste"))
+             if accessibility.get(key) is True]
+    parts = [
+        f"Crea la primera versión completa de la actividad «{str(brief.get('title') or '').strip() or 'sin título'}», "
+        f"lista para usar en el aula. Todo el texto visible debe estar en {lang} y el HTML debe llevar lang=\"{'ca' if language == 'va' else 'es'}\".",
+        f"Tipo de actividad: {brief.get('activity_type') or 'otra'}. Nivel educativo: "
+        f"{LEVEL_NAMES.get(str(brief.get('level')), str(brief.get('level')))}.",
+        f"Encargo del docente:\n{str(brief.get('instructions') or '').strip()}",
+    ]
+    if wants:
+        parts.append("Accesibilidad obligatoria: " + " y ".join(wants) + ", aplicados en el CSS.")
+    parts.append("Crea index.html, style.css y script.js con rutas relativas, sin recursos externos, sin CDN y sin "
+                 "dependencias. Si la actividad necesita datos iniciales, añade o actualiza activity.json conservando "
+                 "los campos del encargo.")
+    return "\n".join(parts)
+
+
+def read_brief(db: Session, project_id: UUID) -> dict | None:
+    file = db.scalar(select(ProjectFile).where(ProjectFile.project_id == project_id, ProjectFile.path == "activity.json"))
+    if file is None or not file.content.strip():
+        return None
+    try:
+        brief = json.loads(file.content)
+    except ValueError:
+        return None
+    return brief if isinstance(brief, dict) else None
+
+
 def sources_instructions(passages: list[dict]) -> str:
     rules = (
         "\n\nFUENTES DE REFERENCIA. Trabaja EXCLUSIVAMENTE con la información de estos fragmentos: no añadas contenido "

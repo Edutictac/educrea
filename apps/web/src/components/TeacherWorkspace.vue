@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { t } from '../i18n'
+import { generateFromBrief } from '../services/ai'
+import { useAuthStore } from '../stores/auth'
 import { useFilesStore, type ProjectFile } from '../stores/files'
 
 const props = defineProps<{ projectId: string }>()
+const emit = defineEmits<{ generated: [] }>()
+const auth = useAuthStore()
+const generating = ref(false)
+const generated = ref(false)
+const needsProvider = ref(false)
 const files = useFilesStore()
 type Activity = { title: string; instructions: string; language: string; level: string; activity_type: string;
   accessibility: { large_text: boolean; high_contrast: boolean } }
@@ -61,7 +69,21 @@ async function save() {
     original.value = JSON.parse(content) as Record<string, unknown>
     baseline.value = JSON.stringify(activity.value)
     success.value = t('saved')
+    generated.value = false; needsProvider.value = false
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
+}
+async function generateFirstVersion() {
+  if (dirty.value) { error.value = t('saveBeforeGenerating'); return }
+  error.value = ''; success.value = ''; needsProvider.value = false; generating.value = true
+  try {
+    await generateFromBrief(props.projectId, auth.csrf)
+    generated.value = true
+    emit('generated')
+  } catch (cause) {
+    const text = cause instanceof Error ? cause.message : t('error')
+    needsProvider.value = /proveedor|modelo/i.test(text)
+    error.value = text
+  } finally { generating.value = false }
 }
 </script>
 
@@ -89,7 +111,14 @@ async function save() {
       <div class="full actions"><button type="submit" :disabled="!dirty && !!file">{{ t('saveActivity') }}</button>
         <span v-if="dirty">{{ t('unsaved') }}</span><span v-else-if="file" role="status">{{ t('saved') }}</span></div>
     </form>
-    <p v-if="!dirty && file" class="hint">{{ t('teacherNext') }}</p>
+    <div v-if="!dirty && file" class="actions first-version">
+      <button type="button" :disabled="generating" @click="generateFirstVersion">
+        {{ generating ? t('generatingFirstVersion') : generated ? t('regenerateFirstVersion') : t('generateFirstVersion') }}</button>
+      <span v-if="generating" role="status">{{ t('mayTakeAMinute') }}</span>
+    </div>
+    <p v-if="generated" class="notice ok" role="status">{{ t('firstVersionReady') }}</p>
+    <p v-if="needsProvider" class="notice">{{ t('needProviderFirst') }} <RouterLink to="/ai/providers">{{ t('myProviders') }}</RouterLink></p>
+    <p v-if="!generated && !generating && !dirty && file" class="hint">{{ t('teacherNext') }}</p>
   </section>
 </template>
 

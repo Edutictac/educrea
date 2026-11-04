@@ -653,3 +653,48 @@ def test_prompt_treats_activity_json_as_the_teacher_brief(client: TestClient, mo
     prompt = captured["prompt"]
     assert "activity.json" in prompt and "encargo del docente" in prompt and "alto contraste" in prompt
     assert "infantil" in prompt and "activity.json" in prompt  # the brief itself reaches the model as context
+
+
+def test_first_version_from_brief(client: TestClient, monkeypatch):
+    route = None
+    # 1) A teacher with a brief but no configured provider gets a clear 409 (not a provider call).
+    csrf = register(client, "nobrief@example.org")
+    headers2 = {"X-CSRF-Token": csrf}
+    other = client.post("/api/projects", headers=headers2, json={"title": "Sin proveedor"}).json()
+    client.post(f"/api/projects/{other['id']}/files", headers=headers2,
+                json={"path": "activity.json", "content": '{"title":"X"}'})
+    assert client.post(f"/api/projects/{other['id']}/ai/from-brief", headers=headers2).status_code == 409
+    client.post("/api/auth/logout", headers=headers2)
+
+    # 2) Missing brief.
+    headers, project_id = setup_user(client)
+    route = f"/api/projects/{project_id}/ai/from-brief"
+    assert client.post(route, headers=headers).status_code == 409
+    brief = {"title": "Els instruments", "activity_type": "juego", "language": "va", "level": "infantil",
+             "instructions": "Relaciona cada instrumento con su sonido.",
+             "accessibility": {"large_text": True, "high_contrast": True}}
+    client.post(f"/api/projects/{project_id}/files", headers=headers, json={"path": "activity.json", "content": json.dumps(brief)})
+    captured = {}
+
+    class Capture(StubGemini):
+        async def generate(self, key, model, prompt):
+            captured["prompt"] = prompt
+            return await super().generate(key, model, prompt)
+
+    draft = {"summary": "Primera versión", "changes": [
+        {"path": "index.html", "content": '<html lang="ca"><h1>Els instruments</h1></html>'},
+        {"path": "style.css", "content": "body{font-size:1.4rem}"},
+        {"path": "script.js", "content": "const a = 1;"}]}
+    app.dependency_overrides[get_gemini_provider] = lambda: Capture(json.dumps(draft))
+    response = client.post(route, headers=headers)
+    assert response.status_code == 201, response.text
+    assert response.json()["status"] == "applied" and response.json()["provider"] == "gemini"
+    assert [f["path"] for f in client.get(f"/api/projects/{project_id}/files").json()] == [
+        "activity.json", "index.html", "script.js", "style.css"]
+    prompt = captured["prompt"]
+    for expected in ("valenciano", 'lang="ca"', "Educación Infantil", "juego", "Relaciona cada instrumento",
+                     "texto grande y alto contraste", "Els instruments"):
+        assert expected in prompt, expected
+    assert "primera versión" in response.json()["summary"].lower()
+    brief_file = next(f for f in client.get(f"/api/projects/{project_id}/files").json() if f["path"] == "activity.json")
+    assert json.loads(client.get(f"/api/projects/{project_id}/files/{brief_file['id']}").json()["content"])["level"] == "infantil"

@@ -58,3 +58,19 @@ describe('streaming de propuestas', () => {
     vi.unstubAllGlobals()
   })
 })
+
+describe('primera versión desde el encargo', () => {
+  it('llama al endpoint del brief con CSRF y sin cuerpo', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 'p1', status: 'applied' }), { status: 201 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { generateFromBrief } = await import('./ai')
+    const proposal = await generateFromBrief('pr1', 'csrf-1')
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/projects/pr1/ai/from-brief')
+    expect(init.method).toBe('POST')
+    expect((init.headers as Record<string, string>)['X-CSRF-Token']).toBe('csrf-1')
+    expect(init.body).toBeUndefined()
+    expect(proposal.status).toBe('applied')
+    vi.unstubAllGlobals()
+  })
+})

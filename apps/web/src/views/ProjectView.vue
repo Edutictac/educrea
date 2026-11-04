@@ -87,7 +87,7 @@ async function remove() {
         <button type="button" :aria-pressed="mode === 'teacher'" @click="switchMode('teacher')">{{ t('teacherMode') }}</button>
         <button type="button" :aria-pressed="mode === 'advanced'" @click="switchMode('advanced')">{{ t('advancedMode') }}</button>
       </div>
-      <TeacherWorkspace v-if="mode === 'teacher'" :key="workspaceKey" ref="workspace" :project-id="id" />
+      <TeacherWorkspace v-if="mode === 'teacher'" :key="workspaceKey" ref="workspace" :project-id="id" @generated="refreshWorkspace" />
       <AdvancedWorkspace v-else :key="workspaceKey" ref="workspace" :project-id="id" />
       <AiAssistant :project-id="id" :automatic="mode === 'teacher'" :sources-version="sourcesVersion" :can-generate="canGenerate" :can-apply="canApply" @project-changed="refreshWorkspace" />
       <SourcesPanel :project-id="id" @changed="sourcesVersion += 1" />

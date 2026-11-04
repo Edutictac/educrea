@@ -77,6 +77,11 @@ def adapter(provider: str):
     return CompatibleProvider(provider)
 
 
+def first_free(db: Session, user_id: UUID) -> tuple[str, str, str] | None:
+    """First provider/model already confirmed as free by this user, in the documented order."""
+    return fallback(db, user_id, set())
+
+
 def fallback(db: Session, user_id: UUID, excluded: set[str]) -> tuple[str, str, str] | None:
     for provider in FREE_PROVIDERS:
         if provider in excluded:

@@ -173,6 +173,39 @@ async def generate_proposal(project_id: UUID, data: GenerateInput,
             raise
 
 
+@router.post("/projects/{project_id}/ai/from-brief", response_model=ProposalOut, status_code=201)
+async def generate_from_brief(project_id: UUID, user: User = Depends(require_csrf), db: Session = Depends(get_db),
+                              provider: GeminiProvider = Depends(get_gemini_provider)) -> AiProposal:
+    """Teacher mode shortcut: builds the instruction from activity.json and applies the first version."""
+    user_id = user.id
+    brief = engine.read_brief(db, project_id)
+    if brief is None:
+        raise HTTPException(409, "Guarda primero el encargo de la actividad (activity.json)")
+    available = registry.first_free(db, user_id)
+    if available is None:
+        raise HTTPException(409, "Configura un proveedor gratuito y confirma un modelo antes de generar")
+    name, model, key = available
+    data = engine.GenerateInput(instruction=engine.brief_instruction(brief), provider=name, model=model,
+                                automatic=True, auto_apply=True, mode="free")
+    prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)[1:]
+    reservation = quotas.reserve(db, user_id, name, model)
+    try:
+        adapter = provider if name == "gemini" else registry.adapter(name)
+        result = await adapter.generate(key, model, prompt)
+        proposal = engine.persist(db, project_id, user_id, model, result.text, result.usage, snapshot, selected,
+                                  provider=name)
+        quotas.reconcile(db, reservation, result.usage)
+        return engine.apply_if_requested(db, project_id, proposal, True)
+    except ProviderError as exc:
+        db.rollback()
+        quotas.reconcile(db, reservation, failed=True)
+        raise HTTPException(exc.status_code, str(exc)) from exc
+    except BaseException:
+        db.rollback()
+        quotas.reconcile(db, reservation, failed=True)
+        raise
+
+
 @router.post("/projects/{project_id}/ai/proposals/stream")
 async def stream_proposal(project_id: UUID, data: GenerateInput,
                           user: User = Depends(require_csrf), db: Session = Depends(get_db),

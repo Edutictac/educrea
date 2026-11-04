@@ -28,6 +28,7 @@ const mode = ref<'teacher' | 'advanced'>('teacher')
 const workspace = ref<Workspace | null>(null)
 const workspaceKey = ref(0)
 const sourcesVersion = ref(0)
+const materials = ref<{ openLatest: () => Promise<void> } | null>(null)
 
 function hasUnsavedChanges() { return detailsDirty.value || (workspace.value?.hasUnsavedChanges() ?? false) }
 function beforeUnload(event: BeforeUnloadEvent) { if (hasUnsavedChanges()) event.preventDefault() }
@@ -88,11 +89,11 @@ async function remove() {
         <button type="button" :aria-pressed="mode === 'teacher'" @click="switchMode('teacher')">{{ t('teacherMode') }}</button>
         <button type="button" :aria-pressed="mode === 'advanced'" @click="switchMode('advanced')">{{ t('advancedMode') }}</button>
       </div>
-      <TeacherWorkspace v-if="mode === 'teacher'" :key="workspaceKey" ref="workspace" :project-id="id" @generated="refreshWorkspace" />
+      <TeacherWorkspace v-if="mode === 'teacher'" :key="workspaceKey" ref="workspace" :project-id="id" @generated="refreshWorkspace" @open-materials="materials?.openLatest()" />
       <AdvancedWorkspace v-else :key="workspaceKey" ref="workspace" :project-id="id" />
       <AiAssistant :project-id="id" :automatic="mode === 'teacher'" :sources-version="sourcesVersion" :can-generate="canGenerate" :can-apply="canApply" @project-changed="refreshWorkspace" />
       <SourcesPanel :project-id="id" @changed="sourcesVersion += 1" />
-      <MaterialsPanel :project-id="id" :refresh-key="workspaceKey" />
+      <MaterialsPanel ref="materials" :project-id="id" :refresh-key="workspaceKey" />
       <HistoryPanel :project-id="id" @restored="refreshWorkspace" />
       <ActivityPreview :key="workspaceKey" :load-files="loadPreviewFiles" />
     </template>

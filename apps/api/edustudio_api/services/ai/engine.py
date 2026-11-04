@@ -113,6 +113,8 @@ def prepare(db: Session, project_id: UUID, user_id: UUID,
 
 
 BRIEF_FIELDS = {"title", "activity_type", "language", "level", "instructions", "accessibility"}
+# Canonical (Spanish) name -> accepted headings, in Spanish and Valencian. Models translate the template when the
+# activity language is Valencian, so both variants count as present.
 SITUATION_SECTIONS = (
     "Datos de la situación",
     "Contexto y justificación",
@@ -123,6 +125,23 @@ SITUATION_SECTIONS = (
     "Evaluación",
     "Atención a la diversidad (DUA)",
     "Materiales y recursos",
+)
+SECTION_ALIASES = {
+    "Datos de la situación": ("datos de la situación", "dades de la situació"),
+    "Contexto y justificación": ("contexto y justificación", "context i justificació"),
+    "Reto y producto final": ("reto y producto final", "repte i producte final"),
+    "Competencias específicas y criterios de evaluación": (
+        "competencias específicas y criterios de evaluación", "competències específiques i criteris d'avaluació"),
+    "Saberes básicos": ("saberes básicos", "sabers bàsics", "saberes bàsics"),
+    "Secuencia de sesiones": ("secuencia de sesiones", "seqüència de sessions"),
+    "Evaluación": ("evaluación", "avaluació"),
+    "Atención a la diversidad (DUA)": ("atención a la diversidad", "atenció a la diversitat"),
+    "Materiales y recursos": ("materiales y recursos", "materials i recursos"),
+}
+SITUATION_SKELETON_VA = (
+    "Dades de la situació", "Context i justificació", "Repte i producte final",
+    "Competències específiques i criteris d'avaluació", "Sabers bàsics", "Seqüència de sessions",
+    "Avaluació", "Atenció a la diversitat (DUA)", "Materials i recursos",
 )
 SITUATION_PATH = "situacion.md"
 HEADING = re.compile(r"^#{1,6}\s+(.+?)\s*$", re.MULTILINE)
@@ -138,9 +157,14 @@ def normalise(text: str) -> str:
 
 
 def missing_sections(markdown: str) -> list[str]:
-    """Situation templates must contain every required heading; the check is on headings, not prose."""
-    headings = {normalise(match.group(1)) for match in HEADING.finditer(markdown)}
-    return [section for section in SITUATION_SECTIONS if normalise(section) not in headings]
+    """Every required section must appear as a heading. Matching tolerates level, extra words and es/va titles."""
+    headings = [normalise(match.group(1)) for match in HEADING.finditer(markdown)]
+    missing = []
+    for section in SITUATION_SECTIONS:
+        aliases = [normalise(alias) for alias in SECTION_ALIASES[section]]
+        if not any(heading.startswith(alias) for heading in headings for alias in aliases):
+            missing.append(section)
+    return missing
 
 
 def situation_instruction(brief: dict) -> str:
@@ -162,7 +186,8 @@ def situation_instruction(brief: dict) -> str:
         f"Instrumentos de evaluación pedidos: {str(brief.get('evaluation') or '').strip() or 'rúbrica y observación'}",
         f"Notas de diversidad y DUA: {str(brief.get('diversity') or '').strip() or 'ninguna indicada'}",
     ]
-    skeleton = "\n".join(f"## {section}" for section in SITUATION_SECTIONS)
+    titles = SITUATION_SKELETON_VA if language == "va" else SITUATION_SECTIONS
+    skeleton = "\n".join(f"## {title}" for title in titles)
     return (
         f"Diseña una SITUACIÓN DE APRENDIZAJE completa titulada «{str(brief.get('title') or '').strip() or 'sin título'}». "
         f"Todo el documento debe estar en {lang}. Devuelve un único archivo Markdown llamado {SITUATION_PATH} cuyo "

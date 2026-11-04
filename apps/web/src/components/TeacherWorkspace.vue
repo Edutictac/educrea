@@ -2,16 +2,18 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { t } from '../i18n'
-import { generateFromBrief } from '../services/ai'
+import { changeProposal, generateFromBrief, type Proposal } from '../services/ai'
 import { useAuthStore } from '../stores/auth'
 import { useFilesStore, type ProjectFile } from '../stores/files'
 
 const props = defineProps<{ projectId: string }>()
-const emit = defineEmits<{ generated: [] }>()
+const emit = defineEmits<{ generated: []; openMaterials: [] }>()
 const auth = useAuthStore()
 const generating = ref(false)
 const generated = ref(false)
 const needsProvider = ref(false)
+const lastProposal = ref<Proposal | null>(null)
+const missingSections = ref<string[]>([])
 const files = useFilesStore()
 type Activity = { kind: 'actividad' | 'situacion'; title: string; instructions: string; language: string; level: string;
   activity_type: string; accessibility: { large_text: boolean; high_contrast: boolean }
@@ -84,13 +86,27 @@ async function save() {
     generated.value = false; needsProvider.value = false
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 }
+async function applyAnyway() {
+  if (!lastProposal.value) return
+  error.value = ''; generating.value = true
+  try {
+    const proposal = await changeProposal(props.projectId, lastProposal.value.id, 'apply', auth.csrf)
+    lastProposal.value = proposal
+    generated.value = proposal.status === 'applied'
+    missingSections.value = proposal.grounding?.sections_missing ?? []
+    if (generated.value) { emit('generated'); emit('openMaterials') }
+  } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
+  finally { generating.value = false }
+}
 async function generateFirstVersion() {
   if (dirty.value) { error.value = t('saveBeforeGenerating'); return }
   error.value = ''; success.value = ''; needsProvider.value = false; generating.value = true
   try {
-    await generateFromBrief(props.projectId, auth.csrf)
-    generated.value = true
-    emit('generated')
+    const proposal = await generateFromBrief(props.projectId, auth.csrf)
+    lastProposal.value = proposal
+    missingSections.value = proposal.grounding?.sections_missing ?? []
+    generated.value = proposal.status === 'applied'
+    if (generated.value) emit('generated')
   } catch (cause) {
     const text = cause instanceof Error ? cause.message : t('error')
     needsProvider.value = /proveedor|modelo/i.test(text)
@@ -144,7 +160,14 @@ async function generateFirstVersion() {
           : activity.kind === 'situacion' ? t('generateSituation') : t('generateFirstVersion') }}</button>
       <span v-if="generating" role="status">{{ t('mayTakeAMinute') }}</span>
     </div>
-    <p v-if="generated" class="notice ok" role="status">{{ activity.kind === 'situacion' ? t('situationReady') : t('firstVersionReady') }}</p>
+    <p v-if="generated" class="notice ok" role="status">{{ activity.kind === 'situacion' ? t('situationReady') : t('firstVersionReady') }}
+      <button v-if="activity.kind === 'situacion'" type="button" class="secondary" @click="emit('openMaterials')">{{ t('openMaterials') }}</button></p>
+    <div v-if="!generated && missingSections.length" class="notice">
+      <p><strong>{{ t('proposalNeedsReview') }}</strong></p>
+      <p>{{ t('missingSections') }}: {{ missingSections.join(', ') }}</p>
+      <div class="actions"><button type="button" :disabled="generating" @click="applyAnyway">{{ t('applyAnyway') }}</button>
+        <button type="button" class="secondary" :disabled="generating" @click="generateFirstVersion">{{ t('regenerateFirstVersion') }}</button></div>
+    </div>
     <p v-if="needsProvider" class="notice">{{ t('needProviderFirst') }} <RouterLink to="/ai/providers">{{ t('myProviders') }}</RouterLink></p>
     <p v-if="!generated && !generating && !dirty && file" class="hint">{{ t('teacherNext') }}</p>
   </section>

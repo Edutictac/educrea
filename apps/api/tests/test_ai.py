@@ -730,7 +730,7 @@ def test_situation_from_brief_generates_markdown_and_requires_all_sections(clien
     md = next(f for f in client.get(f"/api/projects/{project_id}/files").json() if f["path"] == "situacion.md")
     assert "## Atención a la diversidad (DUA)" in client.get(f"/api/projects/{project_id}/files/{md['id']}").json()["content"]
     prompt = captured["prompt"]
-    for expected in ("SITUACIÓN DE APRENDIZAJE", "situacion.md", "## Secuencia de sesiones", "valenciano",
+    for expected in ("SITUACIÓN DE APRENDIZAJE", "situacion.md", "## Seqüència de sessions", "valenciano",
                      "Curso o ciclo: 4t", "L'hort escolar", "6", "Guia" if False else "Guia"):
         assert expected in prompt, expected
 
@@ -741,3 +741,20 @@ def test_situation_from_brief_generates_markdown_and_requires_all_sections(clien
     assert pending["status"] == "pending" and "Evaluación" in pending["grounding"]["sections_missing"]
     content = client.get(f"/api/projects/{project_id}/files/{md['id']}").json()["content"]
     assert "## Evaluación" in content  # previous good version untouched
+
+
+def test_section_check_accepts_translated_heading_variants():
+    from edustudio_api.services.ai import engine as e
+
+    valencian = """## Dades de la situació
+## Context i justificació
+## Repte i producte final
+## Competències específiques i criteris d'avaluació
+## Sabers bàsics del área
+## Seqüència de sessions
+## Avaluació
+## Atenció a la diversitat (DUA)
+## Materials i recursos"""
+    assert e.missing_sections(valencian) == []
+    assert e.missing_sections("### Saberes básicos\n") == [s for s in e.SITUATION_SECTIONS if s != "Saberes básicos"]
+    assert "Saberes básicos" in e.missing_sections("## Evaluación\n")

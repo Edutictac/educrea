@@ -8,6 +8,7 @@ const files = useFilesStore()
 const open = ref(false)
 const shown = ref<{ path: string; html: string } | null>(null)
 const error = ref('')
+defineExpose({ openLatest })
 const documents = computed(() => files.items.filter((item: FileSummary) => item.path.toLowerCase().endsWith('.md')))
 
 async function load() { try { await files.load(props.projectId) } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') } }
@@ -15,6 +16,11 @@ watch(() => props.refreshKey, () => { if (open.value) void load() })
 async function toggle() {
   if (open.value) { open.value = false; return }
   error.value = ''; await load(); open.value = true
+}
+async function openLatest() {
+  error.value = ''; await load(); open.value = true
+  const preferred = documents.value.find(item => item.path === 'situacion.md') ?? documents.value[0]
+  if (preferred) await read(preferred)
 }
 async function read(item: FileSummary) {
   error.value = ''

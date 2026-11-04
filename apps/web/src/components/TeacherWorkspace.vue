@@ -87,8 +87,9 @@ async function save() {
         <label class="check"><input v-model="activity.accessibility.high_contrast" type="checkbox" />{{ t('highContrast') }}</label>
       </fieldset>
       <div class="full actions"><button type="submit" :disabled="!dirty && !!file">{{ t('saveActivity') }}</button>
-        <span v-if="dirty">{{ t('unsaved') }}</span></div>
+        <span v-if="dirty">{{ t('unsaved') }}</span><span v-else-if="file" role="status">{{ t('saved') }}</span></div>
     </form>
+    <p v-if="!dirty && file" class="hint">{{ t('teacherNext') }}</p>
   </section>
 </template>
 

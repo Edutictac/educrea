@@ -631,3 +631,25 @@ def test_auto_apply_also_in_streaming(client: TestClient, monkeypatch):
     response = client.post(f"/api/projects/{project_id}/ai/proposals/stream", headers=headers, json=request)
     assert response.status_code == 200 and '"status": "applied"' in response.text
     assert [f["path"] for f in client.get(f"/api/projects/{project_id}/files").json()] == ["index.html"]
+
+
+def test_prompt_treats_activity_json_as_the_teacher_brief(client: TestClient, monkeypatch):
+    headers, project_id = setup_user(client)
+    client.post(f"/api/projects/{project_id}/files", headers=headers, json={"path": "activity.json", "content": '{"level":"infantil"}'})
+    client.put("/api/ai/providers/groq/key", headers=headers, json={"api_key": "test-groq-secret"})
+    client.post("/api/ai/providers/groq/free-models/groq-test-free/confirm", headers=headers, json={"acknowledged": True})
+    captured = {}
+
+    class Capture(StubGemini):
+        async def generate(self, key, model, prompt):
+            captured["prompt"] = prompt
+            return await super().generate(key, model, prompt)
+
+    draft = {"summary": "x", "changes": [{"path": "index.html", "content": "<p>x</p>"}]}
+    monkeypatch.setattr(registry, "adapter", lambda _name: Capture(json.dumps(draft)))
+    response = client.post(f"/api/projects/{project_id}/ai/proposals", headers=headers, json={
+        "instruction": "Crea la actividad", "provider": "groq", "model": "groq-test-free", "automatic": True})
+    assert response.status_code == 201
+    prompt = captured["prompt"]
+    assert "activity.json" in prompt and "encargo del docente" in prompt and "alto contraste" in prompt
+    assert "infantil" in prompt and "activity.json" in prompt  # the brief itself reaches the model as context

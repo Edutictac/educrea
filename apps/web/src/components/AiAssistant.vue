@@ -4,6 +4,7 @@ import { t } from '../i18n'
 import { listSources, type Source } from '../services/sources'
 import { invokeCapability, parseArguments } from '../services/capabilities'
 import { aiChoice, PROVIDER_NAMES } from '../services/aiChoice'
+import AiProgress, { type AiStage } from './AiProgress.vue'
 import { useAuthStore } from '../stores/auth'
 import { AiError, budgetStatus, changeProposal, estimatePaid, providersStatus, quotaStatus,
   listContextFiles, listProposals, streamProposal,
@@ -49,6 +50,8 @@ const stickToBottom = ref(true)
 const failedOutput = ref('')
 const failedCopied = ref(false)
 const busy = ref(false)
+const generatingAi = ref(false)  // only while a generation runs (busy is also used by apply/reject)
+const progress = ref<{ stage: AiStage; ai: string; passages: number; chars: number; retry: boolean }>({ stage: 'preparing', ai: '', passages: 0, chars: 0, retry: false })
 const error = ref('')
 const message = ref('')
 let controller: AbortController | null = null
@@ -100,12 +103,19 @@ async function generate() {
   }
   error.value = ''; message.value = ''; streaming.value = ''; failedOutput.value = ''; failedCopied.value = false
   stickToBottom.value = true
-  busy.value = true
+  progress.value = { stage: 'preparing', ai: '', passages: 0, chars: 0, retry: false }
+  busy.value = true; generatingAi.value = true
   controller = new AbortController()
   try {
     await streamProposal(props.projectId, instruction.value, provider.value, model.value,
       selectedPaths.value, allowFallback.value, auth.csrf,
       controller.signal, event => {
+      if (event.event === 'status') {
+        const ai = `${PROVIDER_NAMES[event.data.provider as ProviderName] ?? event.data.provider ?? ''} · ${event.data.model ?? ''}`
+        progress.value = { ...progress.value, ai, stage: event.data.stage === 'consulting' ? 'consulting' : 'thinking', chars: 0,
+          passages: event.data.passages ?? progress.value.passages, retry: event.data.retry ?? progress.value.retry }
+      }
+      if (event.event === 'token') progress.value = { ...progress.value, stage: 'writing', chars: progress.value.chars + event.data.text.length }
       if (event.event === 'status' && event.data.stage === 'consulting') message.value = t('agentConsulting')
       if (event.event === 'consulted') message.value = `${t('agentConsulted')}: ${event.data.capabilities.map(step => step.name).join(', ')}`
       if (event.event === 'status' && event.data.stage === 'generating') {
@@ -133,7 +143,7 @@ async function generate() {
     streaming.value = ''
     if (controller.signal.aborted) message.value = t('generationCancelled')
     else error.value = describeError(cause)
-  } finally { busy.value = false; controller = null
+  } finally { busy.value = false; generatingAi.value = false; controller = null
     quota.value = await quotaStatus().catch(() => quota.value)
     budget.value = await budgetStatus().catch(() => budget.value)
     estimate.value = null; paidConfirmed.value = false }
@@ -259,6 +269,7 @@ function stateLabel(value: Proposal['status']) {
     </form>
     <p v-if="error" role="alert">{{ error }}</p><p v-if="message" role="status">{{ message }}</p>
     <p v-if="actualProvider" role="status">{{ t('providerLabel') }}: {{ actualProvider }}</p>
+    <AiProgress v-if="generatingAi" :stage="progress.stage" :ai="progress.ai" :passages="progress.passages" :chars="progress.chars" :retry="progress.retry" />
     <pre v-if="streaming" ref="streamEl" class="stream-output" aria-live="polite" @scroll="trackStreamScroll">{{ streaming }}</pre>
     <details v-if="failedOutput" class="failed-output">
       <summary>{{ t('viewFailedOutput') }}</summary>

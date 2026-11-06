@@ -367,7 +367,8 @@ async def stream_proposal(project_id: UUID, data: GenerateInput,
             response_bytes = 0
             usage: dict = {}
             reservation = None
-            yield event("status", {"stage": "generating", "provider": name, "model": model})
+            yield event("status", {"stage": "generating", "provider": name, "model": model,
+                                   "passages": len(passages), "retry": bool(skip_providers or skip_models)})
             try:
                 reservation = quotas.reserve(db, user_id, name, model, maximum_cost, price, maximum_tokens)
                 adapter = provider if name == "gemini" else registry.adapter(name)

@@ -5,6 +5,7 @@ import { adaptDua, changeProposal, type Proposal } from '../services/ai'
 import type { DuaPrinciple } from '../services/sources'
 import { useAuthStore } from '../stores/auth'
 import { choiceBody } from '../services/aiChoice'
+import AiProgress from './AiProgress.vue'
 import { useFilesStore } from '../stores/files'
 
 const props = defineProps<{ projectId: string; embedded?: boolean; refreshKey?: number; autoApply: boolean; canGenerate: () => boolean }>()
@@ -58,8 +59,9 @@ onMounted(() => { if (props.embedded && !open.value) void toggle() })
         <label>{{ t('duaMaterial') }}<select v-model="path"><option v-for="item in materials" :key="item" :value="item">{{ item }}</option></select></label>
         <label>{{ t('duaNeeds') }}<textarea v-model="needs" rows="3" maxlength="1500" :placeholder="t('duaNeedsPlaceholder')" /></label>
         <div class="actions"><button type="submit" :disabled="busy || !path">{{ busy ? t('duaAdapting') : t('duaAdapt') }}</button>
-          <span v-if="busy" role="status">{{ t('mayTakeAMinute') }}</span></div>
+</div>
       </form>
+      <AiProgress v-if="busy && !result" simple :label="t('progressDua')" />
       <p v-if="error" role="alert">{{ error }}</p>
       <div v-if="result && grounding" class="notice" :class="{ ok: result.status === 'applied' }">
         <p role="status"><strong>{{ result.summary }}</strong> ·

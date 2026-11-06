@@ -131,7 +131,7 @@ export async function changeProposal(projectId: string, proposalId: string,
   }))).json() as Proposal
 }
 
-export type AiStreamEvent = { event: 'status'; data: { stage: string; provider?: ProviderName; model?: string } }
+export type AiStreamEvent = { event: 'status'; data: { stage: string; provider?: ProviderName; model?: string; passages?: number; retry?: boolean } }
   | { event: 'token'; data: { text: string } }
   | { event: 'consulted'; data: { capabilities: AgentStep[] } }
   | { event: 'proposal'; data: Proposal }

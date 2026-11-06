@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/auth'
 import { useFilesStore, type ProjectFile } from '../stores/files'
 import { listTemplates, templateStatus, updateTemplateEngine, type TemplateInfo } from '../services/templates'
 import StartingMaterial from './StartingMaterial.vue'
+import AiProgress from './AiProgress.vue'
 import { choiceBody } from '../services/aiChoice'
 
 const props = defineProps<{ projectId: string }>()
@@ -147,8 +148,9 @@ async function generateFirstVersion() {
       <button type="button" :disabled="generating" @click="generateFirstVersion">
         {{ generating ? t('generatingFirstVersion') : generated ? t('regenerateFirstVersion')
           : activity.kind === 'situacion' ? t('generateSituation') : activity.kind === 'ficha' ? t('generateWorksheet') : t('generateFirstVersion') }}</button>
-      <span v-if="generating" role="status">{{ t('mayTakeAMinute') }}</span>
+
     </div>
+    <AiProgress v-if="generating" simple :label="activity.kind === 'situacion' ? t('progressSituation') : t('progressFirstVersion')" />
     <p v-if="generated" class="notice ok" role="status">{{ activity.kind === 'situacion' ? t('situationReady') : activity.kind === 'ficha' ? t('worksheetReady') : t('firstVersionReady') }}
       <button v-if="documentKind" type="button" class="secondary" @click="emit('openMaterials')">{{ t('openMaterials') }}</button></p>
     <p v-if="generated && verified" class="hint">{{ t('basedOnMaterial') }}: {{ verified }} {{ t('citationsVerified') }}</p>

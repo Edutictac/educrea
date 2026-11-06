@@ -271,6 +271,8 @@ function stateLabel(value: Proposal['status']) {
         {{ item.summary }} · {{ stateLabel(item.status) }}</option></select></label>
       <div v-if="selected" class="proposal-review">
         <p><strong>{{ selected.summary }}</strong> · {{ stateLabel(selected.status) }} · {{ selected.provider }} / {{ selected.model }}</p>
+        <div v-if="selected.grounding?.template_problems?.length" class="notice"><strong>{{ t('proposalNeedsReview') }}</strong>
+          <p>{{ t('templateProblems') }}</p><ul><li v-for="(item, index) in selected.grounding.template_problems" :key="index">{{ item }}</li></ul></div>
         <div v-if="selected.grounding?.kind === 'dua'" class="notice" :class="{ ok: selected.grounding.supported }">
           <strong>{{ t('duaTitle') }}: {{ selected.grounding.target }}</strong>
           <p v-if="selected.grounding.principles_missing?.length">{{ t('duaPrinciplesMissing') }}: {{ selected.grounding.principles_missing.join(', ') }}</p>

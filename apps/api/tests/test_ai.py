@@ -1012,3 +1012,28 @@ def test_stream_error_reports_code_and_provider(client: TestClient):
                            json={"instruction": "Crea una actividad de fracciones", "model": "gemini-test-free"})
     assert '"code": "provider_truncated"' in response.text
     assert '"provider": "gemini"' in response.text
+
+
+def test_assistant_on_a_learning_situation_edits_the_document_and_never_applies_html(client: TestClient):
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    client.post(f"{base}/files", headers=headers, json={"path": "activity.json", "content": json.dumps(
+        {"kind": "situacion", "title": "L'hort", "language": "va"})})
+    client.post(f"{base}/files", headers=headers, json={"path": "situacion.md", "content": "# L'hort\n\n## Dades de la situació\n\nBreu.\n"})
+    captured = {}
+
+    class Capture(StubGemini):
+        async def generate(self, key, model, prompt):
+            captured["prompt"] = prompt
+            return await super().generate(key, model, prompt)
+
+    html = {"summary": "Pàgina", "changes": [{"path": "index.html", "content": "<h1>Hort</h1>"}]}
+    app.dependency_overrides[get_gemini_provider] = lambda: Capture(json.dumps(html))
+    body = client.post(f"{base}/ai/proposals", headers=headers, json={
+        "instruction": "La situació és un poc escueta, desenvolupa-la", "model": "gemini-test-free",
+        "automatic": True, "auto_apply": True}).json()
+    prompt = captured["prompt"]
+    assert "ESTE PROYECTO ES UN DOCUMENTO" in prompt and "situacion.md" in prompt and "1500 y 3000 palabras" in prompt
+    assert "«Atenció a la diversitat (DUA)»" in prompt and "La página principal de una actividad" not in prompt
+    assert body["status"] == "pending" and "index.html" in " ".join(body["grounding"]["template_problems"])
+    assert "index.html" not in {f["path"] for f in client.get(f"{base}/files").json()}

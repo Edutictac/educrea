@@ -15,6 +15,7 @@ from ...routers.projects import project_for_owner
 from .providers.gemini import free_models
 from .providers.registry import authorize, authorize_paid, free_models as provider_free_models
 from .. import assets as asset_service
+from .. import templates as template_service
 from .. import sources as source_service
 from .schemas import DraftProposal, GenerateInput
 
@@ -212,14 +213,24 @@ def situation_instruction(brief: dict) -> str:
     )
 
 
+def brief_template(brief: dict | None) -> str | None:
+    value = (brief or {}).get("template")
+    return value if isinstance(value, str) and value in template_service.TEMPLATES else None
+
+
 def instruction_for(brief: dict) -> str:
-    return situation_instruction(brief) if brief_kind(brief) == "situacion" else brief_instruction(brief)
+    if brief_kind(brief) == "situacion":
+        return situation_instruction(brief)
+    template = brief_template(brief)
+    if template:
+        return template_service.instruction(template, brief, brief_instruction(brief, with_files=False))
+    return brief_instruction(brief)
 LANGUAGE_NAMES = {"es": "castellano", "va": "valenciano (catalán)"}
 LEVEL_NAMES = {"infantil": "Educación Infantil", "primaria": "Educación Primaria", "secundaria": "Educación Secundaria",
                "otros": "otro nivel"}
 
 
-def brief_instruction(brief: dict) -> str:
+def brief_instruction(brief: dict, with_files: bool = True) -> str:
     """Turns the teacher's activity.json brief into the instruction for the first version."""
     language = str(brief.get("language") or "es")
     lang = "valenciano" if language == "va" else "castellano"
@@ -235,9 +246,10 @@ def brief_instruction(brief: dict) -> str:
     ]
     if wants:
         parts.append("Accesibilidad obligatoria: " + " y ".join(wants) + ", aplicados en el CSS.")
-    parts.append("Crea index.html, style.css y script.js con rutas relativas, sin recursos externos, sin CDN y sin "
-                 "dependencias. Si la actividad necesita datos iniciales, añade o actualiza activity.json conservando "
-                 "los campos del encargo.")
+    if with_files:
+        parts.append("Crea index.html, style.css y script.js con rutas relativas, sin recursos externos, sin CDN y sin "
+                     "dependencias. Si la actividad necesita datos iniciales, añade o actualiza activity.json conservando "
+                     "los campos del encargo.")
     return "\n".join(parts)
 
 
@@ -359,13 +371,22 @@ def persist(db: Session, project_id: UUID, user_id: UUID, model: str, text: str,
                         "after_content": change.content, "base_version": previous["version"] if previous else 0})
     if len(snapshot) + new_count > MAX_FILES:
         raise HTTPException(409, "La propuesta supera el límite de archivos")
-    kind = brief_kind(read_brief(db, project_id))
+    brief = read_brief(db, project_id)
+    kind = brief_kind(brief)
+    template = brief_template(brief)
     if dua_target:
         grounding = dua_grounding(draft, dua_target)
     elif source_ids or kind == "situacion":
         grounding = build_grounding(db, project_id, source_ids or [], draft, passages_used or [], kind)
     else:
         grounding = None
+    if template and not dua_target and kind != "situacion":
+        report = template_service.check_proposal(template, draft.changes)
+        if grounding is None:
+            grounding = report
+        else:  # sources and template checks both apply
+            grounding["template_problems"] = report["template_problems"]
+            grounding["supported"] = grounding["supported"] and report["supported"]
     proposal = AiProposal(project_id=project_id, user_id=user_id, provider=provider, model=model,
                           summary=draft.summary, changes=changes, usage=usage, status="pending",
                           grounding=grounding, agent_trace=agent_trace or None)

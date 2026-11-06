@@ -30,7 +30,7 @@ where = ["."]
 include = ["edustudio_api*"]
 
 [tool.setuptools.package-data]
-edustudio_api = ["data/*.txt"]
+edustudio_api = ["data/*.txt", "data/templates/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

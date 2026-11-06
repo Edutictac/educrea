@@ -24,7 +24,7 @@ MAX_PROJECT_BYTES = 20 * 1024 * 1024
 MAX_ASSETS = 50
 SIGNATURES = {"image/png": (b"\x89PNG\r\n\x1a\n",), "image/jpeg": (b"\xff\xd8\xff",)}
 EXTENSIONS = {"image/png": ".png", "image/jpeg": ".jpg"}
-REFERENCE = re.compile(r"""(?P<lead>(?:src\s*=\s*["']|url\(\s*["']?|\]\())\s*(?:\./)?(?P<path>imagenes/[A-Za-z0-9._-]+)""")
+REFERENCE = re.compile(r"""(?P<lead>(?:src\s*=\s*["']|url\(\s*["']?|\]\(|"image"\s*:\s*"))\s*(?:\./)?(?P<path>imagenes/[A-Za-z0-9._-]+)""")
 
 
 def sniff(data: bytes) -> str:

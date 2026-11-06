@@ -3,7 +3,7 @@
 export interface Asset { id: string; path: string; media_type: string; size: number; alt: string; credit: string }
 
 export const MAX_IMAGE_BYTES = 2 * 1024 * 1024
-const REFERENCE = /((?:src\s*=\s*["']|url\(\s*["']?|\]\())\s*(?:\.\/)?(imagenes\/[A-Za-z0-9._-]+)/g
+const REFERENCE = /((?:src\s*=\s*["']|url\(\s*["']?|\]\(|"image"\s*:\s*"))\s*(?:\.\/)?(imagenes\/[A-Za-z0-9._-]+)/g
 
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {

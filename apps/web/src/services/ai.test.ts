@@ -16,6 +16,10 @@ describe('contexto automático', () => {
 describe('streaming de propuestas', () => {
   it('interpreta eventos SSE y fragmentos divididos entre lecturas', async () => {
     expect(parseSseBlock('event: token\ndata: {"text":"hola"}')).toEqual({ event: 'token', data: { text: 'hola' } })
+    // Progress events of the agent consultation and of section-by-section documents must reach the interface.
+    expect(parseSseBlock('event: section\ndata: {"index":2,"total":9}')).toEqual({ event: 'section', data: { index: 2, total: 9 } })
+    expect(parseSseBlock('event: consulted\ndata: {"capabilities":[]}')?.event).toBe('consulted')
+    expect(parseSseBlock('event: unknown\ndata: {}')).toBeNull()
     const encoder = new TextEncoder()
     const body = new ReadableStream<Uint8Array>({ start(controller) {
       controller.enqueue(encoder.encode('event: token\ndata: {"text":"ho'))

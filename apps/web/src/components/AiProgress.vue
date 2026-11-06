@@ -5,7 +5,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { t } from '../i18n'
 
 import type { AiStage } from '../services/aiProgress'
-const props = defineProps<{ stage?: AiStage; ai?: string; passages?: number; chars?: number; retry?: boolean; simple?: boolean; label?: string }>()
+const props = defineProps<{ stage?: AiStage; ai?: string; passages?: number; chars?: number; retry?: boolean; simple?: boolean; label?: string
+  section?: { index: number; total: number; title: string; done: number } }>()
 
 const started = Date.now()
 const now = ref(Date.now())
@@ -29,8 +30,9 @@ function text(step: AiStage): string {
 }
 // Announce stage changes once (the clock is hidden from screen readers so they are not flooded).
 const announcement = ref('')
-watch(() => [props.stage, props.retry], () => {
-  announcement.value = props.simple ? (props.label ?? t('progressWorking')) : text(props.stage ?? 'preparing')
+watch(() => [props.stage, props.retry, props.section?.index], () => {
+  announcement.value = props.section ? `${t('progressSection')} ${props.section.index} / ${props.section.total}: ${props.section.title}`
+    : props.simple ? (props.label ?? t('progressWorking')) : text(props.stage ?? 'preparing')
 }, { immediate: true })
 </script>
 
@@ -42,6 +44,10 @@ watch(() => [props.stage, props.retry], () => {
       <span class="clock" aria-hidden="true">{{ elapsed }}</span>
     </div>
     <p v-if="retry" class="hint">{{ t('progressRetry') }}</p>
+    <div v-if="section" class="section-progress">
+      <p><strong>{{ t('progressSection') }} {{ section.index }} {{ t('progressOf') }} {{ section.total }}</strong> · {{ section.title }}</p>
+      <div class="bar" aria-hidden="true"><span :style="{ width: `${Math.round(100 * section.done / section.total)}%` }"></span></div>
+    </div>
     <ol v-if="!simple" class="ai-steps">
       <li v-for="item in steps" :key="item.step" :class="item.state">
         <span class="dot" aria-hidden="true">{{ item.state === 'done' ? '✓' : '' }}</span>{{ text(item.step) }}
@@ -58,6 +64,10 @@ watch(() => [props.stage, props.retry], () => {
 .ai-progress-head .clock { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--c-muted); font-size: .9rem; }
 .spinner { width: 20px; height: 20px; flex: none; border-radius: 50%; border: 3px solid var(--c-brand-100); border-top-color: var(--c-brand); animation: spin .9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.section-progress p { margin: .5rem 0 .3rem; }
+.bar { height: 8px; border-radius: 999px; background: var(--c-brand-100); overflow: hidden; }
+.bar span { display: block; height: 100%; background: var(--c-brand); transition: width .3s; }
 .ai-steps { list-style: none; padding: 0; margin: .6rem 0 0; display: grid; gap: .35rem; }
 .ai-steps li { display: flex; align-items: center; gap: .5rem; color: var(--c-muted); font-size: .93rem; }
 .ai-steps li.current { color: var(--c-brand-700); font-weight: 600; }

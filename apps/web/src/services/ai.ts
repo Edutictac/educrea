@@ -131,7 +131,8 @@ export async function changeProposal(projectId: string, proposalId: string,
   }))).json() as Proposal
 }
 
-export type AiStreamEvent = { event: 'status'; data: { stage: string; provider?: ProviderName; model?: string; passages?: number; retry?: boolean } }
+export type AiStreamEvent = { event: 'status'; data: { stage: string; provider?: ProviderName; model?: string; passages?: number; retry?: boolean; section?: string; index?: number; total?: number } }
+  | { event: 'section'; data: { index: number; total: number; section: string; chars: number } }
   | { event: 'token'; data: { text: string } }
   | { event: 'consulted'; data: { capabilities: AgentStep[] } }
   | { event: 'proposal'; data: Proposal }
@@ -140,7 +141,7 @@ export type AiStreamEvent = { event: 'status'; data: { stage: string; provider?:
 export function parseSseBlock(block: string): AiStreamEvent | null {
   const event = block.split('\n').find(line => line.startsWith('event: '))?.slice(7)
   const data = block.split('\n').find(line => line.startsWith('data: '))?.slice(6)
-  if (!event || !data || !['status', 'token', 'proposal', 'error'].includes(event)) return null
+  if (!event || !data || !['status', 'token', 'proposal', 'error', 'consulted', 'section'].includes(event)) return null
   return { event, data: JSON.parse(data) } as AiStreamEvent
 }
 
@@ -188,7 +189,7 @@ async function readEvents(response: Response, onEvent: (event: AiStreamEvent) =>
 }
 
 // Teacher shortcuts with real progress: first version from the brief and DUA adaptation.
-export async function streamTeacherAction(projectId: string, action: 'from-brief' | 'dua', body: object, csrf: string,
+export async function streamTeacherAction(projectId: string, action: 'from-brief' | 'dua' | 'sections', body: object, csrf: string,
   signal: AbortSignal, onEvent: (event: AiStreamEvent) => void): Promise<Proposal> {
   const response = await checked(await fetch(`/api/projects/${projectId}/ai/${action}/stream`, {
     method: 'POST', signal, headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(body) }))

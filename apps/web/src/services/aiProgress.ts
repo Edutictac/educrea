@@ -5,7 +5,8 @@ import { AiError, type AiStreamEvent, type ProviderName } from './ai'
 import { aiChoice, PROVIDER_NAMES } from './aiChoice'
 
 export type AiStage = 'preparing' | 'consulting' | 'thinking' | 'writing'
-export interface AiProgressState { stage: AiStage; ai: string; passages: number; chars: number; retry: boolean }
+export interface AiProgressState { stage: AiStage; ai: string; passages: number; chars: number; retry: boolean
+  section?: { index: number; total: number; title: string; done: number } }
 
 export function useAiProgress() {
   const progress = ref<AiProgressState>({ stage: 'preparing', ai: '', passages: 0, chars: 0, retry: false })
@@ -14,8 +15,11 @@ export function useAiProgress() {
     if (event.event === 'status') {
       const ai = `${PROVIDER_NAMES[event.data.provider as ProviderName] ?? event.data.provider ?? ''} · ${event.data.model ?? ''}`
       progress.value = { ...progress.value, ai, stage: event.data.stage === 'consulting' ? 'consulting' : 'thinking', chars: 0,
-        passages: event.data.passages ?? progress.value.passages, retry: event.data.retry ?? progress.value.retry }
+        passages: event.data.passages ?? progress.value.passages, retry: event.data.retry ?? progress.value.retry,
+        section: event.data.index && event.data.total ? { index: event.data.index, total: event.data.total,
+          title: event.data.section ?? '', done: progress.value.section?.done ?? 0 } : progress.value.section }
     }
+    if (event.event === 'section' && progress.value.section) progress.value = { ...progress.value, section: { ...progress.value.section, done: progress.value.section.done + 1 } }
     if (event.event === 'token') progress.value = { ...progress.value, stage: 'writing', chars: progress.value.chars + event.data.text.length }
   }
   return { progress, reset, track }

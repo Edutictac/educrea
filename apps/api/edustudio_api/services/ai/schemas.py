@@ -76,6 +76,13 @@ class PreferredModel(BaseModel):
     model: str | None = Field(default=None, max_length=100)
 
 
+class SectionsInput(PreferredModel):
+    """Write or develop a learning situation section by section. Empty sections = all nine, in order."""
+    sections: list[str] = Field(default_factory=list, max_length=9)
+    request: str = Field(default="", max_length=1500)  # e.g. «desarrolla más la evaluación»
+    auto_apply: bool = True
+
+
 class DuaInput(PreferredModel):
     path: str = Field(min_length=1, max_length=200)  # the material to adapt (.html or .md)
     needs: str = Field(default="", max_length=1500)  # group needs or barriers the teacher already knows

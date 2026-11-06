@@ -39,6 +39,23 @@ const dirty = computed(() => JSON.stringify(activity.value) !== baseline.value)
 const templates = ref<TemplateInfo[]>([])
 const template = computed(() => templates.value.find(item => item.id === original.value.template) ?? null)
 const documentKind = computed(() => activity.value.kind === 'situacion' || activity.value.kind === 'ficha')
+// «Desarrollar por secciones»: canonical (API) names with the title in the document language.
+const SECTIONS = ['Datos de la situación', 'Contexto y justificación', 'Reto y producto final',
+  'Competencias específicas y criterios de evaluación', 'Saberes básicos', 'Secuencia de sesiones', 'Evaluación',
+  'Atención a la diversidad (DUA)', 'Materiales y recursos']
+const SECTIONS_VA = ['Dades de la situació', 'Context i justificació', 'Repte i producte final',
+  "Competències específiques i criteris d'avaluació", 'Sabers bàsics', 'Seqüència de sessions', 'Avaluació',
+  'Atenció a la diversitat (DUA)', 'Materials i recursos']
+const sectionTitle = (index: number) => (activity.value.language === 'va' ? SECTIONS_VA : SECTIONS)[index]
+const hasSituation = computed(() => files.items.some(item => item.path === 'situacion.md'))
+const chosenSections = ref<string[]>([])
+const sectionNote = ref('')
+const sectionRequest = ref<{ sections?: string[]; request?: string }>({})
+async function developSections() {
+  if (!chosenSections.value.length) { error.value = t('chooseSections'); return }
+  sectionRequest.value = { sections: [...chosenSections.value], request: sectionNote.value.trim() }
+  await generateFirstVersion()
+}
 const problems = ref<string[]>([])
 const unsupported = ref(false)
 const { progress, reset: resetProgress, track: trackProgress } = useAiProgress()
@@ -126,7 +143,10 @@ async function generateFirstVersion() {
   error.value = ''; success.value = ''; needsProvider.value = false; generating.value = true
   try {
     resetProgress(); controller = new AbortController()
-    const proposal = await streamTeacherAction(props.projectId, 'from-brief', choiceBody(), auth.csrf, controller.signal, trackProgress)
+    // Learning situations are written section by section (smaller answers, real progress, partial retries).
+    const proposal = activity.value.kind === 'situacion'
+      ? await streamTeacherAction(props.projectId, 'sections', { ...choiceBody(), ...sectionRequest.value }, auth.csrf, controller.signal, trackProgress)
+      : await streamTeacherAction(props.projectId, 'from-brief', choiceBody(), auth.csrf, controller.signal, trackProgress)
     lastProposal.value = proposal
     missingSections.value = proposal.grounding?.sections_missing ?? []
     problems.value = proposal.grounding?.template_problems ?? []
@@ -139,7 +159,7 @@ async function generateFirstVersion() {
     const text = describeAiError(cause)
     needsProvider.value = /proveedor|modelo/i.test(text) && !(cause instanceof AiError)
     error.value = text
-  } finally { generating.value = false; controller = null }
+  } finally { generating.value = false; controller = null; sectionRequest.value = {} }
 }
 </script>
 
@@ -155,7 +175,7 @@ async function generateFirstVersion() {
           : activity.kind === 'situacion' ? t('generateSituation') : activity.kind === 'ficha' ? t('generateWorksheet') : t('generateFirstVersion') }}</button>
 
     </div>
-    <AiProgress v-if="generating" :stage="progress.stage" :ai="progress.ai" :passages="progress.passages" :chars="progress.chars" :retry="progress.retry" />
+    <AiProgress v-if="generating" :stage="progress.stage" :ai="progress.ai" :passages="progress.passages" :chars="progress.chars" :retry="progress.retry" :section="progress.section" />
     <div v-if="generating" class="actions"><button type="button" class="secondary" @click="controller?.abort()">{{ t('cancel') }}</button></div>
     <p v-if="generated" class="notice ok" role="status">{{ activity.kind === 'situacion' ? t('situationReady') : activity.kind === 'ficha' ? t('worksheetReady') : t('firstVersionReady') }}
       <button v-if="documentKind" type="button" class="secondary" @click="emit('openMaterials')">{{ t('openMaterials') }}</button></p>
@@ -169,6 +189,15 @@ async function generateFirstVersion() {
         <button type="button" class="secondary" :disabled="generating" @click="generateFirstVersion">{{ t('regenerateFirstVersion') }}</button></div>
     </div>
     <p v-if="engineOutdated" class="notice">{{ t('engineOutdated') }} <button type="button" class="secondary" @click="updateEngine">{{ t('engineUpdate') }}</button></p>
+    <details v-if="activity.kind === 'situacion' && hasSituation && !generating" class="develop-sections">
+      <summary>{{ t('developSections') }}</summary>
+      <p class="hint">{{ t('developSectionsHint') }}</p>
+      <div class="section-checks"><label v-for="(name, index) in SECTIONS" :key="name" class="check">
+        <input v-model="chosenSections" type="checkbox" :value="name" />{{ sectionTitle(index) }}</label></div>
+      <label>{{ t('developSectionsNote') }}<textarea v-model="sectionNote" rows="2" maxlength="1500" :placeholder="t('developSectionsPlaceholder')" /></label>
+      <div class="actions"><button type="button" :disabled="!chosenSections.length || dirty" @click="developSections">{{ t('developSectionsRun') }}</button>
+        <button type="button" class="ghost" @click="chosenSections = chosenSections.length === SECTIONS.length ? [] : [...SECTIONS]">{{ t('selectAll') }}</button></div>
+    </details>
     <StartingMaterial v-if="!loading && !blocked && file" :project-id="projectId" @changed="generated = false" />
     <form v-if="!loading && !blocked" class="form-grid" @submit.prevent="save">
       <p v-if="template" class="full notice ok"><strong>{{ t('templateLabel') }}: {{ template.names[locale] }}</strong> · {{ template.descriptions[locale] }}</p>
@@ -213,3 +242,8 @@ async function generateFirstVersion() {
   </section>
 </template>
 
+
+<style scoped>
+.develop-sections { border: 1px solid var(--c-line); border-radius: var(--radius); padding: .4rem 1rem; margin: 1rem 0; background: var(--c-surface); }
+.section-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0 1rem; }
+</style>

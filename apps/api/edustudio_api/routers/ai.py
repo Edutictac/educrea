@@ -11,7 +11,8 @@ from ..db import get_db
 from ..models import AiCredential, AiProposal, ProjectFile, Source, User
 from ..models.entities import utcnow
 from ..security import current_user, require_csrf
-from ..services.ai import agent, engine
+from ..services.ai import agent, engine, sections as section_service
+from ..services import sources as source_service
 from ..services.ai import quotas
 from ..services.ai import pricing
 from ..services.ai.credentials import encrypt_key, personal_credential
@@ -19,7 +20,7 @@ from ..services.ai.providers.base import ProviderError
 from ..services.ai.providers.gemini import GeminiProvider, get_gemini_provider
 from ..services.ai.providers import registry
 from ..services.ai.schemas import (BudgetInput, CredentialInput, DuaInput, FreeConfirmation, GenerateInput,
-                                   PreferredModel, ProposalOut)
+                                   PreferredModel, ProposalOut, SectionsInput)
 
 router = APIRouter(tags=["ai"])
 
@@ -505,3 +506,146 @@ def restore_proposal(project_id: UUID, proposal_id: UUID, user: User = Depends(r
                      db: Session = Depends(get_db)) -> AiProposal:
     return engine.restore(db, project_id, proposal_id, user.id)
 
+
+
+SECTION_ATTEMPTS = 3
+SECTION_PASSAGE_BUDGET = 30_000
+
+
+@router.post("/projects/{project_id}/ai/sections/stream")
+async def stream_sections(project_id: UUID, data: SectionsInput, user: User = Depends(require_csrf),
+                          db: Session = Depends(get_db),
+                          provider: GeminiProvider = Depends(get_gemini_provider)) -> StreamingResponse:
+    """Learning situation written (or developed) one section at a time, saved as a single proposal."""
+    from .projects import project_for_owner
+
+    user_id = user.id
+    project = project_for_owner(db, project_id, user_id)
+    brief = engine.read_brief(db, project_id) or {}
+    if engine.brief_kind(brief) != "situacion":
+        raise HTTPException(409, "La redacción por secciones es para situaciones de aprendizaje")
+    unknown = [name for name in data.sections if name not in engine.SITUATION_SECTIONS]
+    if unknown:
+        raise HTTPException(422, "Sección desconocida")
+    targets = [name for name in engine.SITUATION_SECTIONS if not data.sections or name in data.sections]
+    explicit = bool(data.provider and data.model)
+    available = registry.preferred_free(db, user_id, data.provider, data.model)
+    if available is None:
+        raise HTTPException(409, "Configura un proveedor gratuito y confirma un modelo antes de generar")
+    files = list(db.scalars(select(ProjectFile).where(ProjectFile.project_id == project_id)))
+    snapshot = {row.path: {"content": row.content, "version": row.version} for row in files}
+    current = snapshot.get(engine.SITUATION_PATH, {}).get("content", "")
+    source_ids = list(db.scalars(select(Source.id).where(Source.project_id == project_id).order_by(Source.created_at)))
+    language = "va" if brief.get("language") == "va" else "es"
+    local = section_service.titles(language)
+    title = str(brief.get("title") or project.title)
+    db.rollback()
+
+    async def events():
+        name, model, key = available
+        preamble, parts_by_section = section_service.split(current)
+        citations: list[dict] = []
+        not_covered: list[str] = []
+        used: dict[str, dict] = {}
+        failed: list[str] = []
+        rescued: list[str] = []
+        written = 0
+        skip_providers: set[str] = set()
+        skip_models: set[tuple[str, str]] = set()
+        for index, section in enumerate(targets, 1):
+            passages = None
+            if source_ids:
+                query = " ".join([section, title, str(brief.get("area") or ""), str(brief.get("challenge") or ""),
+                                  data.request])
+                passages = source_service.retrieve(db, project_id, source_ids, query, budget=SECTION_PASSAGE_BUDGET,
+                                                   whole_if_fits=True)
+            document = section_service.join(title, preamble, parts_by_section, language)
+            prompt = section_service.section_prompt(brief, section, document, passages, data.request)
+            db.rollback()
+            done = False
+            for _attempt in range(SECTION_ATTEMPTS):
+                yield _sse("status", {"stage": "generating", "provider": name, "model": model,
+                                      "passages": len(passages or []), "retry": bool(skip_providers or skip_models),
+                                      "section": local[section], "index": index, "total": len(targets)})
+                pieces: list[str] = []
+                usage: dict = {}
+                reservation = quotas.reserve(db, user_id, name, model)
+                try:
+                    adapter = provider if name == "gemini" else registry.adapter(name)
+                    async for chunk in adapter.stream(key, model, prompt):
+                        if chunk.text:
+                            pieces.append(chunk.text)
+                            yield _sse("token", {"text": chunk.text})
+                        if chunk.usage:
+                            usage = chunk.usage
+                    draft = engine.parse_draft("".join(pieces), name)
+                    content = section_service.clean(draft.changes[0].content, local[section])
+                    if len(content) < section_service.MIN_SECTION_CHARS:
+                        raise HTTPException(502, "La sección llegó vacía")
+                    quotas.reconcile(db, reservation, usage)
+                    parts_by_section[section] = content
+                    citations += [c.model_dump() for c in draft.citations]
+                    not_covered += draft.not_covered
+                    done = True
+                except (ProviderError, HTTPException) as exc:
+                    db.rollback()
+                    quotas.reconcile(db, reservation, usage, failed=True)
+                    salvaged = engine.salvage_document("".join(pieces), "seccion.md") if pieces else None
+                    if salvaged:
+                        parts_by_section[section] = section_service.clean(salvaged, local[section])
+                        rescued.append(local[section])
+                        done = True
+                    else:
+                        retryable = _retry_skips(exc, name, model, skip_providers, skip_models)
+                        alternative = (registry.next_free(db, user_id, skip_providers, skip_models,
+                                                          prefer_provider=name)
+                                       if retryable and not explicit else None)
+                        if alternative is not None:
+                            name, model, key = alternative
+                            continue
+                        if explicit and retryable:
+                            yield _sse("error", {"status_code": getattr(exc, "status_code", 502),
+                                                 "message": str(getattr(exc, "detail", exc)),
+                                                 "code": _error_code(exc), "provider": name, "explicit": True})
+                            return
+                break
+            if done:
+                written += 1
+                for passage in passages or []:
+                    used.setdefault(passage["chunk_id"], {key_: passage[key_] for key_ in ("label", "source", "page", "heading")})
+                yield _sse("section", {"index": index, "total": len(targets), "section": local[section],
+                                       "chars": len(parts_by_section.get(section, ""))})
+            else:
+                failed.append(local[section])
+        if not written:
+            yield _sse("error", {"status_code": 502, "message": "No se ha podido redactar ninguna sección. "
+                                 "Vuelve a intentarlo o elige otra IA.", "code": "provider_error", "provider": name})
+            return
+        document = section_service.join(title, preamble, parts_by_section, language)
+        names = ", ".join(local[s] for s in targets)
+        draft = json.dumps({"summary": f"Redactada por secciones ({written} de {len(targets)}): {names}"[:1000],
+                            "changes": [{"path": engine.SITUATION_PATH, "content": document}],
+                            "citations": citations[:40], "not_covered": not_covered[:20]}, ensure_ascii=False)
+        try:
+            proposal = engine.persist(db, project_id, user_id, model, draft, {}, snapshot, {engine.SITUATION_PATH},
+                                      provider=name, source_ids=source_ids or None, passages_used=list(used.values()))
+        except HTTPException as exc:
+            yield _sse("error", {"status_code": exc.status_code, "message": exc.detail})
+            return
+        if failed or rescued:
+            grounding = dict(proposal.grounding or {"mode": "template", "kind": "situacion", "sources": [],
+                                                    "passages_used": [], "citations": [], "verified": 0,
+                                                    "unverified": 0, "not_covered": []})
+            problems = list(grounding.get("template_problems", []))
+            if failed:
+                problems.append("no se han podido redactar: " + ", ".join(failed) + " (se conserva el texto anterior)")
+            if rescued:
+                problems.append("respuesta cortada en: " + ", ".join(rescued) + " (revisa su final)")
+            grounding.update(template_problems=problems, supported=False, salvaged=bool(rescued))
+            proposal.grounding = grounding
+            db.commit()
+            db.refresh(proposal)
+        proposal = engine.apply_if_requested(db, project_id, proposal, data.auto_apply)
+        yield _sse("proposal", ProposalOut.model_validate(proposal).model_dump(mode="json"))
+
+    return _streaming(events())

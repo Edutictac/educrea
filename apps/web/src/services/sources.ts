@@ -5,7 +5,7 @@ export interface Citation { quote: string; chunk: string; used_for: string; veri
 export type DuaPrinciple = 'representacion' | 'accion_expresion' | 'implicacion'
 export interface DuaMeasure { principle: DuaPrinciple; barrier: string; measure: string }
 export interface Grounding { mode: 'sources_only' | 'template'; kind?: 'actividad' | 'situacion' | 'dua' | 'plantilla'; sources: string[];
-  template?: string; template_problems?: string[];
+  template?: string; template_problems?: string[]; salvaged?: boolean;
   target?: string; barriers?: string[]; measures?: DuaMeasure[]; principles_missing?: string[]; target_changed?: boolean;
   citations: Citation[]; verified: number; unverified: number; not_covered: string[]; sections_missing?: string[];
   supported: boolean }

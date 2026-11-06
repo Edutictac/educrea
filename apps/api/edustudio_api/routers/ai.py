@@ -209,6 +209,7 @@ async def generate_proposal(project_id: UUID, data: GenerateInput,
     skip_models: set[tuple[str, str]] = set()
     while True:
         reservation = quotas.reserve(db, user_id, name, model, maximum_cost, price, maximum_tokens)
+        result = None
         try:
             adapter = provider if name == "gemini" else registry.adapter(name)
             result = await adapter.generate(key, model, prompt)
@@ -219,7 +220,11 @@ async def generate_proposal(project_id: UUID, data: GenerateInput,
             return engine.apply_if_requested(db, project_id, proposal, data.auto_apply)
         except (ProviderError, HTTPException) as exc:
             db.rollback()
-            quotas.reconcile(db, reservation, failed=True)
+            quotas.reconcile(db, reservation, result.usage if result else None, failed=True)
+            rescued = (engine.salvage(db, project_id, user_id, model, name, result.text, snapshot, selected, result.usage)
+                       if result is not None else None)
+            if rescued is not None:
+                return rescued  # keep the long work for review instead of starting again elsewhere
             retryable = _retry_skips(exc, name, model, skip_providers, skip_models)
             alternative = (registry.next_free(db, user_id, skip_providers, skip_models, prefer_provider=name)
                            if data.mode == "free" and retryable and data.allow_fallback else None)
@@ -300,6 +305,7 @@ async def generate_with_first_free(db: Session, project_id: UUID, user_id: UUID,
     skip_models: set[tuple[str, str]] = set()
     while True:
         reservation = quotas.reserve(db, user_id, name, model)
+        result = None
         try:
             result = await adapter.generate(key, model, prompt)
             proposal = engine.persist(db, project_id, user_id, model, result.text, result.usage, snapshot, selected,
@@ -309,7 +315,11 @@ async def generate_with_first_free(db: Session, project_id: UUID, user_id: UUID,
             return engine.apply_if_requested(db, project_id, proposal, auto_apply)
         except (ProviderError, HTTPException) as exc:
             db.rollback()
-            quotas.reconcile(db, reservation, failed=True)
+            quotas.reconcile(db, reservation, result.usage if result else None, failed=True)
+            rescued = (engine.salvage(db, project_id, user_id, model, name, result.text, snapshot, selected, result.usage)
+                       if result is not None and not dua_target else None)
+            if rescued is not None:
+                return rescued
             # Saturated, out of quota, truncated or an unusable draft: try the teacher's next free model.
             retryable = _retry_skips(exc, name, model, skip_providers, skip_models)
             alternative = registry.next_free(db, user_id, skip_providers, skip_models, prefer_provider=name) if retryable else None
@@ -383,6 +393,12 @@ async def stream_proposal(project_id: UUID, data: GenerateInput,
                     quotas.reconcile(db, reservation, usage, failed=True)
                 discard = ((isinstance(exc, ProviderError) and exc.truncated)
                            or (isinstance(exc, HTTPException) and exc.status_code == 502))
+                rescued = (engine.salvage(db, project_id, user_id, model, name, "".join(parts), snapshot, allowed, usage)
+                           if discard and parts else None)
+                if rescued is not None:
+                    reservation = None
+                    yield event("proposal", ProposalOut.model_validate(rescued).model_dump(mode="json"))
+                    return
                 retryable = _retry_skips(exc, name, model, skip_providers, skip_models)
                 alternative = (registry.next_free(db, user_id, skip_providers, skip_models, prefer_provider=name)
                                if data.mode == "free" and retryable and data.allow_fallback

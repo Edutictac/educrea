@@ -1037,3 +1037,69 @@ def test_assistant_on_a_learning_situation_edits_the_document_and_never_applies_
     assert "«Atenció a la diversitat (DUA)»" in prompt and "La página principal de una actividad" not in prompt
     assert body["status"] == "pending" and "index.html" in " ".join(body["grounding"]["template_problems"])
     assert "index.html" not in {f["path"] for f in client.get(f"{base}/files").json()}
+
+
+SITUATION_LONG = "\n\n".join(f"## {title}\n\nText desenvolupat de la secció {title}. " * 3 for title in (
+    "Dades de la situació", "Context i justificació", "Repte i producte final",
+    "Competències específiques i criteris d'avaluació", "Sabers bàsics", "Seqüència de sessions", "Avaluació",
+    "Atenció a la diversitat (DUA)", "Materials i recursos"))
+
+
+def situation_project(client):
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    client.post(f"{base}/files", headers=headers, json={"path": "activity.json", "content": json.dumps(
+        {"kind": "situacion", "title": "Les notes", "language": "va"})})
+    client.post(f"{base}/files", headers=headers, json={"path": "situacion.md", "content": "# Les notes\n\nBreu.\n"})
+    return headers, base
+
+
+def test_broken_json_in_a_long_document_is_rescued_for_review(client: TestClient, monkeypatch):
+    headers, base = situation_project(client)
+    content = json.dumps(SITUATION_LONG, ensure_ascii=False)
+    broken = '{"summary": "Desenvolupada", "changes": [{"path": "situacion.md", "content": ' + content + ', 7: "x"}]}'
+    calls = []
+
+    class Broken(StubGemini):
+        async def generate(self, key, model, prompt):
+            calls.append(model)
+            return ProviderResult(broken, {"input_tokens": 10, "output_tokens": 900})
+
+    app.dependency_overrides[get_gemini_provider] = lambda: Broken("")
+    monkeypatch.setattr(registry, "adapter", lambda _name: (_ for _ in ()).throw(AssertionError("no fallback")))
+    body = client.post(f"{base}/ai/from-brief", headers=headers).json()
+    assert body["status"] == "pending" and body["grounding"]["salvaged"] is True and len(calls) == 1
+    assert body["changes"][0]["path"] == "situacion.md" and "Atenció a la diversitat (DUA)" in body["changes"][0]["after_content"]
+    assert "Rescatado" in body["summary"]
+    applied = client.post(f"{base}/ai/proposals/{body['id']}/apply", headers=headers)
+    assert applied.json()["status"] == "applied"  # the teacher can still apply it after reviewing
+
+
+def test_cut_stream_in_a_document_keeps_the_partial_text(client: TestClient, monkeypatch):
+    headers, base = situation_project(client)
+    partial = '{"summary": "x", "changes": [{"path": "situacion.md", "content": "' + SITUATION_LONG[:900].replace("\n", "\\n")
+
+    class Cut:
+        async def stream(self, *_args):
+            yield ProviderChunk(text=partial)
+            raise ProviderError("cortado", 502, truncated=True)
+
+    app.dependency_overrides[get_gemini_provider] = lambda: Cut()
+    response = client.post(f"{base}/ai/proposals/stream", headers=headers, json={
+        "instruction": "Desenvolupa la situació", "model": "gemini-test-free", "automatic": True, "auto_apply": True,
+        "allow_fallback": True})
+    events = [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")]
+    proposal = next(item for item in events if isinstance(item, dict) and item.get("changes"))
+    assert proposal["status"] == "pending" and proposal["grounding"]["salvaged"] is True
+    assert proposal["changes"][0]["after_content"].startswith("## Dades de la situació")
+
+
+def test_nothing_to_rescue_still_falls_back(client: TestClient, monkeypatch):
+    headers, base = situation_project(client)
+    client.put("/api/ai/providers/groq/key", headers=headers, json={"api_key": "test-only-groq-key"})
+    client.post("/api/ai/providers/groq/free-models/groq-test-free/confirm", headers=headers, json={"acknowledged": True})
+    good = {"summary": "Bé", "changes": [{"path": "situacion.md", "content": SITUATION_LONG}]}
+    app.dependency_overrides[get_gemini_provider] = lambda: StubGemini('{"summary": "x", "changes": [')
+    monkeypatch.setattr(registry, "adapter", lambda _name: StubGemini(json.dumps(good)))
+    body = client.post(f"{base}/ai/from-brief", headers=headers).json()
+    assert body["provider"] == "groq" and not (body.get("grounding") or {}).get("salvaged")

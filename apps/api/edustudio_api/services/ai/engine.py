@@ -533,6 +533,80 @@ def apply(db: Session, project_id: UUID, proposal_id: UUID, user_id: UUID) -> Ai
     return proposal
 
 
+CONTENT_START = re.compile(r'"content"\s*:\s*"')
+MIN_SALVAGE_CHARS = 200
+
+
+def _json_string_prefix(text: str, start: int) -> str:
+    """Decodes a JSON string from start (just after the opening quote) up to its closing quote or the end of the
+    text. Tolerates a cut in the middle of an escape sequence."""
+    out: list[str] = []
+    index = start
+    while index < len(text):
+        char = text[index]
+        if char == '"':
+            break
+        if char == "\\":
+            chunk = text[index:index + 6] if text[index + 1:index + 2] == "u" else text[index:index + 2]
+            try:
+                out.append(json.loads(f'"{chunk}"'))
+            except ValueError:
+                break  # escape cut by the end of the answer
+            index += len(chunk)
+            continue
+        out.append(char)
+        index += 1
+    return "".join(out)
+
+
+def salvage_document(text: str, path: str) -> str | None:
+    """Markdown of the project document inside an answer whose JSON is broken or cut."""
+    marker = re.search(r'"path"\s*:\s*"' + re.escape(path) + '"', text)
+    starts = list(CONTENT_START.finditer(text))
+    if not starts:
+        return None
+    # The content that belongs to the document: the closest one to its path, or the only one.
+    if marker:
+        match = min(starts, key=lambda item: abs(item.start() - marker.start()))
+    elif len(starts) == 1:
+        match = starts[0]
+    else:
+        return None
+    content = _json_string_prefix(text, match.end()).strip()
+    return content + "\n" if len(content) >= MIN_SALVAGE_CHARS else None
+
+
+def salvage(db: Session, project_id: UUID, user_id: UUID, model: str, provider: str, text: str,
+            snapshot: dict[str, dict], selected: set[str], usage: dict | None = None) -> AiProposal | None:
+    """In document projects (learning situation, worksheet) a long answer that arrives cut or with broken JSON is
+    not thrown away: its Markdown is kept as a proposal that ALWAYS waits for the teacher's review."""
+    document = DOCUMENT_PATHS.get(brief_kind(read_brief(db, project_id)))
+    content = salvage_document(text or "", document) if document else None
+    if not content:
+        return None
+    label = PROVIDER_LABELS.get(provider, provider)
+    draft = json.dumps({"summary": f"Rescatado de una respuesta incompleta de {label} ({model}): revisa el final "
+                                   "del documento antes de aplicarlo.",
+                        "changes": [{"path": document, "content": content}]}, ensure_ascii=False)
+    try:
+        proposal = persist(db, project_id, user_id, model, draft, usage or {}, snapshot, selected | {document},
+                           provider=provider)
+    except HTTPException:
+        db.rollback()
+        return None
+    grounding = dict(proposal.grounding or {"mode": "template", "kind": "documento", "sources": [], "passages_used": [],
+                                            "citations": [], "verified": 0, "unverified": 0, "not_covered": []})
+    grounding["salvaged"] = True
+    grounding["template_problems"] = [*grounding.get("template_problems", []),
+                                      f"respuesta incompleta de {label}: se ha rescatado el documento, pero puede "
+                                      "faltar el final"]
+    grounding["supported"] = False
+    proposal.grounding = grounding
+    db.commit()
+    db.refresh(proposal)
+    return proposal
+
+
 def apply_if_requested(db: Session, project_id: UUID, proposal: AiProposal, requested: bool) -> AiProposal:
     """Teacher mode applies automatically. If the project changed meanwhile the proposal stays pending for review."""
     if not requested:

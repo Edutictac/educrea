@@ -123,7 +123,8 @@ async function generate() {
           message.value = t('proposalAutoApplied')
           emit('projectChanged')
           void listContextFiles(props.projectId).then(paths => { filePaths.value = paths }).catch(() => {})
-        } else message.value = event.data.grounding && !event.data.grounding.supported ? t('proposalUnsupported')
+        } else message.value = event.data.grounding?.salvaged ? t('proposalSalvaged')
+          : event.data.grounding && !event.data.grounding.supported ? t('proposalUnsupported')
           : props.automatic === true ? t('proposalAutoPending') : t('proposalReady')
       }
     }, mode.value, estimate.value?.maximum_cost_microusd, estimate.value?.fingerprint, useAutomatic.value, props.automatic === true, selectedSources.value)

@@ -14,7 +14,7 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/explore', component: GuestView },
   { path: '/login', component: LoginView },
   { path: '/projects', component: ProjectsView },
-  { path: '/projects/:id', component: ProjectView },
+  { path: '/projects/:id', component: ProjectView, meta: { wide: true } },
   { path: '/ai/providers', component: AiProvidersView },
 ] })
 

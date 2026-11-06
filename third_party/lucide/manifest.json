@@ -6,6 +6,10 @@
   "audited": "2026-11-03",
   "icons": [
     {
+      "name": "arrow-left",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
       "name": "atom",
       "license": "ISC"
     },
@@ -22,6 +26,10 @@
       "license": "ISC AND MIT (Feather)"
     },
     {
+      "name": "chevron-right",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
       "name": "circle-help",
       "license": "ISC AND MIT (Feather)"
     },
@@ -30,7 +38,31 @@
       "license": "ISC AND MIT (Feather)"
     },
     {
+      "name": "code",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
+      "name": "download",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
+      "name": "eye",
+      "license": "ISC"
+    },
+    {
+      "name": "file-plus",
+      "license": "ISC"
+    },
+    {
+      "name": "file-text",
+      "license": "ISC"
+    },
+    {
       "name": "flask-conical",
+      "license": "ISC"
+    },
+    {
+      "name": "folder",
       "license": "ISC"
     },
     {
@@ -46,7 +78,27 @@
       "license": "ISC"
     },
     {
+      "name": "history",
+      "license": "ISC"
+    },
+    {
+      "name": "image",
+      "license": "ISC"
+    },
+    {
+      "name": "key",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
       "name": "languages",
+      "license": "ISC"
+    },
+    {
+      "name": "layers",
+      "license": "ISC"
+    },
+    {
+      "name": "layout-template",
       "license": "ISC"
     },
     {
@@ -54,12 +106,32 @@
       "license": "ISC"
     },
     {
+      "name": "library",
+      "license": "ISC"
+    },
+    {
       "name": "lightbulb",
+      "license": "ISC"
+    },
+    {
+      "name": "list-ordered",
+      "license": "ISC"
+    },
+    {
+      "name": "log-out",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
+      "name": "menu",
       "license": "ISC"
     },
     {
       "name": "mic-vocal",
       "license": "ISC"
+    },
+    {
+      "name": "monitor",
+      "license": "ISC AND MIT (Feather)"
     },
     {
       "name": "music",
@@ -70,11 +142,23 @@
       "license": "ISC"
     },
     {
+      "name": "panel-right",
+      "license": "ISC"
+    },
+    {
       "name": "pencil",
       "license": "ISC"
     },
     {
+      "name": "plus",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
       "name": "puzzle",
+      "license": "ISC"
+    },
+    {
+      "name": "refresh-cw",
       "license": "ISC"
     },
     {
@@ -82,7 +166,19 @@
       "license": "ISC"
     },
     {
+      "name": "settings",
+      "license": "ISC"
+    },
+    {
       "name": "shapes",
+      "license": "ISC"
+    },
+    {
+      "name": "smartphone",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
+      "name": "sparkles",
       "license": "ISC"
     },
     {
@@ -94,12 +190,24 @@
       "license": "ISC"
     },
     {
+      "name": "tablet",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
+      "name": "trash-2",
+      "license": "ISC AND MIT (Feather)"
+    },
+    {
       "name": "trophy",
       "license": "ISC"
     },
     {
       "name": "volume-2",
       "license": "ISC"
+    },
+    {
+      "name": "x",
+      "license": "ISC AND MIT (Feather)"
     }
   ]
 }

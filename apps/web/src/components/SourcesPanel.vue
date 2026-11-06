@@ -5,7 +5,7 @@ import { addSourceFromUrl, deleteSource, listSources, refreshSource, searchSourc
   type Passage, type Source } from '../services/sources'
 import { useAuthStore } from '../stores/auth'
 
-const props = defineProps<{ projectId: string }>()
+const props = defineProps<{ projectId: string; embedded?: boolean }>()
 const emit = defineEmits<{ changed: [] }>()
 const auth = useAuthStore()
 const open = ref(false)
@@ -21,6 +21,7 @@ const probeSource = ref('')
 const passages = ref<Passage[]>([])
 
 onMounted(async () => { try { sources.value = await listSources(props.projectId) } catch { /* shown on open */ } })
+function toggle() { open.value = !open.value }
 function fail(cause: unknown) { error.value = cause instanceof Error ? cause.message : t('error') }
 async function pick(event: Event) {
   const input = event.target as HTMLInputElement
@@ -66,11 +67,12 @@ async function test() {
     if (!passages.value.length) status.value = t('noPassages')
   } catch (cause) { fail(cause) }
 }
+onMounted(() => { if (props.embedded && !open.value) void toggle() })
 </script>
 
 <template>
-  <section class="card">
-    <div class="actions"><button type="button" class="secondary" @click="open = !open">{{ open ? t('hideSources') : t('sources') }}{{ sources.length ? ` (${sources.length})` : '' }}</button></div>
+  <section class="card" :class="{ 'panel-embedded': embedded }">
+    <div v-if="!embedded" class="actions"><button type="button" class="secondary" @click="toggle">{{ open ? t('hideSources') : t('sources') }}{{ sources.length ? ` (${sources.length})` : '' }}</button></div>
     <div v-if="open">
       <p>{{ t('sourcesIntro') }}</p>
       <ul class="history-list"><li v-for="source in sources" :key="source.id"><strong>{{ source.title }}</strong> ·

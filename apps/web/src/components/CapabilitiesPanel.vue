@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { t } from '../i18n'
 import { capabilityAudit, invokeCapability, listCapabilities, parseArguments, type AuditRow, type Capability } from '../services/capabilities'
 import { useAuthStore } from '../stores/auth'
 
-const props = defineProps<{ projectId: string }>()
+const props = defineProps<{ projectId: string; embedded?: boolean }>()
 const auth = useAuthStore()
 const open = ref(false)
 const items = ref<Capability[]>([])
@@ -36,11 +36,12 @@ async function run() {
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
   finally { busy.value = false; approved.value = false; audit.value = await capabilityAudit(props.projectId).catch(() => audit.value) }
 }
+onMounted(() => { if (props.embedded && !open.value) void toggle() })
 </script>
 
 <template>
-  <section class="card" :aria-label="t('capabilities')">
-    <div class="actions"><button type="button" class="secondary" :aria-expanded="open" @click="toggle">{{ t('capabilities') }}</button></div>
+  <section class="card" :class="{ 'panel-embedded': embedded }" :aria-label="t('capabilities')">
+    <div v-if="!embedded" class="actions"><button type="button" class="secondary" :aria-expanded="open" @click="toggle">{{ t('capabilities') }}</button></div>
     <div v-if="open">
       <p>{{ t('capabilitiesIntro') }}</p>
       <form v-if="items.length" @submit.prevent="run">

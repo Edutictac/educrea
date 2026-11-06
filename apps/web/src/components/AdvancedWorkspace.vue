@@ -32,7 +32,14 @@ const activeDirty = computed(() => !!activeId.value && !!activeFile.value && act
 const anyDirty = computed(() => tabs.value.some(id => documents.value[id] && drafts.value[id] !== documents.value[id].content))
 defineExpose({ hasUnsavedChanges: () => anyDirty.value })
 
-onMounted(async () => { try { await files.load(props.projectId) } catch (cause) { showError(cause) } })
+onMounted(async () => {
+  try {
+    await files.load(props.projectId)
+    // Open the most useful file straight away: template data first, then the activity page or the document.
+    const first = ['datos.js', 'index.html', 'ficha.md', 'situacion.md', 'infografia.html'].map(path => files.items.find(item => item.path === path)).find(Boolean) ?? files.items[0]
+    if (first) await openFile(first.id)
+  } catch (cause) { showError(cause) }
+})
 function showError(cause: unknown) { error.value = cause instanceof Error ? cause.message : t('error') }
 async function openFile(id: string) {
   error.value = ''; status.value = ''; diagnostics.value = []; reading.value = false; previewing.value = false
@@ -129,11 +136,11 @@ async function deleteFile() {
     <div class="workspace-grid">
       <aside class="file-explorer" :aria-label="t('fileExplorer')">
         <h3>{{ t('fileExplorer') }}</h3>
-        <form @submit.prevent="createFile"><label>{{ t('newFile') }}<input v-model="newPath" placeholder="index.html" required maxlength="200" /></label>
-          <button type="submit">{{ t('createFile') }}</button></form>
-        <p><button type="button" class="secondary" @click="createInfographic">{{ t('newInfographic') }}</button></p>
-        <p><a class="button secondary" :href="`/api/projects/${projectId}/export.zip`">{{ t('exportZip') }}</a></p>
         <ul><li v-for="file in files.items" :key="file.id"><button type="button" class="file-button" :aria-current="activeId === file.id ? 'true' : undefined" @click="openFile(file.id)">{{ file.path }}</button></li></ul>
+        <details class="new-file"><summary>{{ t('createFile') }}</summary>
+          <form @submit.prevent="createFile"><label>{{ t('newFile') }}<input v-model="newPath" placeholder="index.html" required maxlength="200" /></label>
+            <button type="submit">{{ t('createFile') }}</button></form>
+          <p><button type="button" class="secondary" @click="createInfographic">{{ t('newInfographic') }}</button></p></details>
       </aside>
       <div class="editor-area">
         <div class="tabs" role="tablist" :aria-label="t('openFiles')"><div v-for="id in tabs" :key="id" class="tab-item">

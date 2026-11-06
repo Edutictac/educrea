@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { t } from '../i18n'
 import { useAuthStore } from '../stores/auth'
 
 interface PathInfo { path: string; versions: number; deleted: boolean }
 interface Version { id: string; path: string; version: number; source: string; created_at: string; size: number }
 
-const props = defineProps<{ projectId: string }>()
+const props = defineProps<{ projectId: string; embedded?: boolean }>()
 const emit = defineEmits<{ restored: [] }>()
 const auth = useAuthStore()
 const open = ref(false)
@@ -50,11 +50,12 @@ async function restore(version: Version) {
   } catch (cause) { fail(cause) }
 }
 const sourceLabel = (source: string) => source === 'ai' ? t('sourceAi') : source === 'restore' ? t('sourceRestore') : t('sourceManual')
+onMounted(() => { if (props.embedded && !open.value) void toggle() })
 </script>
 
 <template>
-  <section class="card">
-    <div class="actions"><button type="button" class="secondary" @click="toggle">{{ open ? t('hideHistory') : t('history') }}</button></div>
+  <section class="card" :class="{ 'panel-embedded': embedded }">
+    <div v-if="!embedded" class="actions"><button type="button" class="secondary" @click="toggle">{{ open ? t('hideHistory') : t('history') }}</button></div>
     <p v-if="error" role="alert">{{ error }}</p><p v-if="status" role="status">{{ status }}</p>
     <div v-if="open">
       <p v-if="!paths.length">{{ t('noHistory') }}</p>

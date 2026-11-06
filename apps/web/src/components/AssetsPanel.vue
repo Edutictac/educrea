@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { t } from '../i18n'
 import { assetUrl, deleteAsset, htmlSnippet, listAssets, markdownSnippet, MAX_IMAGE_BYTES, updateAsset, uploadAsset, type Asset } from '../services/assets'
 import { useAuthStore } from '../stores/auth'
 
-const props = defineProps<{ projectId: string }>()
+const props = defineProps<{ projectId: string; embedded?: boolean }>()
 const auth = useAuthStore()
 const open = ref(false)
 const items = ref<Asset[]>([])
@@ -59,11 +59,12 @@ async function remove(asset: Asset) {
 async function copy(text: string) {
   try { await navigator.clipboard.writeText(text); status.value = t('copied') } catch { status.value = text }
 }
+onMounted(() => { if (props.embedded && !open.value) void toggle() })
 </script>
 
 <template>
-  <section class="card" :aria-label="t('projectImages')">
-    <div class="actions"><button type="button" class="secondary" :aria-expanded="open" @click="toggle">{{ t('projectImages') }}{{ items.length ? ` (${items.length})` : '' }}</button></div>
+  <section class="card" :class="{ 'panel-embedded': embedded }" :aria-label="t('projectImages')">
+    <div v-if="!embedded" class="actions"><button type="button" class="secondary" :aria-expanded="open" @click="toggle">{{ t('projectImages') }}{{ items.length ? ` (${items.length})` : '' }}</button></div>
     <div v-if="open">
       <p>{{ t('imagesIntro') }}</p>
       <form class="form-grid" @submit.prevent="upload">

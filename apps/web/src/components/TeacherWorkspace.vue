@@ -129,6 +129,21 @@ async function generateFirstVersion() {
     <p>{{ t('teacherIntro') }}</p>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="success" role="status">{{ success }}</p>
+    <div v-if="!dirty && file" class="actions first-version"><span class="badge">{{ t('nextStep') }}</span>
+      <button type="button" :disabled="generating" @click="generateFirstVersion">
+        {{ generating ? t('generatingFirstVersion') : generated ? t('regenerateFirstVersion')
+          : activity.kind === 'situacion' ? t('generateSituation') : activity.kind === 'ficha' ? t('generateWorksheet') : t('generateFirstVersion') }}</button>
+      <span v-if="generating" role="status">{{ t('mayTakeAMinute') }}</span>
+    </div>
+    <p v-if="generated" class="notice ok" role="status">{{ activity.kind === 'situacion' ? t('situationReady') : activity.kind === 'ficha' ? t('worksheetReady') : t('firstVersionReady') }}
+      <button v-if="documentKind" type="button" class="secondary" @click="emit('openMaterials')">{{ t('openMaterials') }}</button></p>
+    <div v-if="!generated && (missingSections.length || problems.length)" class="notice">
+      <p><strong>{{ t('proposalNeedsReview') }}</strong></p>
+      <p v-if="missingSections.length">{{ t('missingSections') }}: {{ missingSections.join(', ') }}</p>
+      <template v-if="problems.length"><p>{{ t('templateProblems') }}</p><ul><li v-for="(item, index) in problems" :key="index">{{ item }}</li></ul></template>
+      <div class="actions"><button type="button" :disabled="generating" @click="applyAnyway">{{ t('applyAnyway') }}</button>
+        <button type="button" class="secondary" :disabled="generating" @click="generateFirstVersion">{{ t('regenerateFirstVersion') }}</button></div>
+    </div>
     <form v-if="!loading && !blocked" class="form-grid" @submit.prevent="save">
       <p v-if="template" class="full notice ok"><strong>{{ t('templateLabel') }}: {{ template.names[locale] }}</strong> · {{ template.descriptions[locale] }}</p>
       <template v-else>
@@ -167,21 +182,6 @@ async function generateFirstVersion() {
       <div class="full actions"><button type="submit" :disabled="!dirty && !!file">{{ t('saveActivity') }}</button>
         <span v-if="dirty">{{ t('unsaved') }}</span><span v-else-if="file" role="status">{{ t('saved') }}</span></div>
     </form>
-    <div v-if="!dirty && file" class="actions first-version">
-      <button type="button" :disabled="generating" @click="generateFirstVersion">
-        {{ generating ? t('generatingFirstVersion') : generated ? t('regenerateFirstVersion')
-          : activity.kind === 'situacion' ? t('generateSituation') : activity.kind === 'ficha' ? t('generateWorksheet') : t('generateFirstVersion') }}</button>
-      <span v-if="generating" role="status">{{ t('mayTakeAMinute') }}</span>
-    </div>
-    <p v-if="generated" class="notice ok" role="status">{{ activity.kind === 'situacion' ? t('situationReady') : activity.kind === 'ficha' ? t('worksheetReady') : t('firstVersionReady') }}
-      <button v-if="documentKind" type="button" class="secondary" @click="emit('openMaterials')">{{ t('openMaterials') }}</button></p>
-    <div v-if="!generated && (missingSections.length || problems.length)" class="notice">
-      <p><strong>{{ t('proposalNeedsReview') }}</strong></p>
-      <p v-if="missingSections.length">{{ t('missingSections') }}: {{ missingSections.join(', ') }}</p>
-      <template v-if="problems.length"><p>{{ t('templateProblems') }}</p><ul><li v-for="(item, index) in problems" :key="index">{{ item }}</li></ul></template>
-      <div class="actions"><button type="button" :disabled="generating" @click="applyAnyway">{{ t('applyAnyway') }}</button>
-        <button type="button" class="secondary" :disabled="generating" @click="generateFirstVersion">{{ t('regenerateFirstVersion') }}</button></div>
-    </div>
     <p v-if="needsProvider" class="notice">{{ t('needProviderFirst') }} <RouterLink to="/ai/providers">{{ t('myProviders') }}</RouterLink></p>
     <p v-if="!generated && !generating && !dirty && file" class="hint">{{ t('teacherNext') }}</p>
   </section>

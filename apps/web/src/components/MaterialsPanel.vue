@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { t } from '../i18n'
 import { useFilesStore, type FileSummary } from '../stores/files'
 
-const props = defineProps<{ projectId: string; refreshKey?: number }>()
+const props = defineProps<{ projectId: string; embedded?: boolean; refreshKey?: number }>()
 const files = useFilesStore()
 const open = ref(false)
 const shown = ref<{ path: string; html: string } | null>(null)
@@ -31,11 +31,12 @@ async function read(item: FileSummary) {
     shown.value = { path: item.path, html: `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:"><style>img{max-width:100%;height:auto}body{font-family:system-ui,sans-serif;line-height:1.6;margin:1rem}h1,h2{color:#126382}table{border-collapse:collapse;width:100%}th,td{border:1px solid #888;padding:.3rem .5rem;vertical-align:top}pre{background:#f3f3f3;padding:.6rem;overflow:auto}blockquote{border-left:4px solid #bbb;margin-left:0;padding-left:1rem;color:#444}</style>${data.html}` }
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 }
+onMounted(() => { if (props.embedded && !open.value) void toggle() })
 </script>
 
 <template>
-  <section class="card">
-    <div class="actions"><button type="button" class="secondary" @click="toggle">{{ open ? t('hideMaterials') : t('classMaterials') }}{{ documents.length ? ` (${documents.length})` : '' }}</button></div>
+  <section class="card" :class="{ 'panel-embedded': embedded }">
+    <div v-if="!embedded" class="actions"><button type="button" class="secondary" @click="toggle">{{ open ? t('hideMaterials') : t('classMaterials') }}{{ documents.length ? ` (${documents.length})` : '' }}</button></div>
     <div v-if="open">
       <p v-if="!documents.length">{{ t('noMaterials') }}</p>
       <ul v-else class="history-list"><li v-for="item in documents" :key="item.id"><strong>{{ item.path }}</strong>

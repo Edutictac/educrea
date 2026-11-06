@@ -1,9 +1,12 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { LUCIDE_NOTICE, iconNames, iconSvg, insertIcon } from './icons'
 
 describe('icons', () => {
   it('bundles the vendored set', () => {
-    expect(iconNames).toHaveLength(24)
+    const manifest = JSON.parse(readFileSync(join(__dirname, '../../../../third_party/lucide/manifest.json'), 'utf8')) as { icons: unknown[] }
+    expect(iconNames).toHaveLength(manifest.icons.length)
     expect(iconNames).toContain('music')
   })
   it('renders inline, sized, without the header comment, decorative by default', () => {

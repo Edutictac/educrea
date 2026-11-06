@@ -6,10 +6,12 @@ import { applyTemplate, INFOGRAPHIC_PATH, infographicTemplate, listTemplates, ty
 import { useAuthStore } from '../stores/auth'
 import { useFilesStore } from '../stores/files'
 import { useProjectsStore } from '../stores/projects'
+import AppIcon from '../components/AppIcon.vue'
 
 // Guided creation (phase 7): 1) what to create, 2) a few details, then the project opens in teacher mode with the
 // template files ready and the AI fills the content from the brief.
-type Choice = { id: string; kind: 'plantilla' | 'situacion' | 'libre'; name: string; description: string }
+type Choice = { id: string; kind: 'plantilla' | 'situacion' | 'libre'; name: string; description: string; icon: string }
+const ICONS: Record<string, string> = { cuestionario: 'circle-help', emparejar: 'puzzle', ordenar: 'list-ordered', tarjetas: 'layers', clasificar: 'shapes', lectura: 'book-open', infografia: 'palette', ficha: 'file-text', situacion: 'graduation-cap', libre: 'file-plus' }
 const auth = useAuthStore()
 const projects = useProjectsStore()
 const files = useFilesStore()
@@ -25,16 +27,18 @@ const highContrast = ref(false)
 const busy = ref(false)
 const error = ref('')
 const detailsHeading = ref<HTMLElement | null>(null)
+const creating = ref(false)
+async function startCreating() { creating.value = true; await nextTick(); document.querySelector<HTMLElement>('.choice')?.focus() }
 
 const choices = computed<Choice[]>(() => [
-  ...templates.value.map(item => ({ id: item.id, kind: 'plantilla' as const, name: item.names[locale.value], description: item.descriptions[locale.value] })),
-  { id: 'situacion', kind: 'situacion', name: t('kindSituationShort'), description: t('kindSituationDescription') },
-  { id: 'libre', kind: 'libre', name: t('blankProject'), description: t('blankProjectDescription') },
+  ...templates.value.map(item => ({ id: item.id, kind: 'plantilla' as const, name: item.names[locale.value], description: item.descriptions[locale.value], icon: ICONS[item.id] ?? 'layout-template' })),
+  { id: 'situacion', kind: 'situacion', name: t('kindSituationShort'), description: t('kindSituationDescription'), icon: ICONS.situacion },
+  { id: 'libre', kind: 'libre', name: t('blankProject'), description: t('blankProjectDescription'), icon: ICONS.libre },
 ])
 
 onMounted(async () => {
   if (!auth.user) { router.replace('/explore'); return }
-  try { [templates.value] = await Promise.all([listTemplates(), projects.load()]) }
+  try { [templates.value] = await Promise.all([listTemplates(), projects.load()]); creating.value = projects.items.length === 0 }
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 })
 async function pick(item: Choice) {
@@ -69,19 +73,28 @@ async function create() {
 
 <template>
   <section>
-    <h1>{{ t('projects') }}</h1><p>{{ t('welcome') }}</p>
+    <div class="page-head"><div><h1>{{ t('projects') }}</h1><p>{{ t('welcome') }}</p></div>
+      <button v-if="projects.items.length && !creating" type="button" @click="startCreating"><AppIcon name="plus" :size="18" />{{ t('newProject') }}</button></div>
     <p v-if="error" role="alert">{{ error }}</p>
-    <section class="card" :aria-label="t('create')">
-      <h2>{{ t('createGuided') }}</h2>
-      <p class="hint">{{ t('step1') }}</p>
-      <ul class="choice-grid" role="list">
+    <section v-if="creating" class="card create-card" :aria-label="t('create')">
+      <div class="create-head"><h2>{{ t('createGuided') }}</h2>
+        <button v-if="projects.items.length" type="button" class="ghost icon-only" :title="t('cancel')" @click="creating = false; choice = null"><AppIcon name="x" /><span class="sr-only">{{ t('cancel') }}</span></button></div>
+      <ol class="stepper" :aria-label="t('steps')">
+        <li class="step" :class="choice ? 'done' : 'current'"><span class="num">1</span>{{ t('stepChoose') }}</li>
+        <li aria-hidden="true"><AppIcon name="chevron-right" :size="16" /></li>
+        <li class="step" :class="choice ? 'current' : ''"><span class="num">2</span>{{ t('stepDetails') }}</li>
+        <li aria-hidden="true"><AppIcon name="chevron-right" :size="16" /></li>
+        <li class="step"><span class="num">3</span>{{ t('stepGenerate') }}</li>
+      </ol>
+      <ul class="choice-grid">
         <li v-for="item in choices" :key="item.id">
           <button type="button" class="choice" :aria-pressed="choice?.id === item.id" @click="pick(item)">
+            <span class="choice-icon"><AppIcon :name="item.icon" :size="24" /></span>
             <strong>{{ item.name }}</strong><span>{{ item.description }}</span></button>
         </li>
       </ul>
-      <form v-if="choice" class="form-grid" @submit.prevent="create">
-        <h3 ref="detailsHeading" class="full" tabindex="-1">{{ t('step2') }}: {{ choice.name }}</h3>
+      <form v-if="choice" class="form-grid details-form" @submit.prevent="create">
+        <h3 ref="detailsHeading" class="full" tabindex="-1">{{ choice.name }}</h3>
         <label class="full">{{ t('activityTitle') }}<input v-model="title" required maxlength="160" :placeholder="t('titlePlaceholder')" /></label>
         <template v-if="choice.kind !== 'libre'">
           <label>{{ t('language') }}<select v-model="language"><option value="es">Castellano</option><option value="va">Valencià</option></select></label>
@@ -99,16 +112,20 @@ async function create() {
         <p v-if="choice.kind !== 'libre'" class="hint full">{{ t('guidedNext') }}</p>
       </form>
     </section>
-    <p v-if="projects.items.length === 0">{{ t('empty') }}</p>
-    <ul class="project-list"><li v-for="project in projects.items" :key="project.id" class="card">
-      <RouterLink :to="`/projects/${project.id}`">{{ project.title }}</RouterLink><p>{{ project.description }}</p>
-    </li></ul>
+    <template v-if="projects.items.length">
+      <h2 class="list-title">{{ t('yourProjects') }} <span class="badge">{{ projects.items.length }}</span></h2>
+      <ul class="project-list"><li v-for="project in projects.items" :key="project.id" class="card">
+        <span class="project-icon"><AppIcon name="folder" :size="20" /></span>
+        <RouterLink :to="`/projects/${project.id}`">{{ project.title }}</RouterLink><p>{{ project.description || t('noDescription') }}</p>
+      </li></ul>
+    </template>
   </section>
 </template>
 
 <style scoped>
-.choice-grid { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: .7rem; }
-.choice { width: 100%; height: 100%; display: flex; flex-direction: column; gap: .3rem; text-align: left; padding: .8rem; }
-.choice span { font-size: .9em; font-weight: 400; }
-.choice[aria-pressed=true] { outline: 3px solid currentColor; }
+.create-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.stepper { list-style: none; padding: 0; }
+.details-form { margin-top: 1.2rem; padding-top: .4rem; border-top: 1px solid var(--c-line); }
+.list-title { display: flex; align-items: center; gap: .5rem; margin-top: 1.6rem; }
+.project-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--c-brand-50); color: var(--c-brand); margin-bottom: .6rem; }
 </style>

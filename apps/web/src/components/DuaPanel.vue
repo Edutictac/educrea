@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { t } from '../i18n'
 import { adaptDua, changeProposal, type Proposal } from '../services/ai'
 import type { DuaPrinciple } from '../services/sources'
 import { useAuthStore } from '../stores/auth'
 import { useFilesStore } from '../stores/files'
 
-const props = defineProps<{ projectId: string; refreshKey?: number; autoApply: boolean; canGenerate: () => boolean }>()
+const props = defineProps<{ projectId: string; embedded?: boolean; refreshKey?: number; autoApply: boolean; canGenerate: () => boolean }>()
 const emit = defineEmits<{ changed: [] }>()
 const auth = useAuthStore()
 const files = useFilesStore()
@@ -44,11 +44,12 @@ async function change(action: 'apply' | 'restore') {
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
   finally { busy.value = false }
 }
+onMounted(() => { if (props.embedded && !open.value) void toggle() })
 </script>
 
 <template>
-  <section class="card" :aria-label="t('duaTitle')">
-    <div class="actions"><button type="button" class="secondary" :aria-expanded="open" @click="toggle">{{ t('duaTitle') }}</button></div>
+  <section class="card" :class="{ 'panel-embedded': embedded }" :aria-label="t('duaTitle')">
+    <div v-if="!embedded" class="actions"><button type="button" class="secondary" :aria-expanded="open" @click="toggle">{{ t('duaTitle') }}</button></div>
     <div v-if="open">
       <p>{{ t('duaIntro') }}</p>
       <p v-if="!materials.length" class="hint">{{ t('duaNoMaterials') }}</p>

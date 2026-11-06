@@ -13,7 +13,7 @@ encabezado `@license lucide-static … ISC`.
   compatibles con la GPL). Los iconos conservan su licencia propia dentro del proyecto; no se relicencian.
 - **Forma de uso decidida:** se copian SVG sueltos y sin modificar a `third_party/lucide/icons/` (sin añadir la
   librería `lucide` como dependencia ni cargar nada desde una CDN). `third_party/lucide/LICENSE` es copia literal.
-  `manifest.json` indica la licencia de cada icono; hoy 24 iconos, 4 de ellos derivados de Feather
+  `manifest.json` indica la licencia de cada icono; hoy 51 iconos (27 añadidos el 2026-11-06 para la interfaz de la aplicación, del mismo paquete y versión, copiados sin modificar y evitando los iconos renombrados desde Feather), 16 de ellos derivados de Feather
   (`music`, `check`, `clock`, `circle-help`; este último por ser el renombrado de `help-circle`).
 - **Obligaciones al exportar (decisión del 2026-11-03):** el aviso viaja con el **código fuente**, no con la imagen.
   - Al insertar un icono (o crear una infografía con la plantilla) se añade en el `<head>` un comentario HTML con el

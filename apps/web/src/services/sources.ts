@@ -50,3 +50,6 @@ export async function searchSource(projectId: string, sourceId: string, query: s
   return await (await checked(await fetch(`/api/projects/${projectId}/sources/${sourceId}/search?q=${encodeURIComponent(query)}`,
     { credentials: 'same-origin' }))).json() as Passage[]
 }
+
+// File types accepted as teacher material / reference sources (same list as the API).
+export const MATERIAL_ACCEPT = '.pdf,.docx,.odt,.epub,.html,.htm,.md,.txt'

@@ -6,6 +6,7 @@ import { changeProposal, generateFromBrief, type Proposal } from '../services/ai
 import { useAuthStore } from '../stores/auth'
 import { useFilesStore, type ProjectFile } from '../stores/files'
 import { listTemplates, type TemplateInfo } from '../services/templates'
+import StartingMaterial from './StartingMaterial.vue'
 
 const props = defineProps<{ projectId: string }>()
 const emit = defineEmits<{ generated: []; openMaterials: [] }>()
@@ -36,6 +37,8 @@ const templates = ref<TemplateInfo[]>([])
 const template = computed(() => templates.value.find(item => item.id === original.value.template) ?? null)
 const documentKind = computed(() => activity.value.kind === 'situacion' || activity.value.kind === 'ficha')
 const problems = ref<string[]>([])
+const unsupported = ref(false)
+const verified = ref(0)
 defineExpose({ hasUnsavedChanges: () => dirty.value })
 
 onMounted(async () => {
@@ -101,6 +104,8 @@ async function applyAnyway() {
     generated.value = proposal.status === 'applied'
     missingSections.value = proposal.grounding?.sections_missing ?? []
     problems.value = proposal.grounding?.template_problems ?? []
+    unsupported.value = proposal.grounding?.mode === 'sources_only' && !proposal.grounding.supported
+    verified.value = proposal.grounding?.verified ?? 0
     if (generated.value) { emit('generated'); emit('openMaterials') }
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
   finally { generating.value = false }
@@ -113,6 +118,8 @@ async function generateFirstVersion() {
     lastProposal.value = proposal
     missingSections.value = proposal.grounding?.sections_missing ?? []
     problems.value = proposal.grounding?.template_problems ?? []
+    unsupported.value = proposal.grounding?.mode === 'sources_only' && !proposal.grounding.supported
+    verified.value = proposal.grounding?.verified ?? 0
     generated.value = proposal.status === 'applied'
     if (generated.value) { emit('generated'); if (documentKind.value) emit('openMaterials') }
   } catch (cause) {
@@ -137,13 +144,16 @@ async function generateFirstVersion() {
     </div>
     <p v-if="generated" class="notice ok" role="status">{{ activity.kind === 'situacion' ? t('situationReady') : activity.kind === 'ficha' ? t('worksheetReady') : t('firstVersionReady') }}
       <button v-if="documentKind" type="button" class="secondary" @click="emit('openMaterials')">{{ t('openMaterials') }}</button></p>
-    <div v-if="!generated && (missingSections.length || problems.length)" class="notice">
+    <p v-if="generated && verified" class="hint">{{ t('basedOnMaterial') }}: {{ verified }} {{ t('citationsVerified') }}</p>
+    <div v-if="!generated && (missingSections.length || problems.length || unsupported)" class="notice">
       <p><strong>{{ t('proposalNeedsReview') }}</strong></p>
       <p v-if="missingSections.length">{{ t('missingSections') }}: {{ missingSections.join(', ') }}</p>
+      <p v-if="unsupported">{{ t('materialUnsupported') }}</p>
       <template v-if="problems.length"><p>{{ t('templateProblems') }}</p><ul><li v-for="(item, index) in problems" :key="index">{{ item }}</li></ul></template>
       <div class="actions"><button type="button" :disabled="generating" @click="applyAnyway">{{ t('applyAnyway') }}</button>
         <button type="button" class="secondary" :disabled="generating" @click="generateFirstVersion">{{ t('regenerateFirstVersion') }}</button></div>
     </div>
+    <StartingMaterial v-if="!loading && !blocked && file" :project-id="projectId" @changed="generated = false" />
     <form v-if="!loading && !blocked" class="form-grid" @submit.prevent="save">
       <p v-if="template" class="full notice ok"><strong>{{ t('templateLabel') }}: {{ template.names[locale] }}</strong> · {{ template.descriptions[locale] }}</p>
       <template v-else>

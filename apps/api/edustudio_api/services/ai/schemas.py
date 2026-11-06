@@ -27,6 +27,7 @@ class GenerateInput(BaseModel):
     automatic: bool = False  # the backend picks the context files; context_paths is ignored
     source_ids: list[UUID] = Field(default_factory=list, max_length=5)  # work only with these sources
     auto_apply: bool = False  # teacher mode: apply the proposal right away (still undoable and kept in history)
+    whole_sources: bool = False  # send the whole material when it fits (content created from the teacher's material)
     allow_fallback: bool = False
     mode: Literal["free", "paid"] = "free"
     paid_authorized: bool = False

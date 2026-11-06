@@ -33,6 +33,7 @@ CHUNK_TARGET = 1400
 CHUNK_MAX = 2000
 RETRIEVAL_BUDGET = 60_000
 MAX_RETRIEVED = 40
+WHOLE_MAX_CHUNKS = 80
 MIN_QUOTE_CHARS = 15
 PANDOC_FORMATS = {".docx": "docx", ".odt": "odt", ".epub": "epub", ".html": "html", ".htm": "html", ".rtf": "rtf"}
 PLAIN = {".md", ".txt"}
@@ -287,9 +288,15 @@ def load_chunks(db: Session, project_id: UUID, source_ids: list[UUID]) -> list[t
 
 
 def retrieve(db: Session, project_id: UUID, source_ids: list[UUID], query: str,
-             budget: int = RETRIEVAL_BUDGET, limit: int = MAX_RETRIEVED) -> list[dict]:
-    """Top passages for the query, labelled F1, F2... and returned in document order."""
+             budget: int = RETRIEVAL_BUDGET, limit: int = MAX_RETRIEVED, whole_if_fits: bool = False) -> list[dict]:
+    """Top passages for the query, labelled F1, F2... and returned in document order.
+
+    With whole_if_fits (creating content FROM the teacher's material) a material that fits the budget is sent
+    entire, in order, instead of only the passages that match the query."""
     rows = load_chunks(db, project_id, source_ids)
+    if whole_if_fits and rows and len(rows) <= WHOLE_MAX_CHUNKS and sum(len(c.text) for c, _ in rows) <= budget:
+        return [{"label": f"F{number}", "chunk_id": str(chunk.id), "source": title, "page": chunk.page,
+                 "heading": chunk.heading, "text": chunk.text} for number, (chunk, title) in enumerate(rows, 1)]
     query_terms = set(tokens(query))
     if not rows or not query_terms:
         return []

@@ -168,3 +168,40 @@ def test_scanned_pdf_without_ocr_tools_gives_a_clear_error(monkeypatch):
     with pytest.raises(Exception) as caught:
         service.ocr_pdf(b"%PDF-1.4")
     assert caught.value.status_code == 422 and "OCR" in caught.value.detail
+
+
+def test_first_version_is_created_from_the_teachers_material(client: TestClient):
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    client.post(f"{base}/template", headers=headers, json={"template": "cuestionario", "brief": {
+        "title": "El ciclo del agua", "instructions": "x" * 9000}})
+    material = ("# El ciclo del agua\n\nEl agua se evapora con el calor del sol y forma nubes.\n\n"
+                "## Condensación\n\nEl vapor se enfría en el cielo y se convierte en gotas.\n")
+    source = client.post(f"{base}/sources", headers={**headers, "Content-Type": "application/octet-stream"},
+                         params={"filename": "apuntes.md", "title": "Mis apuntes"}, content=material.encode())
+    assert source.status_code == 201, source.text
+    captured = {}
+    data = ("window.EDUSTUDIO_DATA = " + json.dumps({"title": "El ciclo del agua", "questions": [
+        {"text": "¿Qué forma el vapor al enfriarse?", "options": ["Gotas", "Piedras"], "answer": 0}]}) + ";")
+    draft = {"summary": "Cuestionario", "changes": [{"path": "datos.js", "content": data}],
+             "citations": [{"chunk": "F2", "quote": "El vapor se enfría en el cielo y se convierte en gotas"}]}
+
+    class Capture(StubGemini):
+        async def generate(self, key, model, prompt):
+            captured["prompt"] = prompt
+            return await super().generate(key, model, prompt)
+
+    app.dependency_overrides[get_gemini_provider] = lambda: Capture(json.dumps(draft))
+    response = client.post(f"{base}/ai/from-brief", headers=headers)
+    assert response.status_code == 201, response.text
+    body = response.json()
+    prompt = captured["prompt"]
+    # The whole (small) material reaches the model, in order, with the material rules; the brief is not cut.
+    assert "MATERIAL DE PARTIDA" in prompt and "se evapora con el calor" in prompt and "se convierte en gotas" in prompt
+    assert prompt.index("se evapora") < prompt.index("se convierte en gotas") and "x" * 9000 in prompt
+    assert body["grounding"]["verified"] == 1 and body["grounding"]["template_problems"] == []
+    assert body["status"] == "applied"
+    # An invented quote is not applied automatically.
+    invented = {**draft, "citations": [{"chunk": "F1", "quote": "El agua del mar es dulce y se bebe sin problema"}]}
+    app.dependency_overrides[get_gemini_provider] = lambda: StubGemini(json.dumps(invented))
+    assert client.post(f"{base}/ai/from-brief", headers=headers).json()["status"] == "pending"

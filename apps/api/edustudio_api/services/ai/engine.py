@@ -93,7 +93,8 @@ def prepare(db: Session, project_id: UUID, user_id: UUID,
                                                       Source.id.in_(request.source_ids))))
         if found != set(request.source_ids):
             raise HTTPException(422, "Selección de fuentes no válida")
-        passages = source_service.retrieve(db, project_id, list(request.source_ids), request.instruction)
+        passages = source_service.retrieve(db, project_id, list(request.source_ids), request.instruction,
+                                          whole_if_fits=request.whole_sources)
         sources_prompt = sources_instructions(passages)
     prompt = (
         "Eres un asistente de edición educativa. Propón cambios solo en archivos HTML, CSS, JavaScript o JSON. "
@@ -211,6 +212,12 @@ def situation_instruction(brief: dict) -> str:
         + ("\nAccesibilidad del documento: " + " y ".join(wants) + "." if wants else "")
         + f"\nSi el encargo incluye más instrucciones, respétalas:\n{str(brief.get('instructions') or '').strip()}"
     )
+
+
+MATERIAL_INSTRUCTION = (
+    "\nMATERIAL DE PARTIDA: el docente ha aportado su propio material (fragmentos F1, F2...). Crea el contenido A PARTIR "
+    "de ese material: preguntas, elementos, textos y explicaciones deben salir de él y respetar su vocabulario y nivel. "
+    "No añadas datos que no estén en el material.")
 
 
 def brief_template(brief: dict | None) -> str | None:

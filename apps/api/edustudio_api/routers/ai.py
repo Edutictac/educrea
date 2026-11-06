@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import AiCredential, AiProposal, ProjectFile, User
+from ..models import AiCredential, AiProposal, ProjectFile, Source, User
 from ..models.entities import utcnow
 from ..security import current_user, require_csrf
 from ..services.ai import agent, engine
@@ -208,7 +208,11 @@ async def generate_from_brief(project_id: UUID, user: User = Depends(require_csr
     brief = engine.read_brief(db, project_id)
     if brief is None:
         raise HTTPException(409, "Guarda primero el encargo de la actividad (activity.json)")
-    return await generate_with_first_free(db, project_id, user_id, provider, engine.instruction_for(brief), True)
+    source_ids = list(db.scalars(select(Source.id).where(Source.project_id == project_id).order_by(Source.created_at)))
+    instruction = engine.instruction_for(brief)
+    if source_ids:
+        instruction += engine.MATERIAL_INSTRUCTION
+    return await generate_with_first_free(db, project_id, user_id, provider, instruction, True, source_ids=source_ids)
 
 
 @router.post("/projects/{project_id}/ai/dua", response_model=ProposalOut, status_code=201)
@@ -236,14 +240,19 @@ async def adapt_dua(project_id: UUID, data: DuaInput, user: User = Depends(requi
 
 
 async def generate_with_first_free(db: Session, project_id: UUID, user_id: UUID, provider: GeminiProvider,
-                                   instruction: str, auto_apply: bool, dua_target: str | None = None) -> AiProposal:
+                                   instruction: str, auto_apply: bool, dua_target: str | None = None,
+                                   source_ids: list[UUID] | None = None) -> AiProposal:
     """One generation with the teacher's first confirmed free model; the backend chooses the context files."""
     available = registry.first_free(db, user_id)
     if available is None:
         raise HTTPException(409, "Configura un proveedor gratuito y confirma un modelo antes de generar")
     name, model, key = available
-    data = engine.GenerateInput(instruction=instruction, provider=name, model=model,
-                                automatic=True, auto_apply=auto_apply, mode="free")
+    # Built by the backend (brief + template rules + material), so the 4000-character limit for text typed in the
+    # assistant does not apply; model_construct keeps the other defaults.
+    data = engine.GenerateInput.model_construct(
+        **{**engine.GenerateInput.model_construct().model_dump(), "instruction": instruction, "provider": name,
+           "model": model, "automatic": True, "auto_apply": auto_apply, "mode": "free",
+           "source_ids": source_ids or [], "whole_sources": bool(source_ids)})
     prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)[1:]
     adapter = provider if name == "gemini" else registry.adapter(name)
     prompt, selected, trace = await consult(db, user_id, project_id, data, adapter, key, name, model, prompt,
@@ -252,7 +261,8 @@ async def generate_with_first_free(db: Session, project_id: UUID, user_id: UUID,
     try:
         result = await adapter.generate(key, model, prompt)
         proposal = engine.persist(db, project_id, user_id, model, result.text, result.usage, snapshot, selected,
-                                  provider=name, dua_target=dua_target, agent_trace=trace)
+                                  provider=name, dua_target=dua_target, agent_trace=trace,
+                                  source_ids=source_ids or None, passages_used=passages)
         quotas.reconcile(db, reservation, result.usage)
         return engine.apply_if_requested(db, project_id, proposal, auto_apply)
     except ProviderError as exc:

@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/auth'
 import { useFilesStore } from '../stores/files'
 import { useProjectsStore } from '../stores/projects'
 import AppIcon from '../components/AppIcon.vue'
+import { MATERIAL_ACCEPT, uploadSource } from '../services/sources'
 
 // Guided creation (phase 7): 1) what to create, 2) a few details, then the project opens in teacher mode with the
 // template files ready and the AI fills the content from the brief.
@@ -25,6 +26,9 @@ const instructions = ref('')
 const largeText = ref(false)
 const highContrast = ref(false)
 const busy = ref(false)
+const material = ref<File | null>(null)
+const materialRights = ref(false)
+const progress = ref('')
 const error = ref('')
 const detailsHeading = ref<HTMLElement | null>(null)
 const creating = ref(false)
@@ -63,11 +67,17 @@ async function create() {
     } else if (choice.value.kind === 'situacion') {
       await files.create(project.id, 'activity.json', JSON.stringify({ kind: 'situacion', ...brief, sessions: 4 }, null, 2) + '\n')
     }
+    if (material.value && choice.value.kind !== 'libre') {
+      progress.value = t('materialReading')
+      // The project is already useful without the material: a failed upload is reported, never rolled back.
+      try { await uploadSource(project.id, material.value, material.value.name.replace(/\.[^.]+$/, ''), auth.csrf) }
+      catch (cause) { alert(`${t('materialFailed')} ${cause instanceof Error ? cause.message : ''}`) }
+    }
     router.push(`/projects/${project.id}`)
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : t('error')
     if (projectId) await projects.remove(projectId).catch(() => undefined)  // do not leave a half-created project
-  } finally { busy.value = false }
+  } finally { busy.value = false; progress.value = '' }
 }
 </script>
 
@@ -102,12 +112,19 @@ async function create() {
             <option value="primaria">{{ t('primary') }}</option><option value="secundaria">{{ t('secondary') }}</option>
             <option value="otros">{{ t('other') }}</option></select></label>
           <label class="full">{{ t('whatAbout') }}<textarea v-model="instructions" maxlength="10000" rows="3" :placeholder="t('whatAboutPlaceholder')" /></label>
+          <div class="full material-pick">
+            <label>{{ t('startingMaterial') }} <span class="hint">({{ t('optional') }})</span>
+              <input type="file" :accept="MATERIAL_ACCEPT" @change="material = ($event.target as HTMLInputElement).files?.[0] ?? null" /></label>
+            <p class="hint">{{ t('startingMaterialIntro') }}</p>
+            <label v-if="material" class="check"><input v-model="materialRights" type="checkbox" required />{{ t('sourceRights') }}</label>
+          </div>
           <details class="full"><summary>{{ t('accessibility') }}</summary>
             <label class="check"><input v-model="largeText" type="checkbox" />{{ t('largeText') }}</label>
             <label class="check"><input v-model="highContrast" type="checkbox" />{{ t('highContrast') }}</label>
           </details>
         </template>
-        <div class="actions full"><button type="submit" :disabled="busy || !title.trim()">{{ busy ? t('creating') : t('createAndOpen') }}</button>
+        <div class="actions full"><button type="submit" :disabled="busy || !title.trim() || (!!material && !materialRights)">{{ busy ? t('creating') : t('createAndOpen') }}</button>
+          <span v-if="progress" class="hint" role="status">{{ progress }}</span>
           <button type="button" class="secondary" @click="choice = null">{{ t('cancel') }}</button></div>
         <p v-if="choice.kind !== 'libre'" class="hint full">{{ t('guidedNext') }}</p>
       </form>
@@ -125,6 +142,7 @@ async function create() {
 <style scoped>
 .create-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 .stepper { list-style: none; padding: 0; }
+.material-pick { border: 1px dashed var(--c-line-2); border-radius: var(--radius); padding: 0 1rem .4rem; background: var(--c-surface-2); }
 .details-form { margin-top: 1.2rem; padding-top: .4rem; border-top: 1px solid var(--c-line); }
 .list-title { display: flex; align-items: center; gap: .5rem; margin-top: 1.6rem; }
 .project-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--c-brand-50); color: var(--c-brand); margin-bottom: .6rem; }

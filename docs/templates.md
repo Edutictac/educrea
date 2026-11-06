@@ -24,7 +24,7 @@ EduStudio ofrece ocho plantillas, en castellano y valenciano, que se eligen al c
 
 ## Flujo guiado
 
-1. «Mis proyectos» → elegir plantilla → título, idioma, nivel, de qué trata y accesibilidad → «Crear y abrir».
+1. «Mis proyectos» → elegir plantilla → título, idioma, nivel, de qué trata, material de partida opcional (PDF, DOCX…) y accesibilidad → «Crear y abrir».
 2. El proyecto se abre en modo docente con el encargo guardado y los archivos de la plantilla; «Generar la primera versión con IA» rellena el contenido.
 3. Revisión en la vista previa (actividades) o en «Materiales de aula» (ficha y situación). Los cambios posteriores, desde el asistente o en modo avanzado.
 

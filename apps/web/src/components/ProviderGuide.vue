@@ -4,7 +4,7 @@ import { t } from '../i18n'
 import type { ProviderName } from '../services/ai'
 import { providerGuides, stepStates } from '../services/providerGuide'
 
-const props = defineProps<{ provider: ProviderName; mode: 'free' | 'paid'; configured: boolean; confirmedFree: boolean; hasFreeModels: boolean; hasPaidModels: boolean; paidReady: boolean }>()
+const props = defineProps<{ provider: ProviderName; mode: 'free' | 'paid'; statusState: 'loading' | 'ready' | 'error'; configured: boolean; confirmedFree: boolean; hasFreeModels: boolean; hasPaidModels: boolean; paidReady: boolean }>()
 const guide = computed(() => providerGuides[props.provider])
 const managed = computed(() => guide.value.steps === 'managed')
 const paid = computed(() => props.mode === 'paid')
@@ -27,8 +27,8 @@ const mark = (state: string) => state === 'done' ? '✓' : state === 'current' ?
           <p v-if="!managed" class="hint">{{ t('guideStep2Hint') }}</p>
           <slot name="key" /></div></li>
       <li :class="states[2]"><span class="mark" aria-hidden="true">{{ mark(states[2]) }}</span>
-        <div><strong>{{ managed ? t('guideStep3Managed') : paid ? hasPaidModels ? t('guideStep3Paid') : t('guideStep3PaidUnavailable') : hasFreeModels ? t('guideStep3') : t('guideStep3Unavailable') }}</strong>
-          <p v-if="!managed" class="hint">{{ paid ? hasPaidModels ? t('guideStep3PaidHint') : t('guideStep3PaidUnavailableHint') : hasFreeModels ? t('guideStep3Hint') : t('guideStep3UnavailableHint') }}</p>
+        <div><strong>{{ statusState === 'loading' ? t('guideStep3Loading') : statusState === 'error' ? t('guideStep3LoadFailed') : managed ? t('guideStep3Managed') : paid ? hasPaidModels ? t('guideStep3Paid') : t('guideStep3PaidUnavailable') : hasFreeModels ? t('guideStep3') : t('guideStep3Unavailable') }}</strong>
+          <p v-if="statusState === 'ready' && !managed" class="hint">{{ paid ? hasPaidModels ? t('guideStep3PaidHint') : t('guideStep3PaidUnavailableHint') : hasFreeModels ? t('guideStep3Hint') : t('guideStep3UnavailableHint') }}</p>
           <slot name="finish" /></div></li>
     </ol>
     <p v-if="states[2] === 'done'" class="notice ok" role="status">{{ t('guideDone') }} <RouterLink to="/projects">{{ t('guideGoProjects') }}</RouterLink></p>

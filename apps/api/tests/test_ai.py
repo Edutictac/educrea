@@ -290,7 +290,8 @@ def test_authorized_fallback_and_quota_limit(client: TestClient, monkeypatch):
     assert client.post(route, headers=headers, json=request).status_code == 429
 
 
-def test_stream_fallback_only_before_text(client: TestClient, monkeypatch):
+@pytest.mark.parametrize("status_code", [429, 503, 504])
+def test_stream_fallback_only_before_text(client: TestClient, monkeypatch, status_code):
     headers, project_id = setup_user(client)
     client.put("/api/ai/providers/groq/key", headers=headers, json={"api_key": "test-groq-secret"})
     client.post("/api/ai/providers/groq/free-models/groq-test-free/confirm",
@@ -299,7 +300,7 @@ def test_stream_fallback_only_before_text(client: TestClient, monkeypatch):
 
     class Limited:
         async def stream(self, *_args):
-            raise ProviderError("Cuota alcanzada", 429)
+            raise ProviderError("Proveedor no disponible", status_code)
             yield ProviderChunk()
 
     app.dependency_overrides[get_gemini_provider] = lambda: Limited()
@@ -342,6 +343,18 @@ def test_compatible_provider_parses_rest_and_stream():
             chunks = [chunk async for chunk in provider.stream("test-key", "groq-test-free", "hello")]
             assert chunks[0].text == "{}"
             assert chunks[0].finished
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("status_code", [503, 504])
+def test_compatible_provider_preserves_saturation_status(status_code):
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(
+                lambda _request: httpx.Response(status_code))) as client:
+            provider = CompatibleProvider("mistral", client)
+            with pytest.raises(ProviderError) as error:
+                await provider.generate("test-key", "mistral-small-latest", "JSON")
+            assert error.value.status_code == status_code
     asyncio.run(run())
 
 
@@ -827,3 +840,22 @@ def test_first_version_falls_back_to_mistral_when_gemini_is_saturated(client: Te
     # Without another free provider the error is reported as before.
     client.delete("/api/ai/providers/mistral/key", headers=headers)
     assert client.post(f"/api/projects/{project_id}/ai/from-brief", headers=headers).status_code == 503
+
+
+def test_first_version_uses_the_ai_chosen_in_the_selector(client: TestClient, monkeypatch):
+    headers, project_id = setup_user(client)
+    client.put("/api/ai/providers/mistral/key", headers=headers, json={"api_key": "test-only-mistral-key"})
+    client.post("/api/ai/providers/mistral/free-models/mistral-small-latest/confirm", headers=headers, json={"acknowledged": True})
+    client.post(f"/api/projects/{project_id}/files", headers=headers,
+                json={"path": "activity.json", "content": json.dumps({"title": "Volcanes", "instructions": "Una página"})})
+    draft = {"summary": "Hecho", "changes": [{"path": "index.html", "content": "<h1>Volcanes</h1>"}]}
+    used = []
+    monkeypatch.setattr(registry, "adapter", lambda name: used.append(name) or StubGemini(json.dumps(draft)))
+    app.dependency_overrides[get_gemini_provider] = lambda: StubGemini(json.dumps(draft))
+    route = f"/api/projects/{project_id}/ai/from-brief"
+    body = client.post(route, headers=headers, json={"provider": "mistral", "model": "mistral-small-latest"}).json()
+    assert body["provider"] == "mistral" and used == ["mistral"]
+    assert client.post(route, headers=headers, json={}).json()["provider"] == "gemini"  # «Automática»
+    assert client.post(route, headers=headers).json()["provider"] == "gemini"  # old clients without body
+    assert client.post(route, headers=headers, json={"provider": "mistral", "model": "otro"}).status_code == 403
+    assert client.post(route, headers=headers, json={"provider": "openai", "model": "gpt-x"}).status_code == 422

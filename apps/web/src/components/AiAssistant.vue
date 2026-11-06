@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { t } from '../i18n'
 import { listSources, type Source } from '../services/sources'
 import { invokeCapability, parseArguments } from '../services/capabilities'
+import { aiChoice, PROVIDER_NAMES } from '../services/aiChoice'
 import { useAuthStore } from '../stores/auth'
 import { budgetStatus, changeProposal, estimatePaid, providersStatus, quotaStatus,
   listContextFiles, listProposals, streamProposal,
@@ -59,11 +60,23 @@ onMounted(async () => {
     proposals.value = recent
     filePaths.value = available
     selectedPaths.value = available.filter(path => path === 'activity.json' || path === 'index.html')
-    provider.value = availableProviders.value[0] ?? 'gemini'
-    model.value = providerStatus[provider.value].confirmed_free_models[0] ?? ''
+    applyChoice()
     selectedId.value = recent[0]?.id ?? null
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 })
+// Follow the project selector: its free AI, or the first available one when «Automática» (with fallback).
+function applyChoice() {
+  if (mode.value !== 'free' || !statuses.value) return
+  const chosen = aiChoice.value
+  if (chosen.provider && statuses.value[chosen.provider]?.confirmed_free_models.includes(chosen.model)) {
+    provider.value = chosen.provider; model.value = chosen.model; allowFallback.value = true
+  } else {
+    provider.value = availableProviders.value[0] ?? 'gemini'
+    model.value = statuses.value[provider.value]?.confirmed_free_models[0] ?? ''
+    allowFallback.value = true
+  }
+}
+watch(aiChoice, applyChoice, { deep: true })
 onBeforeUnmount(() => controller?.abort())
 watch([instruction, provider, model, selectedPaths, mode, useAutomatic, selectedSources], () => { estimate.value = null; paidConfirmed.value = false }, { deep: true })
 
@@ -162,6 +175,8 @@ function stateLabel(value: Proposal['status']) {
     <form @submit.prevent="generate">
       <label>{{ t('aiInstruction') }}<textarea v-model="instruction" rows="4" minlength="10" maxlength="4000" required
         :placeholder="t('aiPlaceholder')" /></label>
+      <p v-if="automatic" class="hint full">{{ t('aiUsing') }}: <strong>{{ model ? `${PROVIDER_NAMES[provider]} · ${model}` : t('aiNone') }}</strong> · {{ t('aiChangeInHeader') }}</p>
+      <template v-else>
       <label>{{ t('modelMode') }}<select v-model="mode" @change="changeMode">
         <option value="free">{{ t('freeMode') }}</option><option value="paid">{{ t('paidMode') }}</option>
       </select></label>
@@ -172,6 +187,7 @@ function stateLabel(value: Proposal['status']) {
         <option v-for="item in models" :key="item" :value="item">{{ item }}</option>
       </select></label>
       <label v-if="mode === 'free' && availableProviders.length > 1" class="check"><input v-model="allowFallback" type="checkbox" />{{ t('allowFallback') }}</label>
+      </template>
       <label v-if="!automatic" class="check"><input v-model="autoChoice" type="checkbox" />{{ t('aiDecidesFiles') }}</label>
       <p v-if="useAutomatic" class="hint">{{ automatic ? t('automaticApplyNote') : t('automaticContextNote') }}</p>
       <fieldset v-else-if="filePaths.length" class="full"><legend>{{ t('contextFiles') }}</legend>

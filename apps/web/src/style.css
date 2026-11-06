@@ -205,8 +205,9 @@ p[role=alert] { color: var(--c-danger); background: var(--c-danger-50); border: 
 .icon-form label { margin: 0; }
 .guide { border: 1px solid var(--c-line); border-radius: var(--radius); padding: .4rem 1rem; margin: 1rem 0; background: var(--c-surface-2); }
 .guide ol { list-style: none; padding: 0; margin: 0; }
-.guide li { display: flex; gap: .7rem; padding: .7rem 0; border-bottom: 1px solid var(--c-line); }
-.guide li:last-child { border-bottom: 0; }
+.guide ol > li { display: flex; gap: .7rem; padding: .7rem 0; border-bottom: 1px solid var(--c-line); }
+.guide ol > li:last-child { border-bottom: 0; }
+.guide ol > li > div { flex: 1; min-width: 0; }
 .guide .mark { width: 1.7rem; height: 1.7rem; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--c-line); font-weight: 700; }
 .guide li.done .mark { background: var(--c-ok); color: #fff; }
 .guide li.current .mark { background: var(--c-brand); color: #fff; }

@@ -8,13 +8,15 @@ describe('providerGuide', () => {
       if (name !== 'ollama') expect(guide.url).toMatch(/^https:\/\/(aistudio\.google\.com|openrouter\.ai|console\.groq\.com|console\.mistral\.ai|build\.nvidia\.com|platform\.openai\.com|console\.anthropic\.com)\//)
     }
     expect(providerGuides.gemini.paid).toBe(false)
+    expect(providerGuides.mistral).toMatchObject({ paid: false, steps: 'mistral' })
+    expect(providerGuides.nvidia).toMatchObject({ paid: false, steps: 'nvidia' })
     expect(providerGuides.openai.paid).toBe(true)
   })
   it('follows the real state of the setup', () => {
-    expect(stepStates(false, false, false)).toEqual(['current', 'todo', 'todo'])
-    expect(stepStates(true, false, false)).toEqual(['done', 'done', 'current'])
-    expect(stepStates(true, true, false)).toEqual(['done', 'done', 'done'])
-    expect(stepStates(true, false, true)).toEqual(['done', 'done', 'done'])
+    expect(stepStates(false, false)).toEqual(['done', 'current', 'todo'])
+    expect(stepStates(true, false)).toEqual(['done', 'done', 'current'])
+    expect(stepStates(true, true)).toEqual(['done', 'done', 'done'])
+    expect(stepStates(false, false, true)).toEqual(['current', 'todo', 'todo'])
   })
   it('suggests Gemini first and then the next free provider still to configure', () => {
     expect(suggestedProvider({})).toBe('gemini')

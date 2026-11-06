@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ProviderGuide from '../components/ProviderGuide.vue'
-import { suggestedProvider } from '../services/providerGuide'
+import { providerGuides, suggestedProvider } from '../services/providerGuide'
 import { t } from '../i18n'
 import { useAuthStore } from '../stores/auth'
 import { budgetStatus, confirmProviderModel, providersStatus, revokeProviderKey, saveProviderKey, updateBudget,
@@ -12,6 +12,7 @@ const auth = useAuthStore()
 const router = useRouter()
 const names: ProviderName[] = ['gemini', 'mistral', 'nvidia', 'groq', 'openrouter', 'ollama', 'openai', 'anthropic']
 const provider = ref<ProviderName>('gemini')
+const setupMode = ref<'free' | 'paid'>('free')
 const statuses = ref<ProviderStatuses | null>(null)
 const status = computed(() => statuses.value?.[provider.value])
 const budget = ref<BudgetStatus | null>(null)
@@ -21,6 +22,10 @@ const checkedFree = ref(false)
 const busy = ref(false)
 const error = ref('')
 const message = ref('')
+watch(provider, () => {
+  setupMode.value = providerGuides[provider.value].paid ? 'paid' : 'free'
+  key.value = ''; checkedFree.value = false; error.value = ''; message.value = ''
+})
 
 onMounted(async () => {
   if (!auth.user) { router.replace('/login'); return }
@@ -69,39 +74,50 @@ async function saveBudget() {
     <label>{{ t('providerLabel') }}<select v-model="provider">
       <option v-for="name in names" :key="name" :value="name">{{ name }}</option>
     </select></label>
-    <ProviderGuide v-if="status" :provider="provider" :configured="status.configured" :confirmed-free="status.confirmed_free_models.length > 0"
-      :has-free-models="status.verified_free_models.length > 0" />
-    <form v-if="budget" @submit.prevent="saveBudget">
-      <h2>{{ t('monthlyBudget') }}</h2>
-      <p>{{ t('budgetIntro') }}</p>
-      <label>{{ t('budgetUsd') }}<input v-model="monthlyDollars" type="number" min="0" step="0.01"
-        :max="budget.maximum_allowed_microusd / 1000000" required /></label>
-      <p>{{ t('budgetUsed') }}: ${{ (budget.spent_or_reserved_microusd / 1000000).toFixed(4) }}</p>
-      <button :disabled="busy" type="submit">{{ t('saveBudget') }}</button>
-    </form>
-    <p v-if="status && provider !== 'ollama'" role="status">{{ status.configured ? t('keyConfigured') : t('keyMissing') }}</p>
-    <p v-if="provider === 'ollama'">{{ t('ollamaManaged') }}</p>
-    <p v-if="status && !status.verified_free_models.length && !status.paid_models.length" class="notice">{{ t('noVerifiedModels') }}</p>
-    <template v-if="status?.configured && status.verified_free_models.length">
-      <h3>{{ t('verifiedModels') }}</h3>
-      <p v-if="provider !== 'ollama'">{{ t('freeVerificationNote') }}</p>
-      <label v-if="provider !== 'ollama'" class="check"><input v-model="checkedFree" type="checkbox" />{{ t('freeAcknowledgement') }}</label>
-      <ul><li v-for="model in status.verified_free_models" :key="model">{{ model }} ·
-        {{ status.confirmed_free_models.includes(model) ? t('modelConfirmed') : t('modelUnconfirmed') }}
-        <button v-if="provider !== 'ollama' && !status.confirmed_free_models.includes(model)" type="button" class="secondary"
-          :disabled="!checkedFree || busy" @click="confirmModel(model)">{{ t('confirmFree') }}</button></li></ul>
-    </template>
-    <template v-if="status?.paid_models.length">
-      <h3>{{ t('paidModels') }}</h3>
-      <ul><li v-for="item in status.paid_models" :key="item.model">{{ item.model }} ·
-        ${{ (item.input_rate_microusd / 1000000).toFixed(4) }} / ${{ (item.output_rate_microusd / 1000000).toFixed(4) }}
-        {{ t('perMillionTokens') }}</li></ul>
-    </template>
-    <form v-if="provider !== 'ollama'" @submit.prevent="save"><label>{{ t('providerKey') }}
-      <input v-model="key" type="password" autocomplete="off" minlength="10" required /></label>
-      <div class="actions"><button :disabled="busy" type="submit">{{ t('saveKey') }}</button>
-        <button v-if="status?.configured" :disabled="busy" type="button" class="danger" @click="revoke">{{ t('revokeKey') }}</button></div>
-    </form>
+    <label v-if="status?.paid_models.length && !providerGuides[provider].paid">{{ t('modelMode') }}
+      <select v-model="setupMode"><option value="free">{{ t('freeMode') }}</option><option value="paid">{{ t('paidMode') }}</option></select>
+    </label>
+    <ProviderGuide v-if="status" :provider="provider" :mode="setupMode" :configured="status.configured" :confirmed-free="status.confirmed_free_models.length > 0"
+      :has-free-models="status.verified_free_models.length > 0" :has-paid-models="status.paid_models.length > 0"
+      :paid-ready="!!budget?.monthly_limit_microusd">
+      <template #key>
+        <p v-if="provider === 'ollama'">{{ t('ollamaManaged') }}</p>
+        <template v-else>
+          <p role="status">{{ status.configured ? t('keyConfigured') : t('keyMissing') }}</p>
+          <form @submit.prevent="save"><label>{{ t('providerKey') }}
+            <input v-model="key" type="password" autocomplete="off" minlength="10" required /></label>
+            <div class="actions"><button :disabled="busy" type="submit">{{ t('saveKey') }}</button>
+              <button v-if="status.configured" :disabled="busy" type="button" class="danger" @click="revoke">{{ t('revokeKey') }}</button></div>
+          </form>
+        </template>
+      </template>
+      <template #finish>
+        <p v-if="setupMode === 'free' && !status.verified_free_models.length" class="notice">{{ t('noVerifiedModels') }}</p>
+        <template v-if="setupMode === 'free' && status.configured && status.verified_free_models.length">
+          <h3>{{ t('verifiedModels') }}</h3>
+          <p v-if="provider !== 'ollama'">{{ t('freeVerificationNote') }}</p>
+          <label v-if="provider !== 'ollama'" class="check"><input v-model="checkedFree" type="checkbox" />{{ t('freeAcknowledgement') }}</label>
+          <ul><li v-for="model in status.verified_free_models" :key="model">{{ model }} ·
+            {{ status.confirmed_free_models.includes(model) ? t('modelConfirmed') : t('modelUnconfirmed') }}
+            <button v-if="provider !== 'ollama' && !status.confirmed_free_models.includes(model)" type="button" class="secondary"
+              :disabled="!checkedFree || busy" @click="confirmModel(model)">{{ t('confirmFree') }}</button></li></ul>
+        </template>
+        <template v-if="setupMode === 'paid' && status.paid_models.length">
+          <h3>{{ t('paidModels') }}</h3>
+          <ul><li v-for="item in status.paid_models" :key="item.model">{{ item.model }} ·
+            ${{ (item.input_rate_microusd / 1000000).toFixed(4) }} / ${{ (item.output_rate_microusd / 1000000).toFixed(4) }}
+            {{ t('perMillionTokens') }}</li></ul>
+        </template>
+        <form v-if="setupMode === 'paid' && budget && status.paid_models.length" @submit.prevent="saveBudget">
+          <h3>{{ t('monthlyBudget') }}</h3>
+          <p>{{ t('budgetIntro') }}</p>
+          <label>{{ t('budgetUsd') }}<input v-model="monthlyDollars" type="number" min="0" step="0.01"
+            :max="budget.maximum_allowed_microusd / 1000000" required /></label>
+          <p>{{ t('budgetUsed') }}: ${{ (budget.spent_or_reserved_microusd / 1000000).toFixed(4) }}</p>
+          <button :disabled="busy" type="submit">{{ t('saveBudget') }}</button>
+        </form>
+      </template>
+    </ProviderGuide>
     <p v-if="error" role="alert">{{ error }}</p><p v-if="message" role="status">{{ message }}</p>
     <p class="notice">{{ t('keyPrivacy') }}</p>
   </section>

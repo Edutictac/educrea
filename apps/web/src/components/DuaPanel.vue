@@ -4,6 +4,7 @@ import { t } from '../i18n'
 import { adaptDua, changeProposal, type Proposal } from '../services/ai'
 import type { DuaPrinciple } from '../services/sources'
 import { useAuthStore } from '../stores/auth'
+import { choiceBody } from '../services/aiChoice'
 import { useFilesStore } from '../stores/files'
 
 const props = defineProps<{ projectId: string; embedded?: boolean; refreshKey?: number; autoApply: boolean; canGenerate: () => boolean }>()
@@ -32,7 +33,7 @@ async function adapt() {
   if (!props.canGenerate()) { error.value = t('saveBeforeAi'); return }
   error.value = ''; busy.value = true; result.value = null
   try {
-    result.value = await adaptDua(props.projectId, path.value, needs.value, props.autoApply, auth.csrf)
+    result.value = await adaptDua(props.projectId, path.value, needs.value, props.autoApply, auth.csrf, choiceBody())
     if (result.value.status === 'applied') emit('changed')
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
   finally { busy.value = false }

@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/auth'
 import { useFilesStore, type ProjectFile } from '../stores/files'
 import { listTemplates, templateStatus, updateTemplateEngine, type TemplateInfo } from '../services/templates'
 import StartingMaterial from './StartingMaterial.vue'
+import { choiceBody } from '../services/aiChoice'
 
 const props = defineProps<{ projectId: string }>()
 const emit = defineEmits<{ generated: []; openMaterials: [] }>()
@@ -120,7 +121,7 @@ async function generateFirstVersion() {
   if (dirty.value) { error.value = t('saveBeforeGenerating'); return }
   error.value = ''; success.value = ''; needsProvider.value = false; generating.value = true
   try {
-    const proposal = await generateFromBrief(props.projectId, auth.csrf)
+    const proposal = await generateFromBrief(props.projectId, auth.csrf, choiceBody())
     lastProposal.value = proposal
     missingSections.value = proposal.grounding?.sections_missing ?? []
     problems.value = proposal.grounding?.template_problems ?? []

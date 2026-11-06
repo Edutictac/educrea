@@ -68,7 +68,13 @@ class DuaReport(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
 
-class DuaInput(BaseModel):
+class PreferredModel(BaseModel):
+    """The AI chosen in the project selector; both empty means «Automática» (first confirmed free model)."""
+    provider: str | None = Field(default=None, max_length=40)
+    model: str | None = Field(default=None, max_length=100)
+
+
+class DuaInput(PreferredModel):
     path: str = Field(min_length=1, max_length=200)  # the material to adapt (.html or .md)
     needs: str = Field(default="", max_length=1500)  # group needs or barriers the teacher already knows
     auto_apply: bool = False

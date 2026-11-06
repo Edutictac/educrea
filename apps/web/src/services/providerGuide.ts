@@ -16,11 +16,10 @@ export const providerGuides: Record<ProviderName, ProviderGuide> = {
 
 export type StepState = 'done' | 'current' | 'todo'
 
-// Step 1 (create key) is informational; steps 2 and 3 follow the real configuration state.
-export function stepStates(configured: boolean, confirmedFree: boolean, paid: boolean): [StepState, StepState, StepState] {
-  if (!configured) return ['current', 'todo', 'todo']
-  if (paid) return ['done', 'done', 'done']
-  return confirmedFree ? ['done', 'done', 'done'] : ['done', 'done', 'current']
+// Creating the key happens on the provider's site; EduStudio can verify steps 2 and 3.
+export function stepStates(configured: boolean, ready: boolean, managed = false): [StepState, StepState, StepState] {
+  if (!configured) return managed ? ['current', 'todo', 'todo'] : ['done', 'current', 'todo']
+  return ready ? ['done', 'done', 'done'] : ['done', 'done', 'current']
 }
 
 // Provider shown first: the first one a teacher still has to set up, Gemini by default.

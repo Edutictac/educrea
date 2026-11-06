@@ -78,6 +78,15 @@ def adapter(provider: str):
     return CompatibleProvider(provider)
 
 
+def preferred_free(db: Session, user_id: UUID, provider: str | None, model: str | None) -> tuple[str, str, str] | None:
+    """The free model the teacher picked in the selector, or the first confirmed one when «Automática»."""
+    if provider and model:
+        if provider not in FREE_PROVIDERS:
+            raise HTTPException(422, "Elige una IA gratuita en el selector")
+        return provider, model, authorize(db, user_id, provider, model)
+    return first_free(db, user_id)
+
+
 def first_free(db: Session, user_id: UUID) -> tuple[str, str, str] | None:
     """First provider/model already confirmed as free by this user, in the documented order."""
     return fallback(db, user_id, set())

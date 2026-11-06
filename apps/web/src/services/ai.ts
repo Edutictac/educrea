@@ -92,16 +92,16 @@ export async function confirmFreeModel(model: string, csrf: string): Promise<voi
 }
 
 export async function adaptDua(projectId: string, path: string, needs: string, autoApply: boolean,
-  csrf: string): Promise<Proposal> {
+  csrf: string, choice: { provider?: string; model?: string } = {}): Promise<Proposal> {
   return await (await checked(await fetch(`/api/projects/${projectId}/ai/dua`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-    body: JSON.stringify({ path, needs, auto_apply: autoApply }),
+    body: JSON.stringify({ path, needs, auto_apply: autoApply, ...choice }),
   }))).json() as Proposal
 }
 
-export async function generateFromBrief(projectId: string, csrf: string): Promise<Proposal> {
+export async function generateFromBrief(projectId: string, csrf: string, choice: { provider?: string; model?: string } = {}): Promise<Proposal> {
   return await (await checked(await fetch(`/api/projects/${projectId}/ai/from-brief`, {
-    method: 'POST', headers: { 'X-CSRF-Token': csrf } }))).json() as Proposal
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(choice) }))).json() as Proposal
 }
 
 export async function listProposals(projectId: string): Promise<Proposal[]> {

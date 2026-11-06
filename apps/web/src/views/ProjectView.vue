@@ -12,6 +12,7 @@ import HistoryPanel from '../components/HistoryPanel.vue'
 import AssetsPanel from '../components/AssetsPanel.vue'
 import ProjectViewer from '../components/ProjectViewer.vue'
 import AppIcon from '../components/AppIcon.vue'
+import AiPicker from '../components/AiPicker.vue'
 import { t } from '../i18n'
 import { useProjectsStore } from '../stores/projects'
 
@@ -117,6 +118,7 @@ async function remove() {
       <div class="project-bar">
         <RouterLink to="/projects" class="button ghost icon-only" :title="t('back')"><AppIcon name="arrow-left" /><span class="sr-only">{{ t('back') }}</span></RouterLink>
         <h1 :title="title">{{ title }}</h1>
+        <AiPicker />
         <div class="segmented" role="group" :aria-label="t('mode')">
           <button type="button" :aria-pressed="mode === 'teacher'" @click="switchMode('teacher')">{{ t('teacherMode') }}</button>
           <button type="button" :aria-pressed="mode === 'advanced'" @click="switchMode('advanced')">{{ t('advancedMode') }}</button>

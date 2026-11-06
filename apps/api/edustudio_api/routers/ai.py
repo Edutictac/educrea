@@ -19,7 +19,7 @@ from ..services.ai.providers.base import ProviderError
 from ..services.ai.providers.gemini import GeminiProvider, get_gemini_provider
 from ..services.ai.providers import registry
 from ..services.ai.schemas import (BudgetInput, CredentialInput, DuaInput, FreeConfirmation, GenerateInput,
-                                   ProposalOut)
+                                   PreferredModel, ProposalOut)
 
 router = APIRouter(tags=["ai"])
 
@@ -188,7 +188,7 @@ async def generate_proposal(project_id: UUID, data: GenerateInput,
             db.rollback()
             quotas.reconcile(db, reservation, failed=True)
             alternative = (registry.fallback(db, user_id, used)
-                           if data.mode == "free" and exc.status_code == 429 and data.allow_fallback else None)
+                           if data.mode == "free" and exc.status_code in (429, 503, 504) and data.allow_fallback else None)
             if alternative is None:
                 raise HTTPException(exc.status_code, str(exc)) from exc
             name, model, key = alternative
@@ -201,7 +201,8 @@ async def generate_proposal(project_id: UUID, data: GenerateInput,
 
 
 @router.post("/projects/{project_id}/ai/from-brief", response_model=ProposalOut, status_code=201)
-async def generate_from_brief(project_id: UUID, user: User = Depends(require_csrf), db: Session = Depends(get_db),
+async def generate_from_brief(project_id: UUID, choice: PreferredModel | None = None,
+                              user: User = Depends(require_csrf), db: Session = Depends(get_db),
                               provider: GeminiProvider = Depends(get_gemini_provider)) -> AiProposal:
     """Teacher mode shortcut: builds the instruction from activity.json and applies the first version."""
     user_id = user.id
@@ -212,7 +213,8 @@ async def generate_from_brief(project_id: UUID, user: User = Depends(require_csr
     instruction = engine.instruction_for(brief)
     if source_ids:
         instruction += engine.MATERIAL_INSTRUCTION
-    return await generate_with_first_free(db, project_id, user_id, provider, instruction, True, source_ids=source_ids)
+    return await generate_with_first_free(db, project_id, user_id, provider, instruction, True, source_ids=source_ids,
+                                          choice=choice)
 
 
 @router.post("/projects/{project_id}/ai/dua", response_model=ProposalOut, status_code=201)
@@ -236,14 +238,16 @@ async def adapt_dua(project_id: UUID, data: DuaInput, user: User = Depends(requi
     language = str((engine.read_brief(db, project_id) or {}).get("language") or "") or None
     instruction = engine.dua_instruction(data.path, data.needs, language)
     return await generate_with_first_free(db, project_id, user_id, provider, instruction, data.auto_apply,
-                                          dua_target=data.path)
+                                          dua_target=data.path, choice=data)
 
 
 async def generate_with_first_free(db: Session, project_id: UUID, user_id: UUID, provider: GeminiProvider,
                                    instruction: str, auto_apply: bool, dua_target: str | None = None,
-                                   source_ids: list[UUID] | None = None) -> AiProposal:
-    """One generation with the teacher's first confirmed free model; the backend chooses the context files."""
-    available = registry.first_free(db, user_id)
+                                   source_ids: list[UUID] | None = None,
+                                   choice: PreferredModel | None = None) -> AiProposal:
+    """One generation with the AI picked in the selector (or the first confirmed free one); the backend chooses
+    the context files and falls back to the next free AI if the chosen one is saturated."""
+    available = registry.preferred_free(db, user_id, choice.provider if choice else None, choice.model if choice else None)
     if available is None:
         raise HTTPException(409, "Configura un proveedor gratuito y confirma un modelo antes de generar")
     name, model, key = available
@@ -339,7 +343,7 @@ async def stream_proposal(project_id: UUID, data: GenerateInput,
                 if reservation:
                     quotas.reconcile(db, reservation, usage, failed=True)
                 alternative = (registry.fallback(db, user_id, used)
-                               if data.mode == "free" and isinstance(exc, ProviderError) and exc.status_code == 429
+                               if data.mode == "free" and isinstance(exc, ProviderError) and exc.status_code in (429, 503, 504)
                                and data.allow_fallback and not parts else None)
                 if alternative:
                     name, model, credential = alternative

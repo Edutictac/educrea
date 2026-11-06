@@ -26,6 +26,8 @@ def _usage(data: dict) -> dict[str, int]:
 def _check(response: httpx.Response, provider: str) -> None:
     if response.status_code == 429:
         raise ProviderError(f"Cuota o límite de {provider} alcanzado", 429)
+    if response.status_code in (503, 504):
+        raise ProviderError(f"{provider} está saturado ahora mismo", response.status_code)
     if response.status_code >= 400:
         raise ProviderError(f"{provider} no pudo completar la solicitud", 502)
 
@@ -69,6 +71,8 @@ class CompatibleProvider:
             if not finished or not isinstance(text, str) or not text:
                 raise ProviderError(f"Respuesta incompleta de {self.name}")
             return ProviderResult(text, usage)
+        except httpx.TimeoutException as exc:
+            raise ProviderError(f"{self.name} tardó demasiado en responder", 504) from exc
         except (httpx.RequestError, ValueError, KeyError, TypeError, AttributeError) as exc:
             raise ProviderError(f"Error de comunicación con {self.name}") from exc
         finally:
@@ -113,6 +117,8 @@ class CompatibleProvider:
                         raise ProviderError(f"Respuesta incompleta de {self.name}") from exc
             if not finished:
                 raise ProviderError(f"Respuesta incompleta de {self.name}")
+        except httpx.TimeoutException as exc:
+            raise ProviderError(f"{self.name} tardó demasiado en responder", 504) from exc
         except httpx.RequestError as exc:
             raise ProviderError(f"Error de comunicación con {self.name}") from exc
         finally:

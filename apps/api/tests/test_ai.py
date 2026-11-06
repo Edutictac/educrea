@@ -1103,3 +1103,25 @@ def test_nothing_to_rescue_still_falls_back(client: TestClient, monkeypatch):
     monkeypatch.setattr(registry, "adapter", lambda _name: StubGemini(json.dumps(good)))
     body = client.post(f"{base}/ai/from-brief", headers=headers).json()
     assert body["provider"] == "groq" and not (body.get("grounding") or {}).get("salvaged")
+
+
+def test_explicit_choice_is_not_switched_automatically(client: TestClient, monkeypatch):
+    headers, project_id = setup_user(client)
+    client.put("/api/ai/providers/groq/key", headers=headers, json={"api_key": "test-only-groq-key"})
+    client.post("/api/ai/providers/groq/free-models/groq-test-free/confirm", headers=headers, json={"acknowledged": True})
+    client.post(f"/api/projects/{project_id}/files", headers=headers,
+                json={"path": "activity.json", "content": json.dumps({"title": "Volcanes", "instructions": "Una página"})})
+
+    class Saturated:
+        async def generate(self, *_args):
+            raise ProviderError("Gemini está saturado", 503)
+
+    used = []
+    draft = {"summary": "Hecho", "changes": [{"path": "index.html", "content": "<h1>Volcanes</h1>"}]}
+    app.dependency_overrides[get_gemini_provider] = lambda: Saturated()
+    monkeypatch.setattr(registry, "adapter", lambda name: used.append(name) or StubGemini(json.dumps(draft)))
+    route = f"/api/projects/{project_id}/ai/from-brief"
+    chosen = client.post(route, headers=headers, json={"provider": "gemini", "model": "gemini-test-free"})
+    assert chosen.status_code == 503 and "IA automática" in chosen.json()["detail"] and used == []
+    automatic = client.post(route, headers=headers, json={}).json()  # «IA automática» still switches
+    assert automatic["provider"] == "groq" and used == ["groq"]

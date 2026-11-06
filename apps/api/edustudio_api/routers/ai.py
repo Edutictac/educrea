@@ -320,9 +320,17 @@ async def generate_with_first_free(db: Session, project_id: UUID, user_id: UUID,
                        if result is not None and not dua_target else None)
             if rescued is not None:
                 return rescued
-            # Saturated, out of quota, truncated or an unusable draft: try the teacher's next free model.
+            # Saturated, out of quota, truncated or an unusable draft: with «IA automática» try the teacher's next
+            # free model; an AI chosen explicitly in the selector is respected and the teacher decides.
+            explicit = bool(choice and choice.provider and choice.model)
             retryable = _retry_skips(exc, name, model, skip_providers, skip_models)
-            alternative = registry.next_free(db, user_id, skip_providers, skip_models, prefer_provider=name) if retryable else None
+            alternative = (registry.next_free(db, user_id, skip_providers, skip_models, prefer_provider=name)
+                           if retryable and not explicit else None)
+            if alternative is None and explicit and retryable:
+                label = engine.PROVIDER_LABELS.get(name, name)
+                raise HTTPException(exc.status_code, f"{label} ({model}) no ha podido responder ahora (saturada, sin cuota "
+                                    "o con una respuesta no válida). Elige otra IA o «IA automática» en el selector y "
+                                    "vuelve a intentarlo.") from exc
             if alternative is None:
                 if isinstance(exc, HTTPException):
                     raise

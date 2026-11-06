@@ -76,7 +76,8 @@ function applyChoice() {
   if (mode.value !== 'free' || !statuses.value) return
   const chosen = aiChoice.value
   if (chosen.provider && statuses.value[chosen.provider]?.confirmed_free_models.includes(chosen.model)) {
-    provider.value = chosen.provider; model.value = chosen.model; allowFallback.value = true
+    // An AI chosen explicitly is respected: no automatic switch (the error suggests «IA automática»).
+    provider.value = chosen.provider; model.value = chosen.model; allowFallback.value = false
   } else {
     provider.value = availableProviders.value[0] ?? 'gemini'
     model.value = statuses.value[provider.value]?.confirmed_free_models[0] ?? ''
@@ -155,7 +156,8 @@ const errorKeys: Record<string, Parameters<typeof t>[0]> = {
 function describeError(cause: unknown): string {
   if (cause instanceof AiError && cause.code && errorKeys[cause.code]) {
     const label = cause.provider ? PROVIDER_NAMES[cause.provider as ProviderName] ?? cause.provider : ''
-    return t(errorKeys[cause.code]).replace('{provider}', label).trim()
+    const text = t(errorKeys[cause.code]).replace('{provider}', label).trim()
+    return props.automatic && aiChoice.value.provider ? `${text} ${t('tryAutomatic')}` : text
   }
   return cause instanceof Error ? cause.message : t('error')
 }

@@ -31,10 +31,17 @@ const diffNew = ref(false)
 defineExpose({ show })
 
 const DOCUMENT_STYLE = "body{font-family:system-ui,sans-serif;line-height:1.6;margin:0 auto;max-width:46rem;padding:1.2rem;color:#15232f}h1,h2{color:#126382}table{border-collapse:collapse;width:100%}th,td{border:1px solid #9aa9b3;padding:.35rem .5rem;vertical-align:top}img{max-width:100%;height:auto}blockquote{border-left:4px solid #bbb;margin-left:0;padding-left:1rem;color:#444}pre{background:#f3f3f3;padding:.6rem;overflow:auto}"
+// Template projects keep the template's sample until the AI fills them: the content file is still at version 1.
+const TEMPLATE_CONTENT = ['datos.js', 'ficha.md', 'infografia.html']
+const pending = computed(() => files.items.some(item => item.path === 'activity.json')
+  && files.items.some(item => TEMPLATE_CONTENT.includes(item.path) && item.version === 1))
+const showSample = ref(false)
 const candidates = computed(() => {
   const paths = files.items.map(item => item.path)
   const html = paths.filter(path => /\.html$/i.test(path)).sort((a, b) => Number(b === 'index.html') - Number(a === 'index.html') || a.localeCompare(b))
-  return [...html, ...paths.filter(path => /\.md$/i.test(path)).sort()]
+  // datos.js holds the content of template activities, so it is the useful file to compare in the diff.
+  const data = diffMode.value && paths.includes('datos.js') ? ['datos.js'] : []
+  return [...data, ...html, ...paths.filter(path => /\.md$/i.test(path)).sort()]
 })
 const deviceLabel = { desktop: 'viewerDesktop', tablet: 'viewerTablet', mobile: 'viewerMobile' } as const
 
@@ -49,7 +56,9 @@ async function refresh() {
   finally { loading.value = false }
 }
 async function render() {
-  const item = files.items.find(entry => entry.path === selected.value)
+  let item = files.items.find(entry => entry.path === selected.value)
+  // Data files are only compared in the diff; the preview always shows the page that uses them.
+  if (item && /\.js$/i.test(item.path)) item = files.items.find(entry => entry.path === 'index.html')
   if (!item) { doc.value = ''; kind.value = ''; return }
   if (/\.md$/i.test(item.path)) {
     const response = await fetch(`/api/projects/${props.projectId}/files/${item.id}/render`, { credentials: 'same-origin' })
@@ -89,6 +98,8 @@ async function loadDiff() {
 }
 async function toggleDiff() {
   diffMode.value = !diffMode.value
+  if (diffMode.value && candidates.value.includes('datos.js')) selected.value = 'datos.js'
+  if (!diffMode.value && /\.js$/i.test(selected.value)) selected.value = candidates.value[0] ?? ''
   if (diffMode.value) await loadDiff()
 }
 async function choose() { error.value = ''; try { await render(); if (diffMode.value) await loadDiff() } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') } }
@@ -119,6 +130,8 @@ onMounted(() => void refresh())
     <div class="viewer-stage" :class="{ 'diff-stage': diffMode }">
       <DiffView v-if="diffMode" :path="selected" :before="diffBefore" :after="diffAfter" :from-version="diffFrom"
         :to-version="diffTo" :new-file="diffNew" :loading="diffLoading" :error="diffError" />
+      <div v-else-if="pending && !showSample" class="empty-state"><AppIcon name="sparkles" :size="48" /><p><strong>{{ t('viewerPending') }}</strong></p>
+        <p>{{ t('viewerPendingHint') }}</p><button type="button" class="secondary" @click="showSample = true">{{ t('viewerShowSample') }}</button></div>
       <iframe v-else-if="kind === 'activity'" class="viewer-frame" :class="device" sandbox="allow-scripts" :srcdoc="doc" :title="`${t('viewer')}: ${selected}`"></iframe>
       <iframe v-else-if="kind === 'document'" class="viewer-frame" :class="device" sandbox="" :srcdoc="doc" :title="`${t('viewer')}: ${selected}`"></iframe>
       <div v-else class="empty-state"><AppIcon name="layout-template" :size="48" /><p><strong>{{ t('viewerEmpty') }}</strong></p><p>{{ t('viewerEmptyHint') }}</p></div>

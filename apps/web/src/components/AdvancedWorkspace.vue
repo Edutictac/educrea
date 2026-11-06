@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import MonacoEditor from './MonacoEditor.vue'
 import { t } from '../i18n'
 import { buildPreview } from '../services/preview'
+import { assetImages } from '../services/assets'
 import { iconNames, insertIcon } from '../services/icons'
 import { INFOGRAPHIC_PATH, infographicTemplate } from '../services/templates'
 import { useFilesStore, type ProjectFile } from '../stores/files'
@@ -71,7 +72,7 @@ async function toggleReading() {
     const response = await fetch(`/api/projects/${props.projectId}/files/${activeFile.value.id}/render`, { credentials: 'same-origin' })
     if (!response.ok) throw new Error(((await response.json().catch(() => ({}))) as { detail?: string }).detail ?? t('error'))
     const data = await response.json() as { html: string }
-    readingHtml.value = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><style>body{font-family:system-ui,sans-serif;line-height:1.6;margin:1rem}table{border-collapse:collapse}th,td{border:1px solid #888;padding:.3rem .6rem}pre{background:#f3f3f3;padding:.6rem;overflow:auto}</style>${data.html}`
+    readingHtml.value = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:"><style>img{max-width:100%;height:auto}body{font-family:system-ui,sans-serif;line-height:1.6;margin:1rem}table{border-collapse:collapse}th,td{border:1px solid #888;padding:.3rem .6rem}pre{background:#f3f3f3;padding:.6rem;overflow:auto}</style>${data.html}`
     reading.value = true
   } catch (cause) { showError(cause) }
 }
@@ -85,7 +86,7 @@ async function togglePreview() {
       const open = documents.value[item.id]
       contents[item.path] = open ? drafts.value[item.id] : (await files.get(props.projectId, item.id)).content
     }
-    previewDoc.value = buildPreview(activeContent.value, contents)
+    previewDoc.value = buildPreview(activeContent.value, contents, await assetImages(props.projectId))
     previewing.value = true
   } catch (cause) { showError(cause) }
 }

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..models import ProjectFile, User
 from ..security import current_user
-from ..services import converter, materials, render
+from ..services import assets, converter, materials, render
 from .files import file_for_owner
 from .projects import project_for_owner
 
@@ -36,7 +36,7 @@ def attachment(content: bytes | str, media_type: str, filename: str) -> Response
 def render_file(project_id: UUID, file_id: UUID, user: User = Depends(current_user),
                 db: Session = Depends(get_db)) -> dict:
     file = markdown_for_owner(db, project_id, file_id, user)
-    return {"html": materials.render_markdown(file.content), "title": materials.title_of(file.path, file.content),
+    return {"html": materials.render_markdown(file.content, assets.assets_for(db, project_id)), "title": materials.title_of(file.path, file.content),
             "version": file.version}
 
 
@@ -44,7 +44,7 @@ def render_file(project_id: UUID, file_id: UUID, user: User = Depends(current_us
 def export_file_html(project_id: UUID, file_id: UUID, user: User = Depends(current_user),
                      db: Session = Depends(get_db)) -> Response:
     file = markdown_for_owner(db, project_id, file_id, user)
-    return attachment(materials.export_html(file.path, file.content), "text/html; charset=utf-8",
+    return attachment(materials.export_html(file.path, file.content, assets=assets.assets_for(db, project_id)), "text/html; charset=utf-8",
                       download_name(file.path.rsplit(".", 1)[0], ".html"))
 
 
@@ -56,7 +56,7 @@ def export_infographic_png(project_id: UUID, file_id: UUID, width: int = Query(1
     if not file.path.lower().endswith(".html"):
         raise HTTPException(422, "Solo se pueden exportar a PNG archivos HTML")
     files = {row.path: row.content for row in db.scalars(select(ProjectFile).where(ProjectFile.project_id == project_id))}
-    data = render.render_png(file.content, files, width, height)
+    data = render.render_png(file.content, files, width, height, assets.assets_for(db, project_id))
     return attachment(data, "image/png", download_name(file.path.rsplit(".", 1)[0], ".png"))
 
 
@@ -66,7 +66,8 @@ def export_file_converted(project_id: UUID, file_id: UUID, fmt: str, user: User 
     if fmt not in converter.FORMATS:
         raise HTTPException(404, "Formato no encontrado")
     file = markdown_for_owner(db, project_id, file_id, user)
-    data = converter.convert(file.content, materials.title_of(file.path, file.content), fmt)
+    data = converter.convert(file.content, materials.title_of(file.path, file.content), fmt,
+                             assets.assets_for(db, project_id))
     return attachment(data, converter.FORMATS[fmt][1], download_name(file.path.rsplit(".", 1)[0], f".{fmt}"))
 
 
@@ -75,5 +76,5 @@ def export_project_zip(project_id: UUID, user: User = Depends(current_user),
                        db: Session = Depends(get_db)) -> Response:
     project = project_for_owner(db, project_id, user.id)
     rows = db.scalars(select(ProjectFile).where(ProjectFile.project_id == project_id).order_by(ProjectFile.path))
-    return attachment(materials.export_zip([(row.path, row.content) for row in rows]), "application/zip",
+    return attachment(materials.export_zip([(row.path, row.content) for row in rows], assets.assets_for(db, project_id)), "application/zip",
                       download_name(project.slug, ".zip"))

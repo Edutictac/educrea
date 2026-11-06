@@ -11,6 +11,8 @@ import SourcesPanel from '../components/SourcesPanel.vue'
 import HistoryPanel from '../components/HistoryPanel.vue'
 import ActivityPreview from '../components/ActivityPreview.vue'
 import { useFilesStore } from '../stores/files'
+import { assetImages } from '../services/assets'
+import AssetsPanel from '../components/AssetsPanel.vue'
 import { t } from '../i18n'
 import { useProjectsStore } from '../stores/projects'
 
@@ -95,11 +97,12 @@ async function remove() {
       <AdvancedWorkspace v-else :key="workspaceKey" ref="workspace" :project-id="id" />
       <AiAssistant :project-id="id" :automatic="mode === 'teacher'" :sources-version="sourcesVersion" :can-generate="canGenerate" :can-apply="canApply" @project-changed="refreshWorkspace" />
       <SourcesPanel :project-id="id" @changed="sourcesVersion += 1" />
+      <AssetsPanel :project-id="id" />
       <MaterialsPanel ref="materials" :project-id="id" :refresh-key="workspaceKey" />
       <DuaPanel :project-id="id" :refresh-key="workspaceKey" :auto-apply="mode === 'teacher'" :can-generate="canGenerate" @changed="refreshWorkspace" />
       <CapabilitiesPanel v-if="mode === 'advanced'" :project-id="id" />
       <HistoryPanel :project-id="id" @restored="refreshWorkspace" />
-      <ActivityPreview :key="workspaceKey" :load-files="loadPreviewFiles" />
+      <ActivityPreview :key="workspaceKey" :load-files="loadPreviewFiles" :load-images="() => assetImages(id)" />
     </template>
   </section>
 </template>

@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { t } from '../i18n'
 import { buildPreview } from '../services/preview'
 
-const props = defineProps<{ loadFiles: () => Promise<Record<string, string>> }>()
+const props = defineProps<{ loadFiles: () => Promise<Record<string, string>>; loadImages?: () => Promise<Record<string, string>> }>()
 const open = ref(false)
 const doc = ref('')
 const error = ref('')
@@ -17,7 +17,7 @@ async function toggle() {
     const entry = files['index.html'] !== undefined ? 'index.html'
       : Object.keys(files).filter(path => path.toLowerCase().endsWith('.html')).sort()[0]
     if (entry === undefined) { error.value = t('previewNoIndex'); return }
-    doc.value = buildPreview(files[entry], files)
+    doc.value = buildPreview(files[entry], files, props.loadImages ? await props.loadImages() : {})
     open.value = true
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 }

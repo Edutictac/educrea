@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, LargeBinary, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
@@ -165,6 +165,24 @@ class Source(Base):
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
     url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ProjectAsset(Base):
+    """An image uploaded by the teacher (PNG or JPEG), referenced from activities and documents as imagenes/<name>."""
+
+    __tablename__ = "project_assets"
+    __table_args__ = (UniqueConstraint("project_id", "path"),)
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    path: Mapped[str] = mapped_column(String(120))
+    media_type: Mapped[str] = mapped_column(String(20))
+    size: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64))
+    alt: Mapped[str] = mapped_column(String(300))
+    credit: Mapped[str] = mapped_column(String(300), default="")
+    data: Mapped[bytes] = mapped_column(LargeBinary)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

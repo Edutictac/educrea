@@ -13,6 +13,8 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
+from .assets import embed
+
 from .converter import _sandbox
 
 STATIC_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; base-uri 'none'; form-action 'none'"
@@ -44,7 +46,7 @@ def static_document(entry: str, files: dict[str, str]) -> str:
     return document[:head.end()] + meta + document[head.end():] if head else meta + document
 
 
-def render_png(entry: str, files: dict[str, str], width: int, height: int) -> bytes:
+def render_png(entry: str, files: dict[str, str], width: int, height: int, assets: list | None = None) -> bytes:
     if not (1 <= width <= 2000 and 1 <= height <= 4000):
         raise HTTPException(422, "Dimensiones no válidas")
     browser = shutil.which("chromium") or shutil.which("chromium-browser")
@@ -55,7 +57,7 @@ def render_png(entry: str, files: dict[str, str], width: int, height: int) -> by
     try:
         with tempfile.TemporaryDirectory(prefix="edustudio-render-") as tmp:
             workdir = Path(tmp)
-            (workdir / "page.html").write_text(static_document(entry, files), encoding="utf-8")
+            (workdir / "page.html").write_text(embed(static_document(entry, files), assets or []), encoding="utf-8")
             command = ["chromium", "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
                        "--disable-extensions", "--hide-scrollbars", "--force-device-scale-factor=1",
                        "--host-resolver-rules=MAP * ~NOTFOUND", f"--window-size={width},{height}",

@@ -25,7 +25,12 @@ local function safe(target)
   return t:match('^https?://') or t:match('^mailto:') or t:sub(1, 1) == '#'
 end
 function Link(el) if not safe(el.target) then return el.content end end
-function Image(el) return el.caption end
+local allowed = {ALLOWED_IMAGES}
+function Image(el)
+  local src = el.src:gsub('^%./', '')
+  if allowed[src] then el.src = src return el end
+  return el.caption
+end
 """
 _slots = threading.BoundedSemaphore(2)
 
@@ -39,7 +44,13 @@ def _sandbox(workdir: Path, command: list[str], extra_ro: tuple[str, ...] = ()) 
             "--chdir", "/work", "--clearenv", "--setenv", "HOME", "/tmp", "--setenv", "PATH", "/usr/bin", *command]
 
 
-def convert(source: str, title: str, fmt: str) -> bytes:
+def lua_filter(image_paths: list[str]) -> str:
+    # Asset paths only contain [a-z0-9._/-] (see services/assets.py), so they are safe inside a Lua string.
+    table = ", ".join(f'["{path}"] = true' for path in image_paths if all(c.isalnum() or c in "._/-" for c in path))
+    return LUA_FILTER.replace("{ALLOWED_IMAGES}", "{" + table + "}")
+
+
+def convert(source: str, title: str, fmt: str, assets: list | None = None) -> bytes:
     if fmt not in FORMATS:
         raise HTTPException(422, "Formato no admitido")
     if not (shutil.which("pandoc") and shutil.which("bwrap")):
@@ -52,7 +63,11 @@ def convert(source: str, title: str, fmt: str) -> bytes:
         with tempfile.TemporaryDirectory(prefix="edustudio-convert-") as tmp:
             workdir = Path(tmp)
             (workdir / "input.md").write_text(source, encoding="utf-8")
-            (workdir / "filter.lua").write_text(LUA_FILTER, encoding="utf-8")
+            (workdir / "filter.lua").write_text(lua_filter([asset.path for asset in assets or []]), encoding="utf-8")
+            for asset in assets or []:  # only library images are copied; pandoc reads nothing else
+                target = workdir / asset.path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(asset.data)
             args = ["pandoc", "-f", READER, "--lua-filter=filter.lua", "--metadata", f"title={title}", "-o", f"output.{fmt}"]
             if fmt == "pdf":
                 args += ["--pdf-engine=xelatex", "-V", "mainfont=DejaVu Serif", "-V", "geometry:margin=2.5cm"]

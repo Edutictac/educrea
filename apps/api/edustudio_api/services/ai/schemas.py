@@ -79,7 +79,20 @@ class DraftProposal(BaseModel):
     citations: list[Citation] = Field(default_factory=list, max_length=40)
     not_covered: list[str] = Field(default_factory=list, max_length=20)
     dua: DuaReport | None = None  # only for DUA adaptations
+    tool_calls: list[dict] = Field(default_factory=list, max_length=10)  # ignored here; see ToolRound
     model_config = ConfigDict(extra="forbid")
+
+
+class ToolCall(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    arguments_json: str = Field(default="{}", max_length=16 * 1024)
+    model_config = ConfigDict(extra="ignore")
+
+
+class ToolRound(BaseModel):
+    """Answer of the consultation step: capabilities the model wants before writing the proposal."""
+    tool_calls: list[ToolCall] = Field(default_factory=list, max_length=10)
+    model_config = ConfigDict(extra="ignore")
 
 
 class ProposalChangeOut(BaseModel):
@@ -101,5 +114,6 @@ class ProposalOut(BaseModel):
     created_at: datetime
     applied_at: datetime | None
     grounding: dict | None = None
+    agent_trace: list[dict] | None = None
     model_config = ConfigDict(from_attributes=True)
 

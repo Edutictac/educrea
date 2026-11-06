@@ -68,3 +68,63 @@ def test_mcp_allowlist_schema_untrusted_and_approval(client: TestClient, mcp_con
     assert call("mcp.notes.write", {}, approved=True).status_code == 200
     statuses = [row["status"] for row in client.get(f"{base}/capabilities/audit").json()]
     assert "denied" in statuses and "ok" in statuses
+
+
+def test_agent_consults_read_only_capabilities_and_never_runs_mutating_ones(client: TestClient, mcp_config):
+    from edustudio_api.main import app
+    from edustudio_api.services.ai.providers.gemini import get_gemini_provider
+    from test_ai import StubGemini, setup_user
+
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    client.post(f"{base}/files", headers=headers, json={"path": "index.html", "content": "<h1>Notas</h1>"})
+    consultation = {"summary": "consulta", "changes": [], "tool_calls": [
+        {"name": "mcp.notes.solfege", "arguments_json": json.dumps({"note": "D"})},
+        {"name": "mcp.notes.write", "arguments_json": "{}"},
+        {"name": "project.read_file", "arguments_json": json.dumps({"path": "index.html"})},
+        {"name": "mcp.notes.hidden", "arguments_json": "{}"},
+        {"name": "project.search", "arguments_json": "no es json"}]}
+    final = {"summary": "Con la nota", "changes": [{"path": "index.html", "content": "<h1>Re</h1>"}]}
+    prompts: list[str] = []
+
+    class Sequence(StubGemini):
+        async def generate(self, key, model, prompt):
+            prompts.append(prompt)
+            self.text = json.dumps(consultation if len(prompts) == 1 else final)
+            return await super().generate(key, model, prompt)
+
+    app.dependency_overrides[get_gemini_provider] = lambda: Sequence("")
+    body = client.post(f"{base}/ai/proposals", headers=headers, json={
+        "instruction": "Usa la nota re del servidor de solfeo", "model": "gemini-test-free", "automatic": True})
+    assert body.status_code == 201, body.text
+    body = body.json()
+    assert len(prompts) == 2 and "PASO DE CONSULTA" in prompts[0] and "mcp.notes.solfege" in prompts[0]
+    assert "RESULTADOS DE LAS CAPACIDADES" in prompts[1] and "Re" in prompts[1] and "PASO DE CONSULTA" not in prompts[1]
+    assert [step["status"] for step in body["agent_trace"]] == ["ok", "needs_approval", "ok", "error", "error"]
+    audit = client.get(f"{base}/capabilities/audit").json()
+    assert not any(row["capability"] == "mcp.notes.write" for row in audit)  # never run, not even attempted
+    assert {row["capability"] for row in audit} >= {"mcp.notes.solfege", "project.read_file"}
+    # The teacher approves the pending one explicitly.
+    approved = client.post(f"{base}/capabilities/mcp.notes.write/invoke", headers=headers,
+                           json={"arguments": {}, "approved": True})
+    assert approved.status_code == 200
+
+
+def test_no_consultation_when_everything_fits_and_no_mcp(client: TestClient):
+    from edustudio_api.main import app
+    from edustudio_api.services.ai.providers.gemini import get_gemini_provider
+    from test_ai import StubGemini, setup_user
+
+    headers, project_id = setup_user(client)
+    calls = []
+
+    class Count(StubGemini):
+        async def generate(self, key, model, prompt):
+            calls.append(prompt)
+            return await super().generate(key, model, prompt)
+
+    draft = {"summary": "Uno", "changes": [{"path": "index.html", "content": "<h1>1</h1>"}]}
+    app.dependency_overrides[get_gemini_provider] = lambda: Count(json.dumps(draft))
+    body = client.post(f"/api/projects/{project_id}/ai/proposals", headers=headers, json={
+        "instruction": "Crea una página sencilla", "model": "gemini-test-free", "automatic": True}).json()
+    assert len(calls) == 1 and body["agent_trace"] is None

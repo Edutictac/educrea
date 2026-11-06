@@ -25,6 +25,8 @@ RESPONSE_SCHEMA = {
                 "principle": {"type": "STRING", "enum": ["representacion", "accion_expresion", "implicacion"]},
                 "barrier": {"type": "STRING"}, "measure": {"type": "STRING"}},
                 "required": ["principle", "measure"]}}}},
+        "tool_calls": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
+            "name": {"type": "STRING"}, "arguments_json": {"type": "STRING"}}, "required": ["name"]}},
     },
     "required": ["summary", "changes"],
 }

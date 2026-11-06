@@ -14,7 +14,9 @@ export interface QuotaStatus { requests_used: number; requests_limit: number; to
 export interface ProposalChange { path: string; before_content: string | null; after_content: string; base_version: number }
 export interface Proposal { id: string; project_id: string; provider: string; model: string; summary: string;
   changes: ProposalChange[]; status: 'pending' | 'applied' | 'rejected' | 'restored';
-  usage: Record<string, number>; created_at: string; applied_at: string | null; grounding?: Grounding | null }
+  usage: Record<string, number>; created_at: string; applied_at: string | null; grounding?: Grounding | null;
+  agent_trace?: AgentStep[] | null }
+export interface AgentStep { name: string; arguments: string; status: 'ok' | 'error' | 'needs_approval'; detail?: string; truncated?: boolean }
 
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {
@@ -120,6 +122,7 @@ export async function changeProposal(projectId: string, proposalId: string,
 
 export type AiStreamEvent = { event: 'status'; data: { stage: string; provider?: ProviderName; model?: string } }
   | { event: 'token'; data: { text: string } }
+  | { event: 'consulted'; data: { capabilities: AgentStep[] } }
   | { event: 'proposal'; data: Proposal }
   | { event: 'error'; data: { status_code: number; message: string } }
 

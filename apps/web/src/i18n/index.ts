@@ -93,6 +93,12 @@ const messages = {
     duaApplied: 'Material adaptado. Si no te convence, pulsa «Deshacer aplicación».', duaPending: 'La adaptación espera tu revisión en el asistente de IA.',
     duaBarriers: 'Barreras detectadas', duaMeasures: 'Medidas aplicadas', duaPrinciplesMissing: 'Faltan medidas de', duaUnchanged: 'La propuesta no modifica el material elegido.',
     dua_representacion: 'Representación', dua_accion_expresion: 'Acción y expresión', dua_implicacion: 'Implicación',
+    capabilities: 'Capacidades del servidor', capabilitiesIntro: 'Herramientas tipadas que EduStudio puede usar: leer y buscar en el proyecto y las herramientas MCP aprobadas por la administración. Cada llamada se comprueba y queda registrada (solo tamaños y resultado). La IA puede pedir las de solo lectura; las que modifican contenido o generan gasto solo se ejecutan con tu aprobación expresa.',
+    capability: 'Capacidad', capabilityMutates: 'modifica', capabilityBuiltin: 'integrada', capabilitySchema: 'Argumentos que admite (esquema)', capabilityArgs: 'Argumentos (JSON)',
+    capabilityApprove: 'Apruebo ejecutar esta capacidad, que modifica contenido o puede generar gasto', capabilityRun: 'Ejecutar', capabilityBadArgs: 'Los argumentos deben ser un objeto JSON válido.',
+    capabilityUntrusted: 'Resultado de la herramienta: son datos no verificados.', capabilityAudit: 'Registro de llamadas', capabilityStatus: 'Estado', capabilityWhen: 'Cuándo',
+    agentConsulting: 'La IA está consultando las capacidades del proyecto…', agentConsulted: 'Capacidades consultadas por la IA', agentStepOk: 'ejecutada (solo lectura)',
+    agentStepNeedsApproval: 'pendiente de tu aprobación (no se ha ejecutado)', agentStepError: 'no ejecutada', agentApprove: 'Aprobar y ejecutar', agentApproveConfirm: 'Se ejecutará con tu aprobación:',
   },
   va: {
     title: 'EduStudio AI', projects: 'Els meus projectes', login: 'Entrar', register: 'Crear compte',
@@ -163,6 +169,12 @@ const messages = {
     duaApplied: 'Material adaptat. Si no et convenç, prem «Desfer aplicació».', duaPending: 'L’adaptació espera la teua revisió a l’assistent d’IA.',
     duaBarriers: 'Barreres detectades', duaMeasures: 'Mesures aplicades', duaPrinciplesMissing: 'Falten mesures de', duaUnchanged: 'La proposta no modifica el material triat.',
     dua_representacion: 'Representació', dua_accion_expresion: 'Acció i expressió', dua_implicacion: 'Implicació',
+    capabilities: 'Capacitats del servidor', capabilitiesIntro: 'Eines tipades que EduStudio pot usar: llegir i buscar en el projecte i les eines MCP aprovades per l’administració. Cada crida es comprova i queda registrada (només mides i resultat). La IA pot demanar les de només lectura; les que modifiquen contingut o generen despesa només s’executen amb la teua aprovació expressa.',
+    capability: 'Capacitat', capabilityMutates: 'modifica', capabilityBuiltin: 'integrada', capabilitySchema: 'Arguments que admet (esquema)', capabilityArgs: 'Arguments (JSON)',
+    capabilityApprove: 'Aprove executar esta capacitat, que modifica contingut o pot generar despesa', capabilityRun: 'Executar', capabilityBadArgs: 'Els arguments han de ser un objecte JSON vàlid.',
+    capabilityUntrusted: 'Resultat de l’eina: són dades no verificades.', capabilityAudit: 'Registre de crides', capabilityStatus: 'Estat', capabilityWhen: 'Quan',
+    agentConsulting: 'La IA està consultant les capacitats del projecte…', agentConsulted: 'Capacitats consultades per la IA', agentStepOk: 'executada (només lectura)',
+    agentStepNeedsApproval: 'pendent de la teua aprovació (no s’ha executat)', agentStepError: 'no executada', agentApprove: 'Aprovar i executar', agentApproveConfirm: 'S’executarà amb la teua aprovació:',
   },
 } as const
 

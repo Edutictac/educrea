@@ -2,10 +2,11 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { t } from '../i18n'
 import { listSources, type Source } from '../services/sources'
+import { invokeCapability, parseArguments } from '../services/capabilities'
 import { useAuthStore } from '../stores/auth'
 import { budgetStatus, changeProposal, estimatePaid, providersStatus, quotaStatus,
   listContextFiles, listProposals, streamProposal,
-  type BudgetStatus, type PaidEstimate, type ProviderStatuses, type ProviderName, type QuotaStatus, type Proposal } from '../services/ai'
+  type AgentStep, type BudgetStatus, type PaidEstimate, type ProviderStatuses, type ProviderName, type QuotaStatus, type Proposal } from '../services/ai'
 
 const props = defineProps<{ projectId: string; canGenerate: () => boolean; canApply: () => boolean; automatic?: boolean; sourcesVersion?: number }>()
 const emit = defineEmits<{ projectChanged: [] }>()
@@ -86,6 +87,8 @@ async function generate() {
     await streamProposal(props.projectId, instruction.value, provider.value, model.value,
       selectedPaths.value, allowFallback.value, auth.csrf,
       controller.signal, event => {
+      if (event.event === 'status' && event.data.stage === 'consulting') message.value = t('agentConsulting')
+      if (event.event === 'consulted') message.value = `${t('agentConsulted')}: ${event.data.capabilities.map(step => step.name).join(', ')}`
       if (event.event === 'status') actualProvider.value = `${event.data.provider ?? provider.value} / ${event.data.model ?? model.value}`
       if (event.event === 'token') streaming.value = (streaming.value + event.data.text).slice(-12000)
       if (event.event === 'proposal') {
@@ -124,6 +127,19 @@ async function change(action: 'apply' | 'reject' | 'restore') {
       : action === 'restore' ? t('proposalRestored') : t('proposalRejected')
     if (action !== 'reject') emit('projectChanged')
     if (action !== 'reject') filePaths.value = await listContextFiles(props.projectId)
+  } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
+  finally { busy.value = false }
+}
+
+const approvedSteps = ref<Record<string, string>>({})
+async function approveStep(proposal: Proposal, step: AgentStep, index: number) {
+  const args = parseArguments(step.arguments)
+  if (!args) { error.value = t('capabilityBadArgs'); return }
+  if (!confirm(`${t('agentApproveConfirm')} ${step.name}`)) return
+  error.value = ''; busy.value = true
+  try {
+    const result = await invokeCapability(props.projectId, step.name, args, true, auth.csrf)
+    approvedSteps.value = { ...approvedSteps.value, [`${proposal.id}:${index}`]: JSON.stringify(result).slice(0, 2000) }
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
   finally { busy.value = false }
 }
@@ -204,6 +220,13 @@ function stateLabel(value: Proposal['status']) {
           <ul><li v-for="(citation, index) in selected.grounding.citations" :key="index">{{ citation.verified ? '✓' : '✗' }} «{{ citation.quote }}»
             <span v-if="citation.page">({{ t('page') }} {{ citation.page }})</span><span v-if="citation.used_for"> — {{ citation.used_for }}</span></li></ul>
           <p v-if="selected.grounding.not_covered.length">{{ t('notCovered') }}: {{ selected.grounding.not_covered.join('; ') }}</p></div>
+        <div v-if="selected.agent_trace?.length" class="notice"><strong>{{ t('agentConsulted') }}</strong>
+          <ul><li v-for="(step, index) in selected.agent_trace" :key="index">
+            <code>{{ step.name }}</code> {{ step.arguments !== '{}' ? step.arguments : '' }} ·
+            {{ step.status === 'ok' ? t('agentStepOk') : step.status === 'needs_approval' ? t('agentStepNeedsApproval') : `${t('agentStepError')}: ${step.detail ?? ''}` }}
+            <button v-if="step.status === 'needs_approval' && !approvedSteps[`${selected.id}:${index}`]" type="button" class="secondary" :disabled="busy"
+              @click="approveStep(selected, step, index)">{{ t('agentApprove') }}</button>
+            <pre v-if="approvedSteps[`${selected.id}:${index}`]">{{ approvedSteps[`${selected.id}:${index}`] }}</pre></li></ul></div>
         <details v-for="change in selected.changes" :key="change.path"><summary>{{ change.path }}</summary>
           <div class="change-compare"><section><h4>{{ t('before') }}</h4><pre>{{ change.before_content ?? t('createdFile') }}</pre></section>
             <section><h4>{{ t('after') }}</h4><pre>{{ change.after_content }}</pre></section></div>

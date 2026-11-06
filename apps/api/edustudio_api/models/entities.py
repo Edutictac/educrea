@@ -147,6 +147,7 @@ class AiProposal(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     grounding: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    agent_trace: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
 
 
 class Source(Base):

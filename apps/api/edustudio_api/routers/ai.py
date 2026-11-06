@@ -11,7 +11,7 @@ from ..db import get_db
 from ..models import AiCredential, AiProposal, ProjectFile, User
 from ..models.entities import utcnow
 from ..security import current_user, require_csrf
-from ..services.ai import engine
+from ..services.ai import agent, engine
 from ..services.ai import quotas
 from ..services.ai import pricing
 from ..services.ai.credentials import encrypt_key, personal_credential
@@ -139,6 +139,29 @@ def paid_terms(data: GenerateInput, prompt: str) -> tuple[int, pricing.Price | N
     return maximum, price, estimate["max_input_tokens"] + estimate["max_output_tokens"]
 
 
+async def consult(db: Session, user_id: UUID, project_id: UUID, data: GenerateInput, adapter, key: str, name: str,
+                  model: str, prompt: str, snapshot: dict, selected: set[str]) -> tuple[str, set[str], list[dict]]:
+    """Optional consultation step (free automatic mode): the model asks for capabilities, the backend runs the
+    read-only ones and adds their results to the prompt. A failed consultation never blocks the generation."""
+    if not agent.should_consult(data, snapshot, selected):
+        return prompt, selected, []
+    tools = agent.tools_for_prompt()
+    reservation = quotas.reserve(db, user_id, name, model)
+    try:
+        result = await adapter.generate(key, model, agent.consult_prompt(prompt, tools))
+    except ProviderError:
+        db.rollback()
+        quotas.reconcile(db, reservation, failed=True)
+        return prompt, selected, []
+    quotas.reconcile(db, reservation, result.usage)
+    calls = agent.parse_round(result.text)
+    if not calls:
+        return prompt, selected, []
+    addition, trace, selected = agent.execute(db, user_id, project_id, calls, tools, snapshot, selected)
+    db.rollback()
+    return prompt + addition, selected, trace
+
+
 @router.post("/projects/{project_id}/ai/proposals", response_model=ProposalOut, status_code=201)
 async def generate_proposal(project_id: UUID, data: GenerateInput,
                             user: User = Depends(require_csrf), db: Session = Depends(get_db),
@@ -147,6 +170,9 @@ async def generate_proposal(project_id: UUID, data: GenerateInput,
     key, prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)
     maximum_cost, price, maximum_tokens = paid_terms(data, prompt)
     name, model = data.provider, data.model
+    prompt, selected, trace = await consult(db, user_id, project_id, data,
+                                            provider if name == "gemini" else registry.adapter(name),
+                                            key, name, model, prompt, snapshot, selected)
     used = {name}
     while True:
         reservation = quotas.reserve(db, user_id, name, model, maximum_cost, price, maximum_tokens)
@@ -155,7 +181,7 @@ async def generate_proposal(project_id: UUID, data: GenerateInput,
             result = await adapter.generate(key, model, prompt)
             proposal = engine.persist(db, project_id, user_id, model, result.text, result.usage,
                                       snapshot, selected, provider=name, source_ids=data.source_ids,
-                                      passages_used=passages)
+                                      passages_used=passages, agent_trace=trace)
             quotas.reconcile(db, reservation, result.usage)
             return engine.apply_if_requested(db, project_id, proposal, data.auto_apply)
         except ProviderError as exc:
@@ -219,12 +245,14 @@ async def generate_with_first_free(db: Session, project_id: UUID, user_id: UUID,
     data = engine.GenerateInput(instruction=instruction, provider=name, model=model,
                                 automatic=True, auto_apply=auto_apply, mode="free")
     prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)[1:]
+    adapter = provider if name == "gemini" else registry.adapter(name)
+    prompt, selected, trace = await consult(db, user_id, project_id, data, adapter, key, name, model, prompt,
+                                            snapshot, selected)
     reservation = quotas.reserve(db, user_id, name, model)
     try:
-        adapter = provider if name == "gemini" else registry.adapter(name)
         result = await adapter.generate(key, model, prompt)
         proposal = engine.persist(db, project_id, user_id, model, result.text, result.usage, snapshot, selected,
-                                  provider=name, dua_target=dua_target)
+                                  provider=name, dua_target=dua_target, agent_trace=trace)
         quotas.reconcile(db, reservation, result.usage)
         return engine.apply_if_requested(db, project_id, proposal, auto_apply)
     except ProviderError as exc:
@@ -250,6 +278,18 @@ async def stream_proposal(project_id: UUID, data: GenerateInput,
 
     async def events():
         name, model, credential = data.provider, data.model, key
+        final_prompt, allowed, trace = prompt, selected, []
+        if agent.should_consult(data, snapshot, selected):
+            yield event("status", {"stage": "consulting", "provider": name, "model": model})
+            try:
+                final_prompt, allowed, trace = await consult(
+                    db, user_id, project_id, data, provider if name == "gemini" else registry.adapter(name),
+                    credential, name, model, prompt, snapshot, selected)
+            except HTTPException as exc:
+                yield event("error", {"status_code": exc.status_code, "message": exc.detail})
+                return
+            if trace:
+                yield event("consulted", {"capabilities": trace})
         used = {name}
         while True:
             parts: list[str] = []
@@ -260,7 +300,7 @@ async def stream_proposal(project_id: UUID, data: GenerateInput,
             try:
                 reservation = quotas.reserve(db, user_id, name, model, maximum_cost, price, maximum_tokens)
                 adapter = provider if name == "gemini" else registry.adapter(name)
-                async for chunk in adapter.stream(credential, model, prompt):
+                async for chunk in adapter.stream(credential, model, final_prompt):
                     if chunk.text:
                         parts.append(chunk.text)
                         response_bytes += len(chunk.text.encode())
@@ -270,8 +310,8 @@ async def stream_proposal(project_id: UUID, data: GenerateInput,
                     if chunk.usage:
                         usage = chunk.usage
                 proposal = engine.persist(db, project_id, user_id, model, "".join(parts), usage,
-                                          snapshot, selected, provider=name, source_ids=data.source_ids,
-                                          passages_used=passages)
+                                          snapshot, allowed, provider=name, source_ids=data.source_ids,
+                                          passages_used=passages, agent_trace=trace)
                 quotas.reconcile(db, reservation, usage)
                 proposal = engine.apply_if_requested(db, project_id, proposal, data.auto_apply)
                 yield event("proposal", ProposalOut.model_validate(proposal).model_dump(mode="json"))

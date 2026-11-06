@@ -332,7 +332,7 @@ def parse_draft(text: str) -> DraftProposal:
 def persist(db: Session, project_id: UUID, user_id: UUID, model: str, text: str,
             usage: dict, snapshot: dict[str, dict], selected: set[str], provider: str = "gemini",
             source_ids: list[UUID] | None = None, passages_used: list[dict] | None = None,
-            dua_target: str | None = None) -> AiProposal:
+            dua_target: str | None = None, agent_trace: list[dict] | None = None) -> AiProposal:
     project_for_owner(db, project_id, user_id)
     draft = parse_draft(text)
     paths: set[str] = set()
@@ -362,7 +362,7 @@ def persist(db: Session, project_id: UUID, user_id: UUID, model: str, text: str,
         grounding = None
     proposal = AiProposal(project_id=project_id, user_id=user_id, provider=provider, model=model,
                           summary=draft.summary, changes=changes, usage=usage, status="pending",
-                          grounding=grounding)
+                          grounding=grounding, agent_trace=agent_trace or None)
     db.add(proposal)
     db.commit()
     db.refresh(proposal)

@@ -218,3 +218,48 @@ def test_engine_of_existing_projects_can_be_updated_and_keeps_data(client: TestC
     assert "se corrige por el texto" in client.get(f"{base}/files/{files['script.js']['id']}").json()["content"]
     assert client.get(f"{base}/files/{files['datos.js']['id']}").json()["content"] == data_before
     assert client.post(f"{base}/template/update", headers=headers).json()["updated"] == []
+
+
+def test_scorm_package_for_aules(client: TestClient):
+    import io
+    import xml.etree.ElementTree as ET
+    import zipfile
+
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    assert client.get(f"{base}/export.scorm.zip").status_code == 409  # no activity yet
+    client.post(f"{base}/template", headers=headers, json={"template": "cuestionario", "brief": {"title": "Instruments & veus"}})
+    response = client.get(f"{base}/export.scorm.zip")
+    assert response.status_code == 200 and "scorm" in response.headers["content-disposition"]
+    archive = zipfile.ZipFile(io.BytesIO(response.content))
+    names = set(archive.namelist())
+    assert {"imsmanifest.xml", "index.html", "scorm.js", "datos.js", "comun.js", "script.js", "style.css"} <= names
+    assert "activity.json" not in names
+    root = ET.fromstring(archive.read("imsmanifest.xml"))
+    ns = {"c": "http://www.imsproject.org/xsd/imscp_rootv1p1p2"}
+    assert root.find("c:metadata/c:schemaversion", ns).text == "1.2"
+    assert root.find("c:organizations/c:organization/c:title", ns).text == "Instruments & veus"
+    listed = {f.get("href") for f in root.findall("c:resources/c:resource/c:file", ns)}
+    assert listed == names - {"imsmanifest.xml"}  # every file of the activity is declared
+    index = archive.read("index.html").decode()
+    assert index.index('src="scorm.js"') < index.index('src="datos.js"') and "EduScorm.complete" not in index
+
+
+@pytest.mark.skipif(not (BROWSER and shutil.which("bwrap")), reason="chromium/bwrap not installed")
+def test_scorm_bridge_reports_best_score_to_the_lms():
+    from edustudio_api.services import scorm
+
+    files = service.initial_files("cuestionario", {"title": "Prova", "language": "va"})
+    fake_lms = """<script>window.calls = []; window.API = {
+      LMSInitialize: function () { calls.push('init'); return 'true' }, LMSGetValue: function () { return 'not attempted' },
+      LMSSetValue: function (k, v) { calls.push(k + '=' + v); return 'true' }, LMSCommit: function () { return 'true' },
+      LMSFinish: function () { return 'true' } }</script>"""
+    page = inline(files).replace("<head>", "<head>" + fake_lms + "<script>" + scorm.SCORM_JS.read_text() + "</script>", 1)
+    answer = """document.querySelector('button.principal').click();
+      document.querySelector('input[value="1"]').checked = true; document.querySelector('button.principal').click();
+      document.body.setAttribute('data-calls', JSON.stringify(window.calls))"""
+    dom = run_in_browser(page.replace("</body>", f"<script>{answer}</script></body>"))
+    calls = json.loads(re.search(r'data-calls="([^"]*)"', dom).group(1).replace("&quot;", '"'))
+    assert calls[0] == "init" and "cmi.core.lesson_status=incomplete" in calls
+    assert "cmi.core.score.raw=0" in calls and calls.count("cmi.core.score.raw=100") == 1  # best score reported
+    assert "cmi.core.lesson_status=completed" in calls

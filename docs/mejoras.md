@@ -10,9 +10,9 @@ Lista acordada con el usuario el 2026-11-06 para ir implementando poco a poco. M
 - [x] Primera versión y adaptación DUA por streaming, con los mismos pasos reales y el mismo rescate de documentos que el asistente.
 - [x] Duplicar un proyecto (para reutilizarlo con otro grupo o curso).
 
-## 2. Exportación SCORM para Aules/Moodle (siguiente)
+## 2. Exportación SCORM para Aules/Moodle (hecha el 2026-11-06; falta probarla en un curso real de Aules)
 
-- [ ] Paquete SCORM 1.2 de las plantillas interactivas: la puntuación de cuestionario, emparejar, ordenar y clasificar va al libro de calificaciones de Aules. Tarjetas y lectura informan de «completado».
+- [x] Paquete SCORM 1.2 de las plantillas interactivas: la puntuación de cuestionario, emparejar, ordenar y clasificar va al libro de calificaciones de Aules. Tarjetas y lectura informan de «completado».
 
 ## 3. Grandes, por orden de impacto
 

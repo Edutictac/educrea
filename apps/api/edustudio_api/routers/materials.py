@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..models import ProjectFile, User
 from ..security import current_user
-from ..services import assets, converter, materials, render
+from ..services import assets, converter, materials, render, scorm
 from .files import file_for_owner
 from .projects import project_for_owner
 
@@ -78,3 +78,25 @@ def export_project_zip(project_id: UUID, user: User = Depends(current_user),
     rows = db.scalars(select(ProjectFile).where(ProjectFile.project_id == project_id).order_by(ProjectFile.path))
     return attachment(materials.export_zip([(row.path, row.content) for row in rows], assets.assets_for(db, project_id)), "application/zip",
                       download_name(project.slug, ".zip"))
+
+
+SCORED_TEMPLATES = ("cuestionario", "emparejar", "ordenar", "clasificar")
+
+
+@router.get("/export.scorm.zip")
+def export_scorm(project_id: UUID, user: User = Depends(current_user), db: Session = Depends(get_db)) -> Response:
+    """SCORM 1.2 package for Aules/Moodle: score (scored templates) or completion goes to the gradebook."""
+    import json
+
+    project = project_for_owner(db, project_id, user.id)
+    rows = list(db.scalars(select(ProjectFile).where(ProjectFile.project_id == project_id).order_by(ProjectFile.path)))
+    brief_row = next((row for row in rows if row.path == "activity.json"), None)
+    try:
+        brief = json.loads(brief_row.content) if brief_row else {}
+    except ValueError:
+        brief = {}
+    scored = isinstance(brief, dict) and brief.get("template") in SCORED_TEMPLATES
+    title = str(brief.get("title") or project.title) if isinstance(brief, dict) else project.title
+    data = scorm.package(project.slug, title, [(row.path, row.content) for row in rows],
+                         assets.assets_for(db, project_id), scored)
+    return attachment(data, "application/zip", download_name(f"{project.slug}-scorm", ".zip"))

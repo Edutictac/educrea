@@ -31,3 +31,14 @@ EduStudio ofrece ocho plantillas, en castellano y valenciano, que se eligen al c
 En la página del proyecto, las herramientas secundarias (fuentes, imágenes, DUA, historial y, en modo avanzado, capacidades) van dentro de «Más herramientas», plegado en modo docente.
 
 API: `GET /api/templates` y `POST /api/projects/{id}/template` (`{template, brief}`, solo en proyectos vacíos).
+
+## Exportación SCORM para Aules/Moodle
+
+`GET /api/projects/{id}/export.scorm.zip` genera un paquete **SCORM 1.2** con la misma actividad sin conexión del ZIP, más `scorm.js` (puente con la API del LMS) e `imsmanifest.xml`, que declara todos los archivos. No incluye el encargo (`activity.json`).
+
+- Los motores avisan del resultado con `EDU.report(aciertos, total)` (cuestionario, emparejar, ordenar y clasificar) y `EDU.complete()` (tarjetas, al girarlas todas; lectura, al llegar al final). Fuera de un LMS no hacen nada.
+- `scorm.js` busca la API en las ventanas padre, inicia el intento (`incomplete`), envía la **mejor puntuación de la sesión** sobre 100 (`cmi.core.score.raw`, con `lesson_status = completed`) y cierra el intento al salir.
+- Las actividades HTML sin plantilla con puntuación se marcan como completadas al abrirse.
+- En Aules: «Añade una actividad o un recurso» › «Paquete SCORM» › subir el ZIP › en «Calificación», «Calificación más alta». La interfaz incluye estos pasos.
+- Los proyectos de plantilla creados antes del 2026-11-06 deben pulsar «Actualizar la plantilla» para que el motor envíe la nota.
+- Pendiente: probarlo en un curso real de Aules (se ha probado con una API SCORM simulada en un navegador real).

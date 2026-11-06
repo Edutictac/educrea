@@ -15,6 +15,7 @@ import AppIcon from '../components/AppIcon.vue'
 import AiPicker from '../components/AiPicker.vue'
 import { t } from '../i18n'
 import { useProjectsStore } from '../stores/projects'
+import { useFilesStore } from '../stores/files'
 
 // Layout: on desktop (≥1100 px) the work tabs are on the left and the viewer stays fixed on the right.
 // On smaller screens the viewer becomes the «Vista previa» tab. Tabs use v-show so unsaved edits survive switching.
@@ -38,6 +39,8 @@ const workspaceKey = ref(0)
 const sourcesVersion = ref(0)
 const tab = ref<Tab>('work')
 const tool = ref<Tool>('sources')
+const filesStore = useFilesStore()
+const hasActivity = computed(() => filesStore.items.some(item => item.path === 'index.html'))
 const viewer = ref<{ show: (path?: string) => Promise<void> } | null>(null)
 const media = typeof window === 'undefined' ? null : window.matchMedia('(min-width: 1100px)')
 const wide = ref(media?.matches ?? true)
@@ -149,6 +152,13 @@ async function remove() {
             <h2>{{ t('tabExport') }}</h2>
             <p class="hint">{{ t('exportIntro') }}</p>
             <div class="actions"><a class="button" :href="`/api/projects/${id}/export.zip`"><AppIcon name="download" :size="18" />{{ t('exportZip') }}</a></div>
+            <template v-if="hasActivity">
+              <h3>{{ t('scormTitle') }}</h3>
+              <p class="hint">{{ t('scormIntro') }}</p>
+              <div class="actions"><a class="button secondary" :href="`/api/projects/${id}/export.scorm.zip`"><AppIcon name="graduation-cap" :size="18" />{{ t('scormDownload') }}</a></div>
+              <details><summary>{{ t('scormHowTo') }}</summary><ol class="steps-list">
+                <li>{{ t('scormStep1') }}</li><li>{{ t('scormStep2') }}</li><li>{{ t('scormStep3') }}</li><li>{{ t('scormStep4') }}</li></ol></details>
+            </template>
             <h3>{{ t('classMaterials') }}</h3>
             <MaterialsPanel :project-id="id" :refresh-key="workspaceKey" embedded />
           </div>
@@ -181,6 +191,7 @@ async function remove() {
 </template>
 
 <style scoped>
+.steps-list { padding-left: 1.3rem; } .steps-list li { margin: .3rem 0; }
 .mode-hint { margin: -.5rem 0 1rem; }
 .project-bar .button.icon-only { min-width: 42px; padding: .5rem; }
 </style>

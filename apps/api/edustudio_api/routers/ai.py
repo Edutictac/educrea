@@ -72,7 +72,7 @@ def save_provider_key(provider_name: str, data: CredentialInput, user: User = De
 @router.post("/ai/providers/{provider_name}/free-models/{model:path}/confirm", status_code=204)
 def confirm_provider_model(provider_name: str, model: str, data: FreeConfirmation,
                            user: User = Depends(require_csrf), db: Session = Depends(get_db)) -> None:
-    if provider_name not in ("gemini", "openrouter", "groq", "mistral", "nvidia") or model not in registry.free_models(provider_name):
+    if provider_name not in ("gemini", "openrouter", "groq", "nvidia") or model not in registry.free_models(provider_name):
         raise HTTPException(403, "Modelo no autorizado en modo gratuito")
     credential = personal_credential(db, user.id, provider_name)
     if credential is None:

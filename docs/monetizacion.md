@@ -4,7 +4,7 @@ Estado: **propuesta de diseño (2026-11-06)**, sin implementar. Desarrolla la Fa
 
 ## 1. Principios
 
-1. **Lo gratuito sigue siendo gratuito.** Los modelos gratuitos (Gemini, Mistral, NVIDIA, Groq, OpenRouter `:free`) y las claves propias de cada docente (BYOK) siguen funcionando igual y sin comisión. La edición, las plantillas y las exportaciones nunca se cobran.
+1. **Lo gratuito sigue siendo gratuito.** Los modelos gratuitos (Gemini, NVIDIA, Groq, OpenRouter `:free`) y las claves propias de cada docente (BYOK) siguen funcionando sin comisión de EduStudio. La edición, las plantillas y las exportaciones nunca se cobran. Mistral requiere API de pago por uso y se trata como BYOK de pago.
 2. **Una sola comisión, fija y visible: el 10 % sobre el coste del proveedor.** No hay cuotas mensuales, letra pequeña ni precios distintos según quién pregunte.
 3. **Se ve el precio antes de pagar y el desglose después.** Cada generación de pago muestra antes el coste máximo y, al terminar, el coste real con la comisión separada.
 4. **Nunca se gasta sin permiso.** No hay recargas automáticas, no se pasa a un modelo más caro sin pedirlo y no se cobra si la generación falla.

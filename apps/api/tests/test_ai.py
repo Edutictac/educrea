@@ -814,10 +814,10 @@ def test_dua_adaptation_reports_barriers_and_requires_all_three_principles(clien
     assert client.get(f"{base}/files/{index['id']}").json()["content"] == original
 
 
-def test_first_version_falls_back_to_mistral_when_gemini_is_saturated(client: TestClient, monkeypatch):
+def test_first_version_falls_back_to_nvidia_when_gemini_is_saturated(client: TestClient, monkeypatch):
     headers, project_id = setup_user(client)
-    client.put("/api/ai/providers/mistral/key", headers=headers, json={"api_key": "test-only-mistral-key"})
-    assert client.post("/api/ai/providers/mistral/free-models/mistral-small-latest/confirm", headers=headers,
+    client.put("/api/ai/providers/nvidia/key", headers=headers, json={"api_key": "test-only-nvidia-key"})
+    assert client.post("/api/ai/providers/nvidia/free-models/openai/gpt-oss-20b/confirm", headers=headers,
                        json={"acknowledged": True}).status_code == 204
     client.post(f"/api/projects/{project_id}/files", headers=headers,
                 json={"path": "activity.json", "content": json.dumps({"title": "Volcanes", "instructions": "Una página"})})
@@ -836,16 +836,16 @@ def test_first_version_falls_back_to_mistral_when_gemini_is_saturated(client: Te
     app.dependency_overrides[get_gemini_provider] = lambda: Saturated()
     monkeypatch.setattr(registry, "adapter", adapter)
     body = client.post(f"/api/projects/{project_id}/ai/from-brief", headers=headers).json()
-    assert body["provider"] == "mistral" and body["status"] == "applied" and used == ["mistral"]
+    assert body["provider"] == "nvidia" and body["status"] == "applied" and used == ["nvidia"]
     # Without another free provider the error is reported as before.
-    client.delete("/api/ai/providers/mistral/key", headers=headers)
+    client.delete("/api/ai/providers/nvidia/key", headers=headers)
     assert client.post(f"/api/projects/{project_id}/ai/from-brief", headers=headers).status_code == 503
 
 
 def test_first_version_uses_the_ai_chosen_in_the_selector(client: TestClient, monkeypatch):
     headers, project_id = setup_user(client)
-    client.put("/api/ai/providers/mistral/key", headers=headers, json={"api_key": "test-only-mistral-key"})
-    client.post("/api/ai/providers/mistral/free-models/mistral-small-latest/confirm", headers=headers, json={"acknowledged": True})
+    client.put("/api/ai/providers/nvidia/key", headers=headers, json={"api_key": "test-only-nvidia-key"})
+    client.post("/api/ai/providers/nvidia/free-models/openai/gpt-oss-20b/confirm", headers=headers, json={"acknowledged": True})
     client.post(f"/api/projects/{project_id}/files", headers=headers,
                 json={"path": "activity.json", "content": json.dumps({"title": "Volcanes", "instructions": "Una página"})})
     draft = {"summary": "Hecho", "changes": [{"path": "index.html", "content": "<h1>Volcanes</h1>"}]}
@@ -853,9 +853,26 @@ def test_first_version_uses_the_ai_chosen_in_the_selector(client: TestClient, mo
     monkeypatch.setattr(registry, "adapter", lambda name: used.append(name) or StubGemini(json.dumps(draft)))
     app.dependency_overrides[get_gemini_provider] = lambda: StubGemini(json.dumps(draft))
     route = f"/api/projects/{project_id}/ai/from-brief"
-    body = client.post(route, headers=headers, json={"provider": "mistral", "model": "mistral-small-latest"}).json()
-    assert body["provider"] == "mistral" and used == ["mistral"]
+    body = client.post(route, headers=headers, json={"provider": "nvidia", "model": "openai/gpt-oss-20b"}).json()
+    assert body["provider"] == "nvidia" and used == ["nvidia"]
     assert client.post(route, headers=headers, json={}).json()["provider"] == "gemini"  # «Automática»
     assert client.post(route, headers=headers).json()["provider"] == "gemini"  # old clients without body
-    assert client.post(route, headers=headers, json={"provider": "mistral", "model": "otro"}).status_code == 403
+    assert client.post(route, headers=headers, json={"provider": "nvidia", "model": "otro"}).status_code == 403
+    assert client.post(route, headers=headers, json={"provider": "mistral", "model": "mistral-small-latest"}).status_code == 422
     assert client.post(route, headers=headers, json={"provider": "openai", "model": "gpt-x"}).status_code == 422
+
+
+def test_mistral_requires_paid_mode_and_verified_prices(client: TestClient, monkeypatch):
+    headers, project_id = setup_user(client)
+    client.put("/api/ai/providers/mistral/key", headers=headers, json={"api_key": "test-only-mistral-key"})
+    status = client.get("/api/ai/providers/mistral").json()
+    assert status["verified_free_models"] == status["confirmed_free_models"] == []
+    assert client.post("/api/ai/providers/mistral/free-models/mistral-small-latest/confirm", headers=headers,
+                       json={"acknowledged": True}).status_code == 403
+    monkeypatch.setattr(pricing, "get_settings", lambda: Settings(paid_models_json=json.dumps({
+        "mistral": {"mistral-small-latest": {"input": 100000, "output": 300000}}})))
+    assert client.get("/api/ai/providers/mistral").json()["paid_models"][0]["model"] == "mistral-small-latest"
+    estimate = client.post(f"/api/projects/{project_id}/ai/estimate", headers=headers, json={
+        "instruction": "Crea una actividad de fracciones", "provider": "mistral",
+        "model": "mistral-small-latest", "mode": "paid"})
+    assert estimate.status_code == 200

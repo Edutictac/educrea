@@ -8,7 +8,7 @@ describe('providerGuide', () => {
       if (name !== 'ollama') expect(guide.url).toMatch(/^https:\/\/(aistudio\.google\.com|openrouter\.ai|console\.groq\.com|console\.mistral\.ai|build\.nvidia\.com|platform\.openai\.com|console\.anthropic\.com)\//)
     }
     expect(providerGuides.gemini.paid).toBe(false)
-    expect(providerGuides.mistral).toMatchObject({ paid: false, steps: 'mistral' })
+    expect(providerGuides.mistral).toMatchObject({ paid: true, steps: 'mistral' })
     expect(providerGuides.nvidia).toMatchObject({ paid: false, steps: 'nvidia' })
     expect(providerGuides.openai.paid).toBe(true)
   })
@@ -20,7 +20,7 @@ describe('providerGuide', () => {
   })
   it('suggests Gemini first and then the next free provider still to configure', () => {
     expect(suggestedProvider({})).toBe('gemini')
-    expect(suggestedProvider({ gemini: true })).toBe('mistral')
-    expect(suggestedProvider({ gemini: true, mistral: true, nvidia: true, groq: true, openrouter: true })).toBe('gemini')
+    expect(suggestedProvider({ gemini: true })).toBe('nvidia')
+    expect(suggestedProvider({ gemini: true, nvidia: true, groq: true, openrouter: true })).toBe('gemini')
   })
 })

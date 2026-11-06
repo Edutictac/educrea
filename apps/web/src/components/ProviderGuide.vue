@@ -10,7 +10,7 @@ const managed = computed(() => guide.value.steps === 'managed')
 const paid = computed(() => props.mode === 'paid')
 const states = computed(() => stepStates(props.configured,
   paid.value ? props.paidReady && props.hasPaidModels : props.confirmedFree, managed.value))
-const noteKey = computed(() => `guideNote_${paid.value ? 'paid' : guide.value.steps}` as Parameters<typeof t>[0])
+const noteKey = computed(() => `guideNote_${props.provider === 'mistral' ? 'mistral' : paid.value ? 'paid' : guide.value.steps}` as Parameters<typeof t>[0])
 const mark = (state: string) => state === 'done' ? '✓' : state === 'current' ? '→' : '·'
 </script>
 

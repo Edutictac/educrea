@@ -15,12 +15,14 @@ from ..credentials import decrypt_key, personal_credential
 MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")
 PROVIDERS = ("gemini", "mistral", "openrouter", "groq", "nvidia", "ollama", "openai", "anthropic")
 # Order used to pick the first confirmed free model and to fall back when one is saturated (429/503).
-FREE_PROVIDERS = ("gemini", "mistral", "nvidia", "groq", "openrouter", "ollama")
+FREE_PROVIDERS = ("gemini", "nvidia", "groq", "openrouter", "ollama")
 
 
 def free_models(provider: str) -> list[str]:
     if provider == "gemini":
         return gemini_free_models()
+    if provider == "mistral":
+        return []  # Current Mistral API requires billing activation; never advertise it as free.
     if provider not in PROVIDERS:
         return []
     settings = get_settings()

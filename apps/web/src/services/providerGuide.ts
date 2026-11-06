@@ -7,7 +7,7 @@ export const providerGuides: Record<ProviderName, ProviderGuide> = {
   gemini: { url: 'https://aistudio.google.com/app/apikey', paid: false, steps: 'google' },
   openrouter: { url: 'https://openrouter.ai/settings/keys', paid: false, steps: 'openrouter' },
   groq: { url: 'https://console.groq.com/keys', paid: false, steps: 'groq' },
-  mistral: { url: 'https://console.mistral.ai/api-keys', paid: false, steps: 'mistral' },
+  mistral: { url: 'https://console.mistral.ai/api-keys', paid: true, steps: 'mistral' },
   nvidia: { url: 'https://build.nvidia.com/settings/api-keys', paid: false, steps: 'nvidia' },
   openai: { url: 'https://platform.openai.com/api-keys', paid: true, steps: 'paid' },
   anthropic: { url: 'https://console.anthropic.com/settings/keys', paid: true, steps: 'paid' },
@@ -24,6 +24,6 @@ export function stepStates(configured: boolean, ready: boolean, managed = false)
 
 // Provider shown first: the first one a teacher still has to set up, Gemini by default.
 export function suggestedProvider(configured: Partial<Record<ProviderName, boolean>>): ProviderName {
-  const order: ProviderName[] = ['gemini', 'mistral', 'nvidia', 'groq', 'openrouter']
+  const order: ProviderName[] = ['gemini', 'nvidia', 'groq', 'openrouter']
   return order.find(name => !configured[name]) ?? 'gemini'
 }

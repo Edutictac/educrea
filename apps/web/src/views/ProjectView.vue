@@ -95,14 +95,19 @@ async function remove() {
       </div>
       <TeacherWorkspace v-if="mode === 'teacher'" :key="workspaceKey" ref="workspace" :project-id="id" @generated="refreshWorkspace" @open-materials="materials?.openLatest()" />
       <AdvancedWorkspace v-else :key="workspaceKey" ref="workspace" :project-id="id" />
-      <AiAssistant :project-id="id" :automatic="mode === 'teacher'" :sources-version="sourcesVersion" :can-generate="canGenerate" :can-apply="canApply" @project-changed="refreshWorkspace" />
-      <SourcesPanel :project-id="id" @changed="sourcesVersion += 1" />
-      <AssetsPanel :project-id="id" />
-      <MaterialsPanel ref="materials" :project-id="id" :refresh-key="workspaceKey" />
-      <DuaPanel :project-id="id" :refresh-key="workspaceKey" :auto-apply="mode === 'teacher'" :can-generate="canGenerate" @changed="refreshWorkspace" />
-      <CapabilitiesPanel v-if="mode === 'advanced'" :project-id="id" />
-      <HistoryPanel :project-id="id" @restored="refreshWorkspace" />
       <ActivityPreview :key="workspaceKey" :load-files="loadPreviewFiles" :load-images="() => assetImages(id)" />
+      <MaterialsPanel ref="materials" :project-id="id" :refresh-key="workspaceKey" />
+      <AiAssistant :project-id="id" :automatic="mode === 'teacher'" :sources-version="sourcesVersion" :can-generate="canGenerate" :can-apply="canApply" @project-changed="refreshWorkspace" />
+      <!-- Progressive disclosure: secondary tools stay folded in teacher mode and open in advanced mode. -->
+      <details class="more-tools" :open="mode === 'advanced' || undefined">
+        <summary>{{ t('moreTools') }}</summary>
+        <p class="hint">{{ t('moreToolsHint') }}</p>
+        <SourcesPanel :project-id="id" @changed="sourcesVersion += 1" />
+        <AssetsPanel :project-id="id" />
+        <DuaPanel :project-id="id" :refresh-key="workspaceKey" :auto-apply="mode === 'teacher'" :can-generate="canGenerate" @changed="refreshWorkspace" />
+        <HistoryPanel :project-id="id" @restored="refreshWorkspace" />
+        <CapabilitiesPanel v-if="mode === 'advanced'" :project-id="id" />
+      </details>
     </template>
   </section>
 </template>

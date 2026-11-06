@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { t } from '../i18n'
+import { locale, t } from '../i18n'
 import { changeProposal, generateFromBrief, type Proposal } from '../services/ai'
 import { useAuthStore } from '../stores/auth'
 import { useFilesStore, type ProjectFile } from '../stores/files'
+import { listTemplates, type TemplateInfo } from '../services/templates'
 
 const props = defineProps<{ projectId: string }>()
 const emit = defineEmits<{ generated: []; openMaterials: [] }>()
@@ -15,7 +16,7 @@ const needsProvider = ref(false)
 const lastProposal = ref<Proposal | null>(null)
 const missingSections = ref<string[]>([])
 const files = useFilesStore()
-type Activity = { kind: 'actividad' | 'situacion'; title: string; instructions: string; language: string; level: string;
+type Activity = { kind: 'actividad' | 'situacion' | 'ficha'; title: string; instructions: string; language: string; level: string;
   activity_type: string; accessibility: { large_text: boolean; high_contrast: boolean }
   area: string; course: string; sessions: number; context: string; challenge: string; final_product: string;
   evaluation: string; diversity: string }
@@ -31,11 +32,16 @@ const success = ref('')
 const blocked = ref(false)
 const loading = ref(true)
 const dirty = computed(() => JSON.stringify(activity.value) !== baseline.value)
+const templates = ref<TemplateInfo[]>([])
+const template = computed(() => templates.value.find(item => item.id === original.value.template) ?? null)
+const documentKind = computed(() => activity.value.kind === 'situacion' || activity.value.kind === 'ficha')
+const problems = ref<string[]>([])
 defineExpose({ hasUnsavedChanges: () => dirty.value })
 
 onMounted(async () => {
   try {
     await files.load(props.projectId)
+    templates.value = await listTemplates().catch(() => [])
     const summary = files.items.find(item => item.path === 'activity.json')
     if (summary) {
       file.value = await files.get(props.projectId, summary.id)
@@ -46,7 +52,7 @@ onMounted(async () => {
       const accessibility = typeof source.accessibility === 'object' && source.accessibility !== null
         ? source.accessibility as Record<string, unknown> : {}
       activity.value = {
-        kind: source.kind === 'situacion' ? 'situacion' : 'actividad',
+        kind: source.kind === 'situacion' || source.kind === 'ficha' ? source.kind : 'actividad',
         title: typeof source.title === 'string' ? source.title : '',
         instructions: typeof source.instructions === 'string' ? source.instructions : '',
         language: typeof source.language === 'string' ? source.language : 'es',
@@ -94,6 +100,7 @@ async function applyAnyway() {
     lastProposal.value = proposal
     generated.value = proposal.status === 'applied'
     missingSections.value = proposal.grounding?.sections_missing ?? []
+    problems.value = proposal.grounding?.template_problems ?? []
     if (generated.value) { emit('generated'); emit('openMaterials') }
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
   finally { generating.value = false }
@@ -105,8 +112,9 @@ async function generateFirstVersion() {
     const proposal = await generateFromBrief(props.projectId, auth.csrf)
     lastProposal.value = proposal
     missingSections.value = proposal.grounding?.sections_missing ?? []
+    problems.value = proposal.grounding?.template_problems ?? []
     generated.value = proposal.status === 'applied'
-    if (generated.value) emit('generated')
+    if (generated.value) { emit('generated'); if (documentKind.value) emit('openMaterials') }
   } catch (cause) {
     const text = cause instanceof Error ? cause.message : t('error')
     needsProvider.value = /proveedor|modelo/i.test(text)
@@ -122,13 +130,16 @@ async function generateFirstVersion() {
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="success" role="status">{{ success }}</p>
     <form v-if="!loading && !blocked" class="form-grid" @submit.prevent="save">
-      <label class="full">{{ t('productionKind') }}<select v-model="activity.kind" :disabled="!!file">
-        <option value="actividad">{{ t('kindActivity') }}</option>
-        <option value="situacion">{{ t('kindSituation') }}</option>
-      </select></label>
-      <p v-if="file" class="hint full">{{ t('kindFixed') }}</p>
+      <p v-if="template" class="full notice ok"><strong>{{ t('templateLabel') }}: {{ template.names[locale] }}</strong> · {{ template.descriptions[locale] }}</p>
+      <template v-else>
+        <label class="full">{{ t('productionKind') }}<select v-model="activity.kind" :disabled="!!file">
+          <option value="actividad">{{ t('kindActivity') }}</option>
+          <option value="situacion">{{ t('kindSituation') }}</option>
+        </select></label>
+        <p v-if="file" class="hint full">{{ t('kindFixed') }}</p>
+      </template>
       <label>{{ t('activityTitle') }}<input v-model="activity.title" maxlength="160" required /></label>
-      <label>{{ t('activityType') }}<select v-model="activity.activity_type">
+      <label v-if="!template && activity.kind === 'actividad'">{{ t('activityType') }}<select v-model="activity.activity_type">
         <option value="cuestionario">{{ t('quiz') }}</option><option value="juego">{{ t('game') }}</option>
         <option value="simulacion">{{ t('simulation') }}</option><option value="otra">{{ t('other') }}</option>
       </select></label>
@@ -141,10 +152,12 @@ async function generateFirstVersion() {
         <label>{{ t('course') }}<input v-model="activity.course" maxlength="40" :placeholder="t('coursePlaceholder')" /></label>
         <label>{{ t('sessions') }}<input v-model.number="activity.sessions" type="number" min="1" max="20" /></label>
         <label>{{ t('finalProduct') }}<input v-model="activity.final_product" maxlength="200" :placeholder="t('finalProductPlaceholder')" /></label>
-        <label class="full">{{ t('context') }}<textarea v-model="activity.context" maxlength="2000" rows="3" /></label>
         <label class="full">{{ t('challenge') }}<input v-model="activity.challenge" maxlength="300" /></label>
-        <label class="full">{{ t('evaluationInstruments') }}<input v-model="activity.evaluation" maxlength="300" :placeholder="t('evaluationPlaceholder')" /></label>
-        <label class="full">{{ t('diversityNotes') }}<textarea v-model="activity.diversity" maxlength="2000" rows="2" /></label>
+        <details class="full"><summary>{{ t('moreDetails') }}</summary>
+          <label>{{ t('context') }}<textarea v-model="activity.context" maxlength="2000" rows="3" /></label>
+          <label>{{ t('evaluationInstruments') }}<input v-model="activity.evaluation" maxlength="300" :placeholder="t('evaluationPlaceholder')" /></label>
+          <label>{{ t('diversityNotes') }}<textarea v-model="activity.diversity" maxlength="2000" rows="2" /></label>
+        </details>
       </template>
       <label class="full">{{ t('instructions') }}<textarea v-model="activity.instructions" maxlength="10000" rows="6" /></label>
       <fieldset class="full"><legend>{{ t('accessibility') }}</legend>
@@ -157,14 +170,15 @@ async function generateFirstVersion() {
     <div v-if="!dirty && file" class="actions first-version">
       <button type="button" :disabled="generating" @click="generateFirstVersion">
         {{ generating ? t('generatingFirstVersion') : generated ? t('regenerateFirstVersion')
-          : activity.kind === 'situacion' ? t('generateSituation') : t('generateFirstVersion') }}</button>
+          : activity.kind === 'situacion' ? t('generateSituation') : activity.kind === 'ficha' ? t('generateWorksheet') : t('generateFirstVersion') }}</button>
       <span v-if="generating" role="status">{{ t('mayTakeAMinute') }}</span>
     </div>
-    <p v-if="generated" class="notice ok" role="status">{{ activity.kind === 'situacion' ? t('situationReady') : t('firstVersionReady') }}
-      <button v-if="activity.kind === 'situacion'" type="button" class="secondary" @click="emit('openMaterials')">{{ t('openMaterials') }}</button></p>
-    <div v-if="!generated && missingSections.length" class="notice">
+    <p v-if="generated" class="notice ok" role="status">{{ activity.kind === 'situacion' ? t('situationReady') : activity.kind === 'ficha' ? t('worksheetReady') : t('firstVersionReady') }}
+      <button v-if="documentKind" type="button" class="secondary" @click="emit('openMaterials')">{{ t('openMaterials') }}</button></p>
+    <div v-if="!generated && (missingSections.length || problems.length)" class="notice">
       <p><strong>{{ t('proposalNeedsReview') }}</strong></p>
-      <p>{{ t('missingSections') }}: {{ missingSections.join(', ') }}</p>
+      <p v-if="missingSections.length">{{ t('missingSections') }}: {{ missingSections.join(', ') }}</p>
+      <template v-if="problems.length"><p>{{ t('templateProblems') }}</p><ul><li v-for="(item, index) in problems" :key="index">{{ item }}</li></ul></template>
       <div class="actions"><button type="button" :disabled="generating" @click="applyAnyway">{{ t('applyAnyway') }}</button>
         <button type="button" class="secondary" :disabled="generating" @click="generateFirstVersion">{{ t('regenerateFirstVersion') }}</button></div>
     </div>

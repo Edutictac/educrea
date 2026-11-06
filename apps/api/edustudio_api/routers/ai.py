@@ -223,7 +223,7 @@ async def adapt_dua(project_id: UUID, data: DuaInput, user: User = Depends(requi
 
     user_id = user.id
     project_for_owner(db, project_id, user_id)
-    if not data.path.lower().endswith(engine.DUA_EXTENSIONS):
+    if not (data.path.lower().endswith(engine.DUA_EXTENSIONS) or data.path == engine.template_service.DATA_PATH):
         raise HTTPException(422, "Solo se pueden adaptar actividades HTML o documentos Markdown")
     exists = db.scalar(select(ProjectFile.id).where(ProjectFile.project_id == project_id,
                                                     ProjectFile.path == data.path))

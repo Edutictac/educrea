@@ -159,3 +159,28 @@ def test_ordering_engine_checks_the_order():
       document.querySelector('button.principal').click()"""
     dom = run_in_browser(inline(files).replace("</body>", f"<script>{solve}</script></body>"))
     assert "Tot en ordre!" in dom and 'lang="ca"' in dom
+
+
+def test_dua_on_a_template_project_adapts_the_data_and_validates_it(client: TestClient):
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    client.post(f"{base}/template", headers=headers, json={"template": "tarjetas", "brief": {"title": "Astres"}})
+    measures = [{"principle": p, "barrier": "b", "measure": "m"} for p in ("representacion", "accion_expresion", "implicacion")]
+    good_data = service.data_js({"title": "Astres", "cards": [{"front": "Sol", "back": "Estrella. Da luz."}]})
+    draft = {"summary": "DUA", "changes": [{"path": "datos.js", "content": good_data}], "dua": {"barriers": [], "measures": measures}}
+    captured = {}
+
+    class Capture(StubGemini):
+        async def generate(self, key, model, prompt):
+            captured["prompt"] = prompt
+            return await super().generate(key, model, prompt)
+
+    app.dependency_overrides[get_gemini_provider] = lambda: Capture(json.dumps(draft))
+    body = client.post(f"{base}/ai/dua", headers=headers, json={"path": "datos.js", "auto_apply": True}).json()
+    assert body["status"] == "applied" and body["grounding"]["template_problems"] == []
+    assert "plantilla interactiva" in captured["prompt"]
+    broken = {**draft, "changes": [{"path": "datos.js", "content": "window.EDUSTUDIO_DATA = {\"title\": \"A\", \"cards\": []};"}]}
+    app.dependency_overrides[get_gemini_provider] = lambda: StubGemini(json.dumps(broken))
+    pending = client.post(f"{base}/ai/dua", headers=headers, json={"path": "datos.js", "auto_apply": True}).json()
+    assert pending["status"] == "pending" and pending["grounding"]["template_problems"]
+    assert client.post(f"{base}/ai/dua", headers=headers, json={"path": "script.js"}).status_code == 422

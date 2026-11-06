@@ -304,7 +304,10 @@ DUA_EXTENSIONS = (".html", ".md")
 
 def dua_instruction(path: str, needs: str, language: str | None) -> str:
     lang = {"va": "valenciano (catalán)", "es": "castellano"}.get(language or "", "el mismo idioma del material")
-    kind = "documento Markdown" if path.lower().endswith(".md") else "actividad HTML (con sus CSS y JS si hace falta)"
+    kind = ("documento Markdown" if path.lower().endswith(".md") else
+            "datos de una plantilla interactiva (adapta los textos, consignas, opciones, explicaciones e imágenes "
+            "dentro del objeto JSON, conservando exactamente su estructura y sin tocar el motor de la plantilla)"
+            if path == template_service.DATA_PATH else "actividad HTML (con sus CSS y JS si hace falta)")
     return (
         f"ADAPTACIÓN DUA. Revisa el material {path} ({kind}) con las pautas del Diseño Universal para el Aprendizaje "
         "y devuelve una versión adaptada del mismo archivo, sin cambiar su objetivo de aprendizaje ni su contenido "
@@ -380,7 +383,11 @@ def persist(db: Session, project_id: UUID, user_id: UUID, model: str, text: str,
         grounding = build_grounding(db, project_id, source_ids or [], draft, passages_used or [], kind)
     else:
         grounding = None
-    if template and not dua_target and kind != "situacion":
+    if template and dua_target == template_service.DATA_PATH:
+        report = template_service.check_proposal(template, draft.changes)
+        grounding["template_problems"] = report["template_problems"]
+        grounding["supported"] = grounding["supported"] and report["supported"]
+    elif template and not dua_target and kind != "situacion":
         report = template_service.check_proposal(template, draft.changes)
         if grounding is None:
             grounding = report

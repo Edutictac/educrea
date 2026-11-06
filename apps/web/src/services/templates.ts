@@ -46,3 +46,25 @@ ${LUCIDE_NOTICE}
 </html>
 `
 }
+
+// Guided templates served by the API (phase 7).
+export interface TemplateInfo { id: string; kind: 'interactiva' | 'infografia' | 'ficha'; names: Record<'es' | 'va', string>; descriptions: Record<'es' | 'va', string> }
+export interface TemplateBrief { title: string; language: 'es' | 'va'; level: string; instructions: string; accessibility: { large_text: boolean; high_contrast: boolean } }
+
+async function checked(response: Response): Promise<Response> {
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({})) as { detail?: string }
+    throw new Error(data.detail ?? `Error ${response.status}`)
+  }
+  return response
+}
+
+export async function listTemplates(): Promise<TemplateInfo[]> {
+  return await (await checked(await fetch('/api/templates'))).json() as TemplateInfo[]
+}
+
+export async function applyTemplate(projectId: string, template: string, brief: TemplateBrief, csrf: string): Promise<void> {
+  await checked(await fetch(`/api/projects/${projectId}/template`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify({ template, brief }),
+  }))
+}

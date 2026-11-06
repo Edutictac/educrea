@@ -16,14 +16,14 @@ const needs = ref('')
 const busy = ref(false)
 const error = ref('')
 const result = ref<Proposal | null>(null)
-const materials = computed(() => files.items.map(item => item.path).filter(item => /\.(html|md)$/i.test(item)))
+const materials = computed(() => { const paths = files.items.map(item => item.path); return paths.includes('datos.js') ? ['datos.js', ...paths.filter(item => /\.md$/i.test(item))] : paths.filter(item => /\.(html|md)$/i.test(item)) })
 const principles: DuaPrinciple[] = ['representacion', 'accion_expresion', 'implicacion']
 const grounding = computed(() => result.value?.grounding ?? null)
 const principleLabel = (value: DuaPrinciple) => t(`dua_${value}` as 'dua_representacion')
 
 async function load() {
   try { await files.load(props.projectId) } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
-  if (!materials.value.includes(path.value)) path.value = materials.value.find(item => item === 'index.html') ?? materials.value[0] ?? ''
+  if (!materials.value.includes(path.value)) path.value = materials.value.find(item => item === 'datos.js' || item === 'index.html') ?? materials.value[0] ?? ''
 }
 watch(() => props.refreshKey, () => { if (open.value) void load() })
 async function toggle() { open.value = !open.value; if (open.value) await load() }
@@ -64,6 +64,7 @@ async function change(action: 'apply' | 'restore') {
           {{ result.status === 'applied' ? t('duaApplied') : result.status === 'pending' ? t('duaPending') : t('proposalRestored') }}</p>
         <p v-if="grounding.principles_missing?.length">{{ t('duaPrinciplesMissing') }}: {{ grounding.principles_missing.join(', ') }}</p>
         <p v-if="grounding.target_changed === false">{{ t('duaUnchanged') }}</p>
+        <template v-if="grounding.template_problems?.length"><p>{{ t('templateProblems') }}</p><ul><li v-for="(item, index) in grounding.template_problems" :key="index">{{ item }}</li></ul></template>
         <template v-if="grounding.barriers?.length"><h3>{{ t('duaBarriers') }}</h3>
           <ul><li v-for="(item, index) in grounding.barriers" :key="index">{{ item }}</li></ul></template>
         <h3>{{ t('duaMeasures') }}</h3>

@@ -2,13 +2,14 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { locale, t } from '../i18n'
-import { changeProposal, generateFromBrief, type Proposal } from '../services/ai'
+import { changeProposal, type Proposal, AiError, streamTeacherAction } from '../services/ai'
 import { useAuthStore } from '../stores/auth'
 import { useFilesStore, type ProjectFile } from '../stores/files'
 import { listTemplates, templateStatus, updateTemplateEngine, type TemplateInfo } from '../services/templates'
 import StartingMaterial from './StartingMaterial.vue'
 import AiProgress from './AiProgress.vue'
 import { choiceBody } from '../services/aiChoice'
+import { describeAiError, useAiProgress } from '../services/aiProgress'
 
 const props = defineProps<{ projectId: string }>()
 const emit = defineEmits<{ generated: []; openMaterials: [] }>()
@@ -40,6 +41,8 @@ const template = computed(() => templates.value.find(item => item.id === origina
 const documentKind = computed(() => activity.value.kind === 'situacion' || activity.value.kind === 'ficha')
 const problems = ref<string[]>([])
 const unsupported = ref(false)
+const { progress, reset: resetProgress, track: trackProgress } = useAiProgress()
+let controller: AbortController | null = null
 const engineOutdated = ref(false)
 async function updateEngine() {
   try { await updateTemplateEngine(props.projectId, auth.csrf); engineOutdated.value = false; success.value = t('engineUpdated'); emit('generated') }
@@ -122,7 +125,8 @@ async function generateFirstVersion() {
   if (dirty.value) { error.value = t('saveBeforeGenerating'); return }
   error.value = ''; success.value = ''; needsProvider.value = false; generating.value = true
   try {
-    const proposal = await generateFromBrief(props.projectId, auth.csrf, choiceBody())
+    resetProgress(); controller = new AbortController()
+    const proposal = await streamTeacherAction(props.projectId, 'from-brief', choiceBody(), auth.csrf, controller.signal, trackProgress)
     lastProposal.value = proposal
     missingSections.value = proposal.grounding?.sections_missing ?? []
     problems.value = proposal.grounding?.template_problems ?? []
@@ -131,10 +135,11 @@ async function generateFirstVersion() {
     generated.value = proposal.status === 'applied'
     if (generated.value) { emit('generated'); if (documentKind.value) emit('openMaterials') }
   } catch (cause) {
-    const text = cause instanceof Error ? cause.message : t('error')
-    needsProvider.value = /proveedor|modelo/i.test(text)
+    if (controller?.signal.aborted) { error.value = t('generationCancelled'); return }
+    const text = describeAiError(cause)
+    needsProvider.value = /proveedor|modelo/i.test(text) && !(cause instanceof AiError)
     error.value = text
-  } finally { generating.value = false }
+  } finally { generating.value = false; controller = null }
 }
 </script>
 
@@ -150,7 +155,8 @@ async function generateFirstVersion() {
           : activity.kind === 'situacion' ? t('generateSituation') : activity.kind === 'ficha' ? t('generateWorksheet') : t('generateFirstVersion') }}</button>
 
     </div>
-    <AiProgress v-if="generating" simple :label="activity.kind === 'situacion' ? t('progressSituation') : t('progressFirstVersion')" />
+    <AiProgress v-if="generating" :stage="progress.stage" :ai="progress.ai" :passages="progress.passages" :chars="progress.chars" :retry="progress.retry" />
+    <div v-if="generating" class="actions"><button type="button" class="secondary" @click="controller?.abort()">{{ t('cancel') }}</button></div>
     <p v-if="generated" class="notice ok" role="status">{{ activity.kind === 'situacion' ? t('situationReady') : activity.kind === 'ficha' ? t('worksheetReady') : t('firstVersionReady') }}
       <button v-if="documentKind" type="button" class="secondary" @click="emit('openMaterials')">{{ t('openMaterials') }}</button></p>
     <p v-if="generated && verified" class="hint">{{ t('basedOnMaterial') }}: {{ verified }} {{ t('citationsVerified') }}</p>

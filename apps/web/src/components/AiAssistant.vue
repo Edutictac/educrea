@@ -4,7 +4,8 @@ import { t } from '../i18n'
 import { listSources, type Source } from '../services/sources'
 import { invokeCapability, parseArguments } from '../services/capabilities'
 import { aiChoice, PROVIDER_NAMES } from '../services/aiChoice'
-import AiProgress, { type AiStage } from './AiProgress.vue'
+import AiProgress from './AiProgress.vue'
+import { describeAiError, useAiProgress } from '../services/aiProgress'
 import { useAuthStore } from '../stores/auth'
 import { AiError, budgetStatus, changeProposal, estimatePaid, providersStatus, quotaStatus,
   listContextFiles, listProposals, streamProposal,
@@ -51,7 +52,7 @@ const failedOutput = ref('')
 const failedCopied = ref(false)
 const busy = ref(false)
 const generatingAi = ref(false)  // only while a generation runs (busy is also used by apply/reject)
-const progress = ref<{ stage: AiStage; ai: string; passages: number; chars: number; retry: boolean }>({ stage: 'preparing', ai: '', passages: 0, chars: 0, retry: false })
+const { progress, reset: resetProgress, track: trackProgress } = useAiProgress()
 const error = ref('')
 const message = ref('')
 let controller: AbortController | null = null
@@ -104,19 +105,14 @@ async function generate() {
   }
   error.value = ''; message.value = ''; streaming.value = ''; failedOutput.value = ''; failedCopied.value = false
   stickToBottom.value = true
-  progress.value = { stage: 'preparing', ai: '', passages: 0, chars: 0, retry: false }
+  resetProgress()
   busy.value = true; generatingAi.value = true
   controller = new AbortController()
   try {
     await streamProposal(props.projectId, instruction.value, provider.value, model.value,
       selectedPaths.value, allowFallback.value, auth.csrf,
       controller.signal, event => {
-      if (event.event === 'status') {
-        const ai = `${PROVIDER_NAMES[event.data.provider as ProviderName] ?? event.data.provider ?? ''} · ${event.data.model ?? ''}`
-        progress.value = { ...progress.value, ai, stage: event.data.stage === 'consulting' ? 'consulting' : 'thinking', chars: 0,
-          passages: event.data.passages ?? progress.value.passages, retry: event.data.retry ?? progress.value.retry }
-      }
-      if (event.event === 'token') progress.value = { ...progress.value, stage: 'writing', chars: progress.value.chars + event.data.text.length }
+      trackProgress(event)
       if (event.event === 'status' && event.data.stage === 'consulting') message.value = t('agentConsulting')
       if (event.event === 'consulted') message.value = `${t('agentConsulted')}: ${event.data.capabilities.map(step => step.name).join(', ')}`
       if (event.event === 'status' && event.data.stage === 'generating') {
@@ -149,18 +145,7 @@ async function generate() {
     budget.value = await budgetStatus().catch(() => budget.value)
     estimate.value = null; paidConfirmed.value = false }
 }
-const errorKeys: Record<string, Parameters<typeof t>[0]> = {
-  provider_truncated: 'errorTruncated', provider_quota: 'errorQuota', provider_busy: 'errorBusy',
-  provider_invalid: 'errorInvalid', provider_error: 'errorProvider',
-}
-function describeError(cause: unknown): string {
-  if (cause instanceof AiError && cause.code && errorKeys[cause.code]) {
-    const label = cause.provider ? PROVIDER_NAMES[cause.provider as ProviderName] ?? cause.provider : ''
-    const text = t(errorKeys[cause.code]).replace('{provider}', label).trim()
-    return props.automatic && aiChoice.value.provider ? `${text} ${t('tryAutomatic')}` : text
-  }
-  return cause instanceof Error ? cause.message : t('error')
-}
+const describeError = (cause: unknown) => describeAiError(cause, props.automatic === true)
 function cancel() { controller?.abort() }
 function trackStreamScroll() {
   const element = streamEl.value

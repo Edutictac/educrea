@@ -49,6 +49,11 @@ async function pick(item: Choice) {
   choice.value = item; error.value = ''
   await nextTick(); detailsHeading.value?.focus()
 }
+async function duplicate(id: string) {
+  error.value = ''
+  try { const copy = await projects.duplicate(id); router.push(`/projects/${copy.id}`) }
+  catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
+}
 async function create() {
   if (!choice.value) return
   error.value = ''; busy.value = true
@@ -134,6 +139,8 @@ async function create() {
       <ul class="project-list"><li v-for="project in projects.items" :key="project.id" class="card">
         <span class="project-icon"><AppIcon name="folder" :size="20" /></span>
         <RouterLink :to="`/projects/${project.id}`">{{ project.title }}</RouterLink><p>{{ project.description || t('noDescription') }}</p>
+        <button type="button" class="ghost icon-only card-action" :title="t('duplicateProject')" @click="duplicate(project.id)">
+          <AppIcon name="copy" :size="18" /><span class="sr-only">{{ t('duplicateProject') }}: {{ project.title }}</span></button>
       </li></ul>
     </template>
   </section>
@@ -144,6 +151,7 @@ async function create() {
 .stepper { list-style: none; padding: 0; }
 .material-pick { border: 1px dashed var(--c-line-2); border-radius: var(--radius); padding: 0 1rem .4rem; background: var(--c-surface-2); }
 .details-form { margin-top: 1.2rem; padding-top: .4rem; border-top: 1px solid var(--c-line); }
+.card-action { position: absolute; top: .6rem; right: .6rem; z-index: 1; }
 .list-title { display: flex; align-items: center; gap: .5rem; margin-top: 1.6rem; }
 .project-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--c-brand-50); color: var(--c-brand); margin-bottom: .6rem; }
 </style>

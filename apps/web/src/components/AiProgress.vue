@@ -4,7 +4,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { t } from '../i18n'
 
-export type AiStage = 'preparing' | 'consulting' | 'thinking' | 'writing'
+import type { AiStage } from '../services/aiProgress'
 const props = defineProps<{ stage?: AiStage; ai?: string; passages?: number; chars?: number; retry?: boolean; simple?: boolean; label?: string }>()
 
 const started = Date.now()

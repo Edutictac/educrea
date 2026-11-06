@@ -2,13 +2,13 @@
 
 Lista acordada con el usuario el 2026-11-06 para ir implementando poco a poco. Marca cada punto al terminarlo, con la fecha y el commit. Lo que tiene impacto exterior (publicar para el alumnado, desplegar) necesita confirmación expresa antes de empezar.
 
-## 1. Pequeñas (en curso)
+## 1. Pequeñas (hechas el 2026-11-06)
 
-- [ ] El visor muestra «Pendiente de generar» en lugar del ejemplo de la plantilla («Sol», «Luna») mientras no se ha generado la primera versión.
-- [ ] El diff del visor en proyectos de plantilla compara `datos.js` (donde cambia el contenido) además de `index.html`.
-- [ ] Si el docente elige una IA concreta en el selector y está saturada, no se cambia sola: se le pregunta. El cambio automático queda para «IA automática».
-- [ ] Primera versión y adaptación DUA por streaming, con los mismos pasos reales y el mismo rescate de documentos que el asistente.
-- [ ] Duplicar un proyecto (para reutilizarlo con otro grupo o curso).
+- [x] El visor muestra «Pendiente de generar» en lugar del ejemplo de la plantilla («Sol», «Luna») mientras no se ha generado la primera versión.
+- [x] El diff del visor en proyectos de plantilla compara `datos.js` (donde cambia el contenido) además de `index.html`.
+- [x] Si el docente elige una IA concreta en el selector y está saturada, no se cambia sola: se le pregunta. El cambio automático queda para «IA automática».
+- [x] Primera versión y adaptación DUA por streaming, con los mismos pasos reales y el mismo rescate de documentos que el asistente.
+- [x] Duplicar un proyecto (para reutilizarlo con otro grupo o curso).
 
 ## 2. Exportación SCORM para Aules/Moodle (siguiente)
 

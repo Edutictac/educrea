@@ -33,7 +33,7 @@ async function logout() { menuOpen.value = false; await auth.logout(); router.pu
         <button v-if="auth.user" type="button" class="text-button" @click="logout"><AppIcon name="log-out" :size="18" />{{ t('logout') }}</button>
       </nav>
     </header>
-    <main id="contenido" :class="{ wide: route.meta.wide }" tabindex="-1"><p v-if="error" role="alert">{{ error }}</p><RouterView v-if="auth.ready" /></main>
+    <main id="contenido" :class="{ wide: route.meta.wide }" tabindex="-1"><p v-if="error" role="alert">{{ error }}</p><RouterView v-if="auth.ready" :key="route.path" /></main>
     <footer>EduStudio AI · {{ t('footerNote') }} · {{ t('iconsCredit') }}</footer>
   </div>
 </template>

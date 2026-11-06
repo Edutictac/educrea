@@ -31,6 +31,11 @@ export const useProjectsStore = defineStore('projects', () => {
     await request(`/${id}`, 'DELETE')
     items.value = items.value.filter(item => item.id !== id)
   }
-  return { items, load, create, update, remove }
+  async function duplicate(id: string) {
+    const project = await (await request(`/${id}/duplicate`, 'POST')).json() as Project
+    items.value.unshift(project)
+    return project
+  }
+  return { items, load, create, update, remove, duplicate }
 })
 

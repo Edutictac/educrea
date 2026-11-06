@@ -156,6 +156,11 @@ export async function streamProposal(projectId: string, instruction: string, pro
       mode, paid_authorized: mode === 'paid', approved_max_cost_microusd: approvedMaxCost,
       approved_estimate_fingerprint: approvedFingerprint }),
   }))
+  return await readEvents(response, onEvent)
+}
+
+// Reads the server-sent events of a generation and returns the final proposal.
+async function readEvents(response: Response, onEvent: (event: AiStreamEvent) => void): Promise<void> {
   if (!response.body) throw new Error('Streaming no disponible')
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
@@ -180,5 +185,16 @@ export async function streamProposal(projectId: string, instruction: string, pro
     }
   } finally { reader.releaseLock() }
   if (!completed) throw new Error('Respuesta incompleta')
+}
+
+// Teacher shortcuts with real progress: first version from the brief and DUA adaptation.
+export async function streamTeacherAction(projectId: string, action: 'from-brief' | 'dua', body: object, csrf: string,
+  signal: AbortSignal, onEvent: (event: AiStreamEvent) => void): Promise<Proposal> {
+  const response = await checked(await fetch(`/api/projects/${projectId}/ai/${action}/stream`, {
+    method: 'POST', signal, headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(body) }))
+  let proposal: Proposal | null = null
+  await readEvents(response, event => { if (event.event === 'proposal') proposal = event.data; onEvent(event) })
+  if (!proposal) throw new Error('Respuesta incompleta')
+  return proposal
 }
 

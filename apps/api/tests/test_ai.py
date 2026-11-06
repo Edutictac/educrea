@@ -1125,3 +1125,36 @@ def test_explicit_choice_is_not_switched_automatically(client: TestClient, monke
     assert chosen.status_code == 503 and "IA automática" in chosen.json()["detail"] and used == []
     automatic = client.post(route, headers=headers, json={}).json()  # «IA automática» still switches
     assert automatic["provider"] == "groq" and used == ["groq"]
+
+
+def stream_events(response):
+    events, name = [], None
+    for line in response.text.splitlines():
+        if line.startswith("event: "):
+            name = line[7:]
+        elif line.startswith("data: "):
+            events.append((name, json.loads(line[6:])))
+    return events
+
+
+def test_first_version_and_dua_stream_real_stages(client: TestClient):
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    assert client.post(f"{base}/ai/from-brief/stream", headers=headers, json={}).status_code == 409  # no brief yet
+    client.post(f"{base}/files", headers=headers,
+                json={"path": "activity.json", "content": json.dumps({"title": "Volcanes", "instructions": "Una página"})})
+    draft = {"summary": "Hecho", "changes": [{"path": "index.html", "content": "<h1>Volcanes</h1>"}]}
+    app.dependency_overrides[get_gemini_provider] = lambda: StubGemini(json.dumps(draft))
+    events = stream_events(client.post(f"{base}/ai/from-brief/stream", headers=headers, json={}))
+    names = [name for name, _ in events]
+    assert names[0] == "status" and "token" in names and names[-1] == "proposal"
+    assert events[-1][1]["status"] == "applied"
+
+    measures = [{"principle": p, "barrier": "b", "measure": "m"} for p in ("representacion", "accion_expresion", "implicacion")]
+    dua = {"summary": "DUA", "changes": [{"path": "index.html", "content": "<h1>Volcanes</h1><p>Con apoyos</p>"}],
+           "dua": {"barriers": ["Solo texto"], "measures": measures}}
+    app.dependency_overrides[get_gemini_provider] = lambda: StubGemini(json.dumps(dua))
+    events = stream_events(client.post(f"{base}/ai/dua/stream", headers=headers, json={"path": "index.html", "auto_apply": True}))
+    final = events[-1][1]
+    assert events[-1][0] == "proposal" and final["grounding"]["kind"] == "dua" and final["status"] == "applied"
+    assert client.post(f"{base}/ai/dua/stream", headers=headers, json={"path": "style.css"}).status_code == 422

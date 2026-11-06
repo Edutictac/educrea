@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { t } from '../i18n'
-import { adaptDua, changeProposal, type Proposal } from '../services/ai'
+import { changeProposal, streamTeacherAction, type Proposal } from '../services/ai'
 import type { DuaPrinciple } from '../services/sources'
 import { useAuthStore } from '../stores/auth'
 import { choiceBody } from '../services/aiChoice'
 import AiProgress from './AiProgress.vue'
+import { describeAiError, useAiProgress } from '../services/aiProgress'
 import { useFilesStore } from '../stores/files'
 
 const props = defineProps<{ projectId: string; embedded?: boolean; refreshKey?: number; autoApply: boolean; canGenerate: () => boolean }>()
@@ -18,6 +19,7 @@ const needs = ref('')
 const busy = ref(false)
 const error = ref('')
 const result = ref<Proposal | null>(null)
+const { progress, reset: resetProgress, track: trackProgress } = useAiProgress()
 const materials = computed(() => { const paths = files.items.map(item => item.path); return paths.includes('datos.js') ? ['datos.js', ...paths.filter(item => /\.md$/i.test(item))] : paths.filter(item => /\.(html|md)$/i.test(item)) })
 const principles: DuaPrinciple[] = ['representacion', 'accion_expresion', 'implicacion']
 const grounding = computed(() => result.value?.grounding ?? null)
@@ -34,9 +36,11 @@ async function adapt() {
   if (!props.canGenerate()) { error.value = t('saveBeforeAi'); return }
   error.value = ''; busy.value = true; result.value = null
   try {
-    result.value = await adaptDua(props.projectId, path.value, needs.value, props.autoApply, auth.csrf, choiceBody())
+    resetProgress()
+    result.value = await streamTeacherAction(props.projectId, 'dua', { path: path.value, needs: needs.value, auto_apply: props.autoApply, ...choiceBody() },
+      auth.csrf, new AbortController().signal, trackProgress)
     if (result.value.status === 'applied') emit('changed')
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
+  } catch (cause) { error.value = describeAiError(cause) }
   finally { busy.value = false }
 }
 async function change(action: 'apply' | 'restore') {
@@ -61,7 +65,7 @@ onMounted(() => { if (props.embedded && !open.value) void toggle() })
         <div class="actions"><button type="submit" :disabled="busy || !path">{{ busy ? t('duaAdapting') : t('duaAdapt') }}</button>
 </div>
       </form>
-      <AiProgress v-if="busy && !result" simple :label="t('progressDua')" />
+      <AiProgress v-if="busy && !result" :stage="progress.stage" :ai="progress.ai" :passages="progress.passages" :chars="progress.chars" :retry="progress.retry" />
       <p v-if="error" role="alert">{{ error }}</p>
       <div v-if="result && grounding" class="notice" :class="{ ok: result.status === 'applied' }">
         <p role="status"><strong>{{ result.summary }}</strong> ·

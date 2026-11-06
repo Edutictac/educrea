@@ -42,6 +42,10 @@
       "license": "ISC AND MIT (Feather)"
     },
     {
+      "name": "copy",
+      "license": "ISC"
+    },
+    {
       "name": "download",
       "license": "ISC AND MIT (Feather)"
     },

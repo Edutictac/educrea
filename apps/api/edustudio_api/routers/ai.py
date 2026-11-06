@@ -246,13 +246,7 @@ async def generate_from_brief(project_id: UUID, choice: PreferredModel | None = 
                               provider: GeminiProvider = Depends(get_gemini_provider)) -> AiProposal:
     """Teacher mode shortcut: builds the instruction from activity.json and applies the first version."""
     user_id = user.id
-    brief = engine.read_brief(db, project_id)
-    if brief is None:
-        raise HTTPException(409, "Guarda primero el encargo de la actividad (activity.json)")
-    source_ids = list(db.scalars(select(Source.id).where(Source.project_id == project_id).order_by(Source.created_at)))
-    instruction = engine.instruction_for(brief)
-    if source_ids:
-        instruction += engine.MATERIAL_INSTRUCTION
+    instruction, source_ids = brief_request(db, project_id)
     return await generate_with_first_free(db, project_id, user_id, provider, instruction, True, source_ids=source_ids,
                                           choice=choice)
 
@@ -265,18 +259,8 @@ async def adapt_dua(project_id: UUID, data: DuaInput, user: User = Depends(requi
 
     Teacher mode applies it (undoable); a report missing a principle, or one that leaves the material unchanged,
     always waits for review."""
-    from .projects import project_for_owner
-
     user_id = user.id
-    project_for_owner(db, project_id, user_id)
-    if not (data.path.lower().endswith(engine.DUA_EXTENSIONS) or data.path == engine.template_service.DATA_PATH):
-        raise HTTPException(422, "Solo se pueden adaptar actividades HTML o documentos Markdown")
-    exists = db.scalar(select(ProjectFile.id).where(ProjectFile.project_id == project_id,
-                                                    ProjectFile.path == data.path))
-    if exists is None:
-        raise HTTPException(404, "Archivo no encontrado")
-    language = str((engine.read_brief(db, project_id) or {}).get("language") or "") or None
-    instruction = engine.dua_instruction(data.path, data.needs, language)
+    instruction = dua_request(db, project_id, user_id, data)
     return await generate_with_first_free(db, project_id, user_id, provider, instruction, data.auto_apply,
                                           dua_target=data.path, choice=data)
 
@@ -343,6 +327,93 @@ async def generate_with_first_free(db: Session, project_id: UUID, user_id: UUID,
             raise
 
 
+def _sse(name: str, value: dict) -> str:
+    return f"event: {name}\ndata: {json.dumps(value, ensure_ascii=False)}\n\n"
+
+
+def _streaming(events) -> StreamingResponse:
+    return StreamingResponse(events, media_type="text/event-stream",
+                             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+
+async def ai_events(db: Session, project_id: UUID, user_id: UUID, data: GenerateInput, provider: GeminiProvider,
+                    key: str, prompt: str, snapshot: dict, selected: set[str], passages: list[dict],
+                    maximum_cost: int = 0, price=None, maximum_tokens: int = quotas.RESERVED_TOKENS,
+                    dua_target: str | None = None):
+    """Server-sent events of one generation: consultation, generation with real stages, automatic switch to the next
+    free AI when allowed, rescue of cut documents and the final proposal (applied when requested)."""
+    event = _sse
+    name, model, credential = data.provider, data.model, key
+    final_prompt, allowed, trace = prompt, selected, []
+    if agent.should_consult(data, snapshot, selected):
+        yield event("status", {"stage": "consulting", "provider": name, "model": model})
+        try:
+            final_prompt, allowed, trace = await consult(
+                db, user_id, project_id, data, provider if name == "gemini" else registry.adapter(name),
+                credential, name, model, prompt, snapshot, selected)
+        except HTTPException as exc:
+            yield event("error", {"status_code": exc.status_code, "message": exc.detail})
+            return
+        if trace:
+            yield event("consulted", {"capabilities": trace})
+    skip_providers: set[str] = set()
+    skip_models: set[tuple[str, str]] = set()
+    while True:
+        parts: list[str] = []
+        response_bytes = 0
+        usage: dict = {}
+        reservation = None
+        yield event("status", {"stage": "generating", "provider": name, "model": model,
+                               "passages": len(passages), "retry": bool(skip_providers or skip_models)})
+        try:
+            reservation = quotas.reserve(db, user_id, name, model, maximum_cost, price, maximum_tokens)
+            adapter = provider if name == "gemini" else registry.adapter(name)
+            async for chunk in adapter.stream(credential, model, final_prompt):
+                if chunk.text:
+                    parts.append(chunk.text)
+                    response_bytes += len(chunk.text.encode())
+                    if response_bytes > engine.MAX_RESPONSE_BYTES:
+                        raise HTTPException(502, "El proveedor devolvió una propuesta demasiado grande")
+                    yield event("token", {"text": chunk.text})
+                if chunk.usage:
+                    usage = chunk.usage
+            proposal = engine.persist(db, project_id, user_id, model, "".join(parts), usage,
+                                      snapshot, allowed, provider=name, source_ids=data.source_ids,
+                                      passages_used=passages, agent_trace=trace, dua_target=dua_target)
+            quotas.reconcile(db, reservation, usage)
+            proposal = engine.apply_if_requested(db, project_id, proposal, data.auto_apply)
+            yield event("proposal", ProposalOut.model_validate(proposal).model_dump(mode="json"))
+            return
+        except (ProviderError, HTTPException) as exc:
+            db.rollback()
+            if reservation:
+                quotas.reconcile(db, reservation, usage, failed=True)
+            discard = ((isinstance(exc, ProviderError) and exc.truncated)
+                       or (isinstance(exc, HTTPException) and exc.status_code == 502))
+            rescued = (engine.salvage(db, project_id, user_id, model, name, "".join(parts), snapshot, allowed, usage)
+                       if discard and parts and not dua_target else None)
+            if rescued is not None:
+                reservation = None
+                yield event("proposal", ProposalOut.model_validate(rescued).model_dump(mode="json"))
+                return
+            retryable = _retry_skips(exc, name, model, skip_providers, skip_models)
+            alternative = (registry.next_free(db, user_id, skip_providers, skip_models, prefer_provider=name)
+                           if data.mode == "free" and retryable and data.allow_fallback
+                           and (not parts or discard) else None)
+            if alternative:
+                name, model, credential = alternative
+                db.rollback()
+                continue
+            message = exc.detail if isinstance(exc, HTTPException) else str(exc)
+            yield event("error", {"status_code": exc.status_code, "message": message,
+                                  "code": _error_code(exc), "provider": name, "explicit": not data.allow_fallback})
+            return
+        finally:
+            if reservation:
+                db.rollback()
+                quotas.reconcile(db, reservation, usage, failed=True)
+
+
 @router.post("/projects/{project_id}/ai/proposals/stream")
 async def stream_proposal(project_id: UUID, data: GenerateInput,
                           user: User = Depends(require_csrf), db: Session = Depends(get_db),
@@ -350,83 +421,71 @@ async def stream_proposal(project_id: UUID, data: GenerateInput,
     user_id = user.id
     key, prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)
     maximum_cost, price, maximum_tokens = paid_terms(data, prompt)
+    return _streaming(ai_events(db, project_id, user_id, data, provider, key, prompt, snapshot, selected, passages,
+                                maximum_cost, price, maximum_tokens))
 
-    def event(name: str, value: dict) -> str:
-        return f"event: {name}\ndata: {json.dumps(value, ensure_ascii=False)}\n\n"
 
-    async def events():
-        name, model, credential = data.provider, data.model, key
-        final_prompt, allowed, trace = prompt, selected, []
-        if agent.should_consult(data, snapshot, selected):
-            yield event("status", {"stage": "consulting", "provider": name, "model": model})
-            try:
-                final_prompt, allowed, trace = await consult(
-                    db, user_id, project_id, data, provider if name == "gemini" else registry.adapter(name),
-                    credential, name, model, prompt, snapshot, selected)
-            except HTTPException as exc:
-                yield event("error", {"status_code": exc.status_code, "message": exc.detail})
-                return
-            if trace:
-                yield event("consulted", {"capabilities": trace})
-        skip_providers: set[str] = set()
-        skip_models: set[tuple[str, str]] = set()
-        while True:
-            parts: list[str] = []
-            response_bytes = 0
-            usage: dict = {}
-            reservation = None
-            yield event("status", {"stage": "generating", "provider": name, "model": model,
-                                   "passages": len(passages), "retry": bool(skip_providers or skip_models)})
-            try:
-                reservation = quotas.reserve(db, user_id, name, model, maximum_cost, price, maximum_tokens)
-                adapter = provider if name == "gemini" else registry.adapter(name)
-                async for chunk in adapter.stream(credential, model, final_prompt):
-                    if chunk.text:
-                        parts.append(chunk.text)
-                        response_bytes += len(chunk.text.encode())
-                        if response_bytes > engine.MAX_RESPONSE_BYTES:
-                            raise HTTPException(502, "El proveedor devolvió una propuesta demasiado grande")
-                        yield event("token", {"text": chunk.text})
-                    if chunk.usage:
-                        usage = chunk.usage
-                proposal = engine.persist(db, project_id, user_id, model, "".join(parts), usage,
-                                          snapshot, allowed, provider=name, source_ids=data.source_ids,
-                                          passages_used=passages, agent_trace=trace)
-                quotas.reconcile(db, reservation, usage)
-                proposal = engine.apply_if_requested(db, project_id, proposal, data.auto_apply)
-                yield event("proposal", ProposalOut.model_validate(proposal).model_dump(mode="json"))
-                return
-            except (ProviderError, HTTPException) as exc:
-                db.rollback()
-                if reservation:
-                    quotas.reconcile(db, reservation, usage, failed=True)
-                discard = ((isinstance(exc, ProviderError) and exc.truncated)
-                           or (isinstance(exc, HTTPException) and exc.status_code == 502))
-                rescued = (engine.salvage(db, project_id, user_id, model, name, "".join(parts), snapshot, allowed, usage)
-                           if discard and parts else None)
-                if rescued is not None:
-                    reservation = None
-                    yield event("proposal", ProposalOut.model_validate(rescued).model_dump(mode="json"))
-                    return
-                retryable = _retry_skips(exc, name, model, skip_providers, skip_models)
-                alternative = (registry.next_free(db, user_id, skip_providers, skip_models, prefer_provider=name)
-                               if data.mode == "free" and retryable and data.allow_fallback
-                               and (not parts or discard) else None)
-                if alternative:
-                    name, model, credential = alternative
-                    db.rollback()
-                    continue
-                message = exc.detail if isinstance(exc, HTTPException) else str(exc)
-                yield event("error", {"status_code": exc.status_code, "message": message,
-                                      "code": _error_code(exc), "provider": name})
-                return
-            finally:
-                if reservation:
-                    db.rollback()
-                    quotas.reconcile(db, reservation, usage, failed=True)
+def first_free_request(db: Session, project_id: UUID, user_id: UUID, instruction: str, auto_apply: bool,
+                       choice: PreferredModel | None, source_ids: list[UUID] | None = None):
+    """Request built by the backend for teacher shortcuts (first version, DUA) with the AI of the selector.
+    «IA automática» may switch to the next free AI; an AI chosen explicitly is respected."""
+    explicit = bool(choice and choice.provider and choice.model)
+    available = registry.preferred_free(db, user_id, choice.provider if choice else None, choice.model if choice else None)
+    if available is None:
+        raise HTTPException(409, "Configura un proveedor gratuito y confirma un modelo antes de generar")
+    name, model, key = available
+    data = engine.GenerateInput.model_construct(
+        **{**engine.GenerateInput.model_construct().model_dump(), "instruction": instruction, "provider": name,
+           "model": model, "automatic": True, "auto_apply": auto_apply, "mode": "free",
+           "source_ids": source_ids or [], "whole_sources": bool(source_ids), "allow_fallback": not explicit})
+    prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)[1:]
+    return data, key, prompt, snapshot, selected, passages
 
-    return StreamingResponse(events(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+def brief_request(db: Session, project_id: UUID) -> tuple[str, list[UUID]]:
+    brief = engine.read_brief(db, project_id)
+    if brief is None:
+        raise HTTPException(409, "Guarda primero el encargo de la actividad (activity.json)")
+    source_ids = list(db.scalars(select(Source.id).where(Source.project_id == project_id).order_by(Source.created_at)))
+    instruction = engine.instruction_for(brief) + (engine.MATERIAL_INSTRUCTION if source_ids else "")
+    return instruction, source_ids
+
+
+def dua_request(db: Session, project_id: UUID, user_id: UUID, data: DuaInput) -> str:
+    from .projects import project_for_owner
+
+    project_for_owner(db, project_id, user_id)
+    if not (data.path.lower().endswith(engine.DUA_EXTENSIONS) or data.path == engine.template_service.DATA_PATH):
+        raise HTTPException(422, "Solo se pueden adaptar actividades HTML o documentos Markdown")
+    exists = db.scalar(select(ProjectFile.id).where(ProjectFile.project_id == project_id, ProjectFile.path == data.path))
+    if exists is None:
+        raise HTTPException(404, "Archivo no encontrado")
+    language = str((engine.read_brief(db, project_id) or {}).get("language") or "") or None
+    return engine.dua_instruction(data.path, data.needs, language)
+
+
+@router.post("/projects/{project_id}/ai/from-brief/stream")
+async def stream_from_brief(project_id: UUID, choice: PreferredModel | None = None,
+                            user: User = Depends(require_csrf), db: Session = Depends(get_db),
+                            provider: GeminiProvider = Depends(get_gemini_provider)) -> StreamingResponse:
+    from .projects import project_for_owner
+
+    project_for_owner(db, project_id, user.id)
+    instruction, source_ids = brief_request(db, project_id)
+    data, key, prompt, snapshot, selected, passages = first_free_request(db, project_id, user.id, instruction, True,
+                                                                        choice, source_ids)
+    return _streaming(ai_events(db, project_id, user.id, data, provider, key, prompt, snapshot, selected, passages))
+
+
+@router.post("/projects/{project_id}/ai/dua/stream")
+async def stream_dua(project_id: UUID, data: DuaInput, user: User = Depends(require_csrf),
+                     db: Session = Depends(get_db),
+                     provider: GeminiProvider = Depends(get_gemini_provider)) -> StreamingResponse:
+    instruction = dua_request(db, project_id, user.id, data)
+    request, key, prompt, snapshot, selected, passages = first_free_request(db, project_id, user.id, instruction,
+                                                                           data.auto_apply, data)
+    return _streaming(ai_events(db, project_id, user.id, request, provider, key, prompt, snapshot, selected, passages,
+                                dua_target=data.path))
 
 
 @router.post("/projects/{project_id}/ai/proposals/{proposal_id}/apply", response_model=ProposalOut)

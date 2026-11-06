@@ -104,6 +104,10 @@ async function saveProject() {
     savedDetails.value = JSON.stringify([title.value, description.value]); status.value = t('saved') }
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 }
+async function duplicate() {
+  try { const copy = await projects.duplicate(id); router.push(`/projects/${copy.id}`) }
+  catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
+}
 async function remove() {
   if (!confirm(t('confirmDeleteProject'))) return
   try { await projects.remove(id); router.push('/projects') }
@@ -162,7 +166,9 @@ async function remove() {
               <label class="full">{{ t('projectTitle') }}<input v-model="title" required maxlength="160" /></label>
               <label class="full">{{ t('description') }}<textarea v-model="description" maxlength="5000" rows="3" /></label>
               <div class="actions full"><button type="submit" :disabled="!detailsDirty">{{ t('saveProject') }}</button><span v-if="status" role="status">{{ status }}</span>
+                <button type="button" class="secondary" @click="duplicate"><AppIcon name="copy" :size="18" />{{ t('duplicateProject') }}</button>
                 <button type="button" class="danger" @click="remove"><AppIcon name="trash-2" :size="18" />{{ t('deleteProject') }}</button></div>
+              <p class="hint full">{{ t('duplicateHint') }}</p>
             </form>
           </div>
         </div>

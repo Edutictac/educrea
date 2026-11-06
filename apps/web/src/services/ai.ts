@@ -2,7 +2,7 @@ import type { Grounding } from './sources'
 export interface PaidModel { model: string; input_rate_microusd: number; output_rate_microusd: number }
 export interface GeminiStatus { configured: boolean; verified_free_models: string[];
   confirmed_free_models: string[]; paid_models: PaidModel[] }
-export type ProviderName = 'gemini' | 'openrouter' | 'groq' | 'ollama' | 'openai' | 'anthropic'
+export type ProviderName = 'gemini' | 'mistral' | 'openrouter' | 'groq' | 'nvidia' | 'ollama' | 'openai' | 'anthropic'
 export type ProviderStatuses = Record<ProviderName, GeminiStatus>
 export interface BudgetStatus { monthly_limit_microusd: number; spent_or_reserved_microusd: number;
   maximum_allowed_microusd: number }

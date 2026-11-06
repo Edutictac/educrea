@@ -3,9 +3,9 @@ import { providerGuides, stepStates, suggestedProvider } from './providerGuide'
 
 describe('providerGuide', () => {
   it('points to official https consoles and covers every provider', () => {
-    expect(Object.keys(providerGuides).sort()).toEqual(['anthropic', 'gemini', 'groq', 'ollama', 'openai', 'openrouter'])
+    expect(Object.keys(providerGuides).sort()).toEqual(['anthropic', 'gemini', 'groq', 'mistral', 'nvidia', 'ollama', 'openai', 'openrouter'])
     for (const [name, guide] of Object.entries(providerGuides)) {
-      if (name !== 'ollama') expect(guide.url).toMatch(/^https:\/\/(aistudio\.google\.com|openrouter\.ai|console\.groq\.com|platform\.openai\.com|console\.anthropic\.com)\//)
+      if (name !== 'ollama') expect(guide.url).toMatch(/^https:\/\/(aistudio\.google\.com|openrouter\.ai|console\.groq\.com|console\.mistral\.ai|build\.nvidia\.com|platform\.openai\.com|console\.anthropic\.com)\//)
     }
     expect(providerGuides.gemini.paid).toBe(false)
     expect(providerGuides.openai.paid).toBe(true)
@@ -18,7 +18,7 @@ describe('providerGuide', () => {
   })
   it('suggests Gemini first and then the next free provider still to configure', () => {
     expect(suggestedProvider({})).toBe('gemini')
-    expect(suggestedProvider({ gemini: true })).toBe('openrouter')
-    expect(suggestedProvider({ gemini: true, openrouter: true, groq: true })).toBe('gemini')
+    expect(suggestedProvider({ gemini: true })).toBe('mistral')
+    expect(suggestedProvider({ gemini: true, mistral: true, nvidia: true, groq: true, openrouter: true })).toBe('gemini')
   })
 })

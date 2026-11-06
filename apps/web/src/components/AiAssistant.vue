@@ -18,7 +18,7 @@ const mode = ref<'free' | 'paid'>('free')
 const estimate = ref<PaidEstimate | null>(null)
 const paidConfirmed = ref(false)
 const provider = ref<ProviderName>('gemini')
-const availableProviders = computed(() => (['gemini', 'openrouter', 'groq', 'ollama', 'openai', 'anthropic'] as ProviderName[])
+const availableProviders = computed(() => (['gemini', 'mistral', 'nvidia', 'groq', 'openrouter', 'ollama', 'openai', 'anthropic'] as ProviderName[])
   .filter(name => mode.value === 'free' ? !!statuses.value?.[name].confirmed_free_models.length
     : !!statuses.value?.[name].configured && !!statuses.value?.[name].paid_models.length))
 const models = computed(() => mode.value === 'free' ? statuses.value?.[provider.value].confirmed_free_models ?? []

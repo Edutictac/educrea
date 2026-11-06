@@ -799,3 +799,31 @@ def test_dua_adaptation_reports_barriers_and_requires_all_three_principles(clien
     assert client.post(route, headers=headers, json={"path": "index.html"}).json()["status"] == "pending"
     index = next(f for f in client.get(f"{base}/files").json() if f["path"] == "index.html")
     assert client.get(f"{base}/files/{index['id']}").json()["content"] == original
+
+
+def test_first_version_falls_back_to_mistral_when_gemini_is_saturated(client: TestClient, monkeypatch):
+    headers, project_id = setup_user(client)
+    client.put("/api/ai/providers/mistral/key", headers=headers, json={"api_key": "test-only-mistral-key"})
+    assert client.post("/api/ai/providers/mistral/free-models/mistral-small-latest/confirm", headers=headers,
+                       json={"acknowledged": True}).status_code == 204
+    client.post(f"/api/projects/{project_id}/files", headers=headers,
+                json={"path": "activity.json", "content": json.dumps({"title": "Volcanes", "instructions": "Una página"})})
+
+    class Saturated:
+        async def generate(self, *_args):
+            raise ProviderError("Gemini está saturado", 503)
+
+    used = []
+    draft = {"summary": "Hecho", "changes": [{"path": "index.html", "content": "<h1>Volcanes</h1>"}]}
+
+    def adapter(name):
+        used.append(name)
+        return StubGemini(json.dumps(draft))
+
+    app.dependency_overrides[get_gemini_provider] = lambda: Saturated()
+    monkeypatch.setattr(registry, "adapter", adapter)
+    body = client.post(f"/api/projects/{project_id}/ai/from-brief", headers=headers).json()
+    assert body["provider"] == "mistral" and body["status"] == "applied" and used == ["mistral"]
+    # Without another free provider the error is reported as before.
+    client.delete("/api/ai/providers/mistral/key", headers=headers)
+    assert client.post(f"/api/projects/{project_id}/ai/from-brief", headers=headers).status_code == 503

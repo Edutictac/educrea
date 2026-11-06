@@ -7,6 +7,8 @@ os.environ["EDUSTUDIO_CREDENTIAL_KEYS"] = Fernet.generate_key().decode()
 os.environ["EDUSTUDIO_GEMINI_FREE_MODELS"] = "gemini-test-free"
 os.environ["EDUSTUDIO_OPENROUTER_FREE_MODELS"] = "test/model:free"
 os.environ["EDUSTUDIO_GROQ_FREE_MODELS"] = "groq-test-free"
+os.environ["EDUSTUDIO_MISTRAL_FREE_MODELS"] = "mistral-small-latest"
+os.environ["EDUSTUDIO_NVIDIA_FREE_MODELS"] = "openai/gpt-oss-20b"
 
 import pytest
 from fastapi.testclient import TestClient

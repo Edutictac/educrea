@@ -11,6 +11,8 @@ from .base import ProviderChunk, ProviderError, ProviderResult
 URLS = {
     "openrouter": "https://openrouter.ai/api/v1/chat/completions",
     "groq": "https://api.groq.com/openai/v1/chat/completions",
+    "mistral": "https://api.mistral.ai/v1/chat/completions",
+    "nvidia": "https://integrate.api.nvidia.com/v1/chat/completions",
     "openai": "https://api.openai.com/v1/chat/completions",
 }
 

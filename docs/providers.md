@@ -9,3 +9,18 @@ Consolas oficiales para crear una clave personal: [Google AI Studio](https://ais
 La Fase 5 incorpora OpenAI, Anthropic y modelos de pago BYOK de proveedores habilitados por el administrador. Sus precios, aceptación y presupuestos se describen en [paid-models.md](paid-models.md). Los modelos de imagen tienen una selección y cuotas propias previstas para la Fase 6.
 
 La pantalla «Mis proveedores de IA» incluye una **guía de 3 pasos** por proveedor (crear la clave en la consola oficial, pegarla y confirmar el modelo gratuito, o fijar el presupuesto en los de pago) que marca cada paso según el estado real de la cuenta, avisa de los límites de cada plan (por ejemplo, que el nivel gratuito de Gemini puede usar el contenido para mejorar sus productos) y propone primero el proveedor gratuito que aún falte por configurar. Los textos están en castellano y valenciano; los enlaces solo apuntan a las consolas oficiales y se abren en otra pestaña.
+
+## Proveedores gratuitos añadidos el 2026-11-06
+
+Ante la saturación de Gemini (errores 503), se añaden dos proveedores con nivel gratuito permanente y API compatible con OpenAI. La fuente es la lista mantenida [awesome-free-llm-apis](https://github.com/mnfst/awesome-free-llm-apis), revisada el 2026-11-06; hay que comprobar los límites en la documentación de cada proveedor antes de publicarlos.
+
+| Proveedor | Variable de modelos | Límites gratuitos (aprox.) | Condiciones |
+|---|---|---|---|
+| **Mistral AI** (Francia, UE) | `EDUSTUDIO_MISTRAL_FREE_MODELS` (p. ej. `mistral-small-latest,mistral-medium-latest`) | ~1 petición/s, 500 000 tokens/min | Plan «Experiment», verificación por teléfono. **En el plan gratuito puede usar las peticiones para entrenar** salvo que se desactive en Admin › Privacy: la guía lo indica y pide no enviar datos del alumnado. |
+| **NVIDIA NIM** | `EDUSTUDIO_NVIDIA_FREE_MODELS` (p. ej. `openai/gpt-oss-120b,google/gemma-4-31b-it`) | 40 peticiones/min, 10 000/día | Cuenta gratuita del NVIDIA Developer Program. |
+
+También conviene actualizar los modelos de **Groq** (ahora `openai/gpt-oss-120b`, 30 peticiones/min y 1000/día) y de **OpenRouter** (`:free`, 50 peticiones/día, o 1000 si la cuenta tiene al menos 10 $ de crédito).
+
+Se descartan por ahora Cohere (solo uso no comercial), los proveedores que exigen verificación de identidad en China (ModelScope, SiliconFlow, Zhipu), los agregadores con catálogo inestable (Kilo, LLM7) y Cloudflare Workers AI (10 000 «neurons» diarias compartidas y una URL por cuenta).
+
+**Orden y cambio automático:** el primer modelo gratuito confirmado se elige en este orden: Gemini, Mistral, NVIDIA, Groq, OpenRouter y Ollama. Si el proveedor responde 429, 503 o 504 (saturado o sin cuota), «Generar la primera versión» y la adaptación DUA pasan solas al siguiente proveedor gratuito confirmado del docente. Nunca pasan a uno de pago.

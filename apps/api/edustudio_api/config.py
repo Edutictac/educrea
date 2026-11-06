@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     gemini_free_models: str = ""
     openrouter_free_models: str = ""
     groq_free_models: str = ""
+    mistral_free_models: str = ""
+    nvidia_free_models: str = ""
     ollama_free_models: str = ""
     ollama_base_url: str = ""
     paid_models_json: str = "{}"

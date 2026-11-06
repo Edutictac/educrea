@@ -54,7 +54,7 @@ def provider_status(provider_name: str, user: User = Depends(current_user), db: 
 @router.put("/ai/providers/{provider_name}/key", status_code=204)
 def save_provider_key(provider_name: str, data: CredentialInput, user: User = Depends(require_csrf),
                       db: Session = Depends(get_db)) -> None:
-    if provider_name not in ("gemini", "openrouter", "groq", "openai", "anthropic"):
+    if provider_name not in ("gemini", "openrouter", "groq", "mistral", "nvidia", "openai", "anthropic"):
         raise HTTPException(404, "Proveedor no encontrado")
     value = data.api_key.get_secret_value().strip()
     if len(value) < 10:
@@ -72,7 +72,7 @@ def save_provider_key(provider_name: str, data: CredentialInput, user: User = De
 @router.post("/ai/providers/{provider_name}/free-models/{model:path}/confirm", status_code=204)
 def confirm_provider_model(provider_name: str, model: str, data: FreeConfirmation,
                            user: User = Depends(require_csrf), db: Session = Depends(get_db)) -> None:
-    if provider_name not in ("gemini", "openrouter", "groq") or model not in registry.free_models(provider_name):
+    if provider_name not in ("gemini", "openrouter", "groq", "mistral", "nvidia") or model not in registry.free_models(provider_name):
         raise HTTPException(403, "Modelo no autorizado en modo gratuito")
     credential = personal_credential(db, user.id, provider_name)
     if credential is None:
@@ -84,7 +84,7 @@ def confirm_provider_model(provider_name: str, model: str, data: FreeConfirmatio
 @router.delete("/ai/providers/{provider_name}/key", status_code=204)
 def revoke_provider_key(provider_name: str, user: User = Depends(require_csrf),
                         db: Session = Depends(get_db)) -> None:
-    if provider_name not in ("gemini", "openrouter", "groq", "openai", "anthropic"):
+    if provider_name not in ("gemini", "openrouter", "groq", "mistral", "nvidia", "openai", "anthropic"):
         raise HTTPException(404, "Proveedor no encontrado")
     credential = personal_credential(db, user.id, provider_name)
     if credential:
@@ -257,22 +257,30 @@ async def generate_with_first_free(db: Session, project_id: UUID, user_id: UUID,
     adapter = provider if name == "gemini" else registry.adapter(name)
     prompt, selected, trace = await consult(db, user_id, project_id, data, adapter, key, name, model, prompt,
                                             snapshot, selected)
-    reservation = quotas.reserve(db, user_id, name, model)
-    try:
-        result = await adapter.generate(key, model, prompt)
-        proposal = engine.persist(db, project_id, user_id, model, result.text, result.usage, snapshot, selected,
-                                  provider=name, dua_target=dua_target, agent_trace=trace,
-                                  source_ids=source_ids or None, passages_used=passages)
-        quotas.reconcile(db, reservation, result.usage)
-        return engine.apply_if_requested(db, project_id, proposal, auto_apply)
-    except ProviderError as exc:
-        db.rollback()
-        quotas.reconcile(db, reservation, failed=True)
-        raise HTTPException(exc.status_code, str(exc)) from exc
-    except BaseException:
-        db.rollback()
-        quotas.reconcile(db, reservation, failed=True)
-        raise
+    used = {name}
+    while True:
+        reservation = quotas.reserve(db, user_id, name, model)
+        try:
+            result = await adapter.generate(key, model, prompt)
+            proposal = engine.persist(db, project_id, user_id, model, result.text, result.usage, snapshot, selected,
+                                      provider=name, dua_target=dua_target, agent_trace=trace,
+                                      source_ids=source_ids or None, passages_used=passages)
+            quotas.reconcile(db, reservation, result.usage)
+            return engine.apply_if_requested(db, project_id, proposal, auto_apply)
+        except ProviderError as exc:
+            db.rollback()
+            quotas.reconcile(db, reservation, failed=True)
+            # Saturated or out of quota: try the teacher's next confirmed free provider (only free ones).
+            alternative = registry.fallback(db, user_id, used) if exc.status_code in (429, 503, 504) else None
+            if alternative is None:
+                raise HTTPException(exc.status_code, str(exc)) from exc
+            name, model, key = alternative
+            used.add(name)
+            adapter = provider if name == "gemini" else registry.adapter(name)
+        except BaseException:
+            db.rollback()
+            quotas.reconcile(db, reservation, failed=True)
+            raise
 
 
 @router.post("/projects/{project_id}/ai/proposals/stream")

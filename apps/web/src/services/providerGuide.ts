@@ -1,12 +1,14 @@
 import type { ProviderName } from './ai'
 
 // Official consoles where each teacher creates a personal key. Keys are never stored here.
-export interface ProviderGuide { url: string; paid: boolean; steps: 'google' | 'openrouter' | 'groq' | 'paid' | 'managed' }
+export interface ProviderGuide { url: string; paid: boolean; steps: 'google' | 'openrouter' | 'groq' | 'mistral' | 'nvidia' | 'paid' | 'managed' }
 
 export const providerGuides: Record<ProviderName, ProviderGuide> = {
   gemini: { url: 'https://aistudio.google.com/app/apikey', paid: false, steps: 'google' },
   openrouter: { url: 'https://openrouter.ai/settings/keys', paid: false, steps: 'openrouter' },
   groq: { url: 'https://console.groq.com/keys', paid: false, steps: 'groq' },
+  mistral: { url: 'https://console.mistral.ai/api-keys', paid: false, steps: 'mistral' },
+  nvidia: { url: 'https://build.nvidia.com/settings/api-keys', paid: false, steps: 'nvidia' },
   openai: { url: 'https://platform.openai.com/api-keys', paid: true, steps: 'paid' },
   anthropic: { url: 'https://console.anthropic.com/settings/keys', paid: true, steps: 'paid' },
   ollama: { url: '', paid: false, steps: 'managed' },
@@ -23,6 +25,6 @@ export function stepStates(configured: boolean, confirmedFree: boolean, paid: bo
 
 // Provider shown first: the first one a teacher still has to set up, Gemini by default.
 export function suggestedProvider(configured: Partial<Record<ProviderName, boolean>>): ProviderName {
-  const order: ProviderName[] = ['gemini', 'openrouter', 'groq']
+  const order: ProviderName[] = ['gemini', 'mistral', 'nvidia', 'groq', 'openrouter']
   return order.find(name => !configured[name]) ?? 'gemini'
 }

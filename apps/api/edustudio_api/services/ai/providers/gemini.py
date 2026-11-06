@@ -90,7 +90,10 @@ class GeminiProvider:
             self.check_response(response)
             data = response.json()
             candidates = data.get("candidates") or []
-            if not candidates or candidates[0].get("finishReason") != "STOP":
+            reason = candidates[0].get("finishReason") if candidates else None
+            if reason == "MAX_TOKENS":
+                raise ProviderError("Gemini cortó la respuesta por el límite de tokens de salida", 502, truncated=True)
+            if reason != "STOP":
                 raise ProviderError("Respuesta incompleta de Gemini")
             text = "".join(part.get("text", "") for part in candidates[0].get("content", {}).get("parts", []))
             if not text:
@@ -120,6 +123,9 @@ class GeminiProvider:
                         candidate = candidates[0] if candidates else {}
                         text = "".join(part.get("text", "") for part in candidate.get("content", {}).get("parts", []))
                         reason = candidate.get("finishReason")
+                        if reason == "MAX_TOKENS":
+                            raise ProviderError("Gemini cortó la respuesta por el límite de tokens de salida",
+                                                502, truncated=True)
                         if reason and reason != "STOP":
                             raise ProviderError("Respuesta incompleta de Gemini")
                         finished = finished or reason == "STOP"

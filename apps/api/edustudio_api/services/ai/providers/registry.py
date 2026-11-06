@@ -13,9 +13,9 @@ from .gemini import GeminiProvider, free_models as gemini_free_models
 from ..credentials import decrypt_key, personal_credential
 
 MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")
-PROVIDERS = ("gemini", "mistral", "openrouter", "groq", "nvidia", "ollama", "openai", "anthropic")
+PROVIDERS = ("gemini", "mistral", "openrouter", "groq", "ollama", "openai", "anthropic")
 # Order used to pick the first confirmed free model and to fall back when one is saturated (429/503).
-FREE_PROVIDERS = ("gemini", "nvidia", "groq", "openrouter", "ollama")
+FREE_PROVIDERS = ("gemini", "groq", "openrouter", "ollama")
 
 
 def free_models(provider: str) -> list[str]:
@@ -94,11 +94,26 @@ def first_free(db: Session, user_id: UUID) -> tuple[str, str, str] | None:
     return fallback(db, user_id, set())
 
 
-def fallback(db: Session, user_id: UUID, excluded: set[str]) -> tuple[str, str, str] | None:
-    for provider in FREE_PROVIDERS:
-        if provider in excluded:
-            continue
-        models = status(db, user_id, provider)["confirmed_free_models"]
-        if models:
-            return provider, models[0], authorize(db, user_id, provider, models[0])
+def next_free(db: Session, user_id: UUID, skip_providers: set[str] | None = None,
+              skip_models: set[tuple[str, str]] | None = None,
+              prefer_provider: str | None = None) -> tuple[str, str, str] | None:
+    """Next confirmed free model, skipping whole providers (quota) or single models (truncated/invalid).
+
+    When a model fails but its provider still works, its other models are tried first.
+    """
+    skip_providers = skip_providers or set()
+    skip_models = skip_models or set()
+    order = [provider for provider in FREE_PROVIDERS
+             if provider not in skip_providers and provider != prefer_provider]
+    if prefer_provider in FREE_PROVIDERS and prefer_provider not in skip_providers:
+        order.insert(0, prefer_provider)
+    for provider in order:
+        for model in status(db, user_id, provider)["confirmed_free_models"]:
+            if (provider, model) in skip_models:
+                continue
+            return provider, model, authorize(db, user_id, provider, model)
     return None
+
+
+def fallback(db: Session, user_id: UUID, excluded: set[str]) -> tuple[str, str, str] | None:
+    return next_free(db, user_id, skip_providers=excluded)

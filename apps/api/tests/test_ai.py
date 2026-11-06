@@ -814,10 +814,10 @@ def test_dua_adaptation_reports_barriers_and_requires_all_three_principles(clien
     assert client.get(f"{base}/files/{index['id']}").json()["content"] == original
 
 
-def test_first_version_falls_back_to_nvidia_when_gemini_is_saturated(client: TestClient, monkeypatch):
+def test_first_version_falls_back_to_openrouter_when_gemini_is_saturated(client: TestClient, monkeypatch):
     headers, project_id = setup_user(client)
-    client.put("/api/ai/providers/nvidia/key", headers=headers, json={"api_key": "test-only-nvidia-key"})
-    assert client.post("/api/ai/providers/nvidia/free-models/openai/gpt-oss-20b/confirm", headers=headers,
+    client.put("/api/ai/providers/openrouter/key", headers=headers, json={"api_key": "test-only-openrouter-key"})
+    assert client.post("/api/ai/providers/openrouter/free-models/test/model:free/confirm", headers=headers,
                        json={"acknowledged": True}).status_code == 204
     client.post(f"/api/projects/{project_id}/files", headers=headers,
                 json={"path": "activity.json", "content": json.dumps({"title": "Volcanes", "instructions": "Una página"})})
@@ -836,16 +836,16 @@ def test_first_version_falls_back_to_nvidia_when_gemini_is_saturated(client: Tes
     app.dependency_overrides[get_gemini_provider] = lambda: Saturated()
     monkeypatch.setattr(registry, "adapter", adapter)
     body = client.post(f"/api/projects/{project_id}/ai/from-brief", headers=headers).json()
-    assert body["provider"] == "nvidia" and body["status"] == "applied" and used == ["nvidia"]
+    assert body["provider"] == "openrouter" and body["status"] == "applied" and used == ["openrouter"]
     # Without another free provider the error is reported as before.
-    client.delete("/api/ai/providers/nvidia/key", headers=headers)
+    client.delete("/api/ai/providers/openrouter/key", headers=headers)
     assert client.post(f"/api/projects/{project_id}/ai/from-brief", headers=headers).status_code == 503
 
 
 def test_first_version_uses_the_ai_chosen_in_the_selector(client: TestClient, monkeypatch):
     headers, project_id = setup_user(client)
-    client.put("/api/ai/providers/nvidia/key", headers=headers, json={"api_key": "test-only-nvidia-key"})
-    client.post("/api/ai/providers/nvidia/free-models/openai/gpt-oss-20b/confirm", headers=headers, json={"acknowledged": True})
+    client.put("/api/ai/providers/openrouter/key", headers=headers, json={"api_key": "test-only-openrouter-key"})
+    client.post("/api/ai/providers/openrouter/free-models/test/model:free/confirm", headers=headers, json={"acknowledged": True})
     client.post(f"/api/projects/{project_id}/files", headers=headers,
                 json={"path": "activity.json", "content": json.dumps({"title": "Volcanes", "instructions": "Una página"})})
     draft = {"summary": "Hecho", "changes": [{"path": "index.html", "content": "<h1>Volcanes</h1>"}]}
@@ -853,11 +853,11 @@ def test_first_version_uses_the_ai_chosen_in_the_selector(client: TestClient, mo
     monkeypatch.setattr(registry, "adapter", lambda name: used.append(name) or StubGemini(json.dumps(draft)))
     app.dependency_overrides[get_gemini_provider] = lambda: StubGemini(json.dumps(draft))
     route = f"/api/projects/{project_id}/ai/from-brief"
-    body = client.post(route, headers=headers, json={"provider": "nvidia", "model": "openai/gpt-oss-20b"}).json()
-    assert body["provider"] == "nvidia" and used == ["nvidia"]
+    body = client.post(route, headers=headers, json={"provider": "openrouter", "model": "test/model:free"}).json()
+    assert body["provider"] == "openrouter" and used == ["openrouter"]
     assert client.post(route, headers=headers, json={}).json()["provider"] == "gemini"  # «Automática»
     assert client.post(route, headers=headers).json()["provider"] == "gemini"  # old clients without body
-    assert client.post(route, headers=headers, json={"provider": "nvidia", "model": "otro"}).status_code == 403
+    assert client.post(route, headers=headers, json={"provider": "openrouter", "model": "otro"}).status_code == 403
     assert client.post(route, headers=headers, json={"provider": "mistral", "model": "mistral-small-latest"}).status_code == 422
     assert client.post(route, headers=headers, json={"provider": "openai", "model": "gpt-x"}).status_code == 422
 
@@ -876,3 +876,139 @@ def test_mistral_requires_paid_mode_and_verified_prices(client: TestClient, monk
         "instruction": "Crea una actividad de fracciones", "provider": "mistral",
         "model": "mistral-small-latest", "mode": "paid"})
     assert estimate.status_code == 200
+
+
+def test_draft_changes_ignore_extra_fields_copied_from_the_context():
+    draft = ai_engine.parse_draft(json.dumps({
+        "summary": "Hecho",
+        "changes": [{"path": "situacion.md", "content": "# Título", "version": 4}],
+    }))
+    assert draft.changes[0].path == "situacion.md"
+    assert draft.changes[0].content == "# Título"
+
+
+def test_invalid_draft_error_names_the_provider():
+    with pytest.raises(HTTPException) as error:
+        ai_engine.parse_draft('{"summary": "cortado"', "groq")
+    assert error.value.status_code == 502
+    assert "Groq" in str(error.value.detail)
+
+
+def test_draft_tolerates_citations_inside_a_change_and_string_not_covered():
+    draft = ai_engine.parse_draft(json.dumps({
+        "summary": "Hecho",
+        "changes": [{"path": "situacion.md", "content": "# Título", "version": 2,
+                     "citations": [{"chunk": "F1", "quote": "una cita", "used_for": "justificación"}]}],
+        "not_covered": "F2 i F3 no són rellevants",
+        "extra": True,
+    }))
+    assert draft.not_covered == ["F2 i F3 no són rellevants"]
+    assert [citation.quote for citation in draft.citations] == ["una cita"]
+
+
+def test_parse_draft_accepts_fences_prose_and_trailing_commas():
+    text = ('Aquí tienes la propuesta:\n```json\n'
+            '{"summary": "Hecho", "changes": [{"path": "index.html", "content": "<p>x</p>"},]}\n'
+            '```\n')
+    draft = ai_engine.parse_draft(text)
+    assert draft.summary == "Hecho"
+    assert draft.changes[0].path == "index.html"
+
+
+def test_invalid_proposal_falls_back_to_the_next_free_provider(client: TestClient, monkeypatch):
+    headers, project_id = setup_user(client)
+    for name, model in (("groq", "groq-test-free"), ("openrouter", "test/model:free")):
+        client.put(f"/api/ai/providers/{name}/key", headers=headers, json={"api_key": f"test-{name}-key"})
+        assert client.post(f"/api/ai/providers/{name}/free-models/{model}/confirm", headers=headers,
+                           json={"acknowledged": True}).status_code == 204
+    client.post(f"/api/projects/{project_id}/files", headers=headers,
+                json={"path": "index.html", "content": "<p>antes</p>"})
+    draft = {"summary": "Hecho", "changes": [{"path": "index.html", "content": "<h1>Después</h1>"}]}
+
+    class Bad:
+        async def generate(self, *_args):
+            return ProviderResult("esto no es JSON", {})
+
+    class Good:
+        async def generate(self, *_args):
+            return ProviderResult(json.dumps(draft), {})
+
+    used = []
+
+    def adapter(name):
+        used.append(name)
+        return Bad() if name == "groq" else Good()
+
+    monkeypatch.setattr(registry, "adapter", adapter)
+    app.dependency_overrides[get_gemini_provider] = lambda: Bad()
+    response = client.post(f"/api/projects/{project_id}/ai/proposals", headers=headers,
+                           json={"instruction": "Crea una portada", "provider": "groq", "model": "groq-test-free",
+                                 "context_paths": ["index.html"], "allow_fallback": True})
+    body = response.json()
+    assert body.get("provider") == "openrouter", (response.status_code, body)
+    assert used[0] == "groq" and used[-1] == "openrouter"
+
+
+def test_truncated_response_tries_another_model_of_the_same_provider(client: TestClient, monkeypatch):
+    headers, project_id = setup_user(client)
+    original = registry.free_models
+    monkeypatch.setattr(registry, "free_models", lambda provider: (
+        ["test/model:free", "test/model-2:free"] if provider == "openrouter" else original(provider)))
+    client.put("/api/ai/providers/openrouter/key", headers=headers, json={"api_key": "test-openrouter-key"})
+    for name in ("test/model:free", "test/model-2:free"):
+        assert client.post(f"/api/ai/providers/openrouter/free-models/{name}/confirm", headers=headers,
+                           json={"acknowledged": True}).status_code == 204
+    client.post(f"/api/projects/{project_id}/files", headers=headers,
+                json={"path": "index.html", "content": "<p>antes</p>"})
+    draft = {"summary": "Hecho", "changes": [{"path": "index.html", "content": "<h1>Después</h1>"}]}
+    models = []
+
+    class TruncatedThenGood:
+        async def generate(self, _key, model, _prompt):
+            models.append(model)
+            if model == "test/model:free":
+                raise ProviderError("OpenRouter cortó la respuesta", 502, truncated=True)
+            return ProviderResult(json.dumps(draft), {})
+
+    monkeypatch.setattr(registry, "adapter", lambda _name: TruncatedThenGood())
+    body = client.post(f"/api/projects/{project_id}/ai/proposals", headers=headers,
+                       json={"instruction": "Crea una portada", "provider": "openrouter", "model": "test/model:free",
+                             "context_paths": ["index.html"], "allow_fallback": True}).json()
+    assert body["provider"] == "openrouter" and body["model"] == "test/model-2:free"
+    assert models == ["test/model:free", "test/model-2:free"]
+
+
+def test_stream_truncated_response_switches_even_after_text(client: TestClient, monkeypatch):
+    headers, project_id = setup_user(client)
+    client.put("/api/ai/providers/groq/key", headers=headers, json={"api_key": "test-groq-secret"})
+    client.post("/api/ai/providers/groq/free-models/groq-test-free/confirm",
+                headers=headers, json={"acknowledged": True})
+    draft = {"summary": "Actividad", "changes": [{"path": "index.html", "content": "<h1>Hola</h1>"}]}
+
+    class Truncated:
+        async def stream(self, *_args):
+            yield ProviderChunk(text="parte")
+            raise ProviderError("Gemini cortó la respuesta", 502, truncated=True)
+
+    app.dependency_overrides[get_gemini_provider] = lambda: Truncated()
+    monkeypatch.setattr(registry, "adapter", lambda _name: StubGemini(json.dumps(draft)))
+    response = client.post(f"/api/projects/{project_id}/ai/proposals/stream", headers=headers,
+                           json={"instruction": "Crea una actividad de fracciones", "model": "gemini-test-free",
+                                 "allow_fallback": True})
+    assert '"provider": "groq"' in response.text
+    assert "event: proposal" in response.text
+
+
+def test_stream_error_reports_code_and_provider(client: TestClient):
+    headers, project_id = setup_user(client)
+
+    class Truncated:
+        async def stream(self, *_args):
+            yield ProviderChunk(text="parte")
+            raise ProviderError("Gemini cortó la respuesta", 502, truncated=True)
+
+    app.dependency_overrides[get_gemini_provider] = lambda: Truncated()
+    response = client.post(f"/api/projects/{project_id}/ai/proposals/stream", headers=headers,
+                           json={"instruction": "Crea una actividad de fracciones", "model": "gemini-test-free"})
+    assert '"code": "provider_truncated"' in response.text
+    assert '"provider": "gemini"' in response.text

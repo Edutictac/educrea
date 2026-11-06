@@ -25,6 +25,8 @@ class AnthropicProvider:
             if response.status_code >= 400:
                 raise ProviderError("Anthropic no pudo completar la solicitud")
             data = response.json()
+            if data.get("stop_reason") == "max_tokens":
+                raise ProviderError("Anthropic cortó la respuesta por el límite de tokens de salida", 502, truncated=True)
             if data.get("stop_reason") != "end_turn":
                 raise ProviderError("Respuesta incompleta de Anthropic")
             content = data.get("content") or []
@@ -68,7 +70,11 @@ class AnthropicProvider:
                             yield ProviderChunk(text=data["delta"].get("text", ""))
                         elif kind == "message_delta":
                             output_tokens = max(0, int((data.get("usage") or {}).get("output_tokens") or 0))
-                            if data.get("delta", {}).get("stop_reason") != "end_turn":
+                            stop = data.get("delta", {}).get("stop_reason")
+                            if stop == "max_tokens":
+                                raise ProviderError("Anthropic cortó la respuesta por el límite de tokens de salida",
+                                                    502, truncated=True)
+                            if stop != "end_turn":
                                 raise ProviderError("Respuesta incompleta de Anthropic")
                             finished = True
                             yield ProviderChunk(usage={"input_tokens": input_tokens,

@@ -18,7 +18,7 @@ export const aiChoice = ref<AiChoice>(load())
 watch(aiChoice, value => { try { localStorage.setItem(KEY, JSON.stringify(value)) } catch { /* ignore */ } }, { deep: true })
 
 export const PROVIDER_NAMES: Record<ProviderName, string> = {
-  gemini: 'Gemini (Google)', mistral: 'Mistral', nvidia: 'NVIDIA', groq: 'Groq', openrouter: 'OpenRouter',
+  gemini: 'Gemini (Google)', mistral: 'Mistral', groq: 'Groq', openrouter: 'OpenRouter',
   ollama: 'Ollama (servidor)', openai: 'OpenAI', anthropic: 'Anthropic (Claude)',
 }
 

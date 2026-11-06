@@ -12,11 +12,7 @@ La pantalla «Mis proveedores de IA» incluye una **guía de 3 pasos** por prove
 
 ## Revisión de proveedores del 2026-11-06
 
-Ante la saturación de Gemini (errores 503), se examinó la lista comunitaria `awesome-free-llm-apis`. La documentación oficial de cada proveedor prevalece sobre esa lista. NVIDIA NIM puede configurarse como alternativa gratuita después de verificar el modelo y la cuota de la cuenta.
-
-| Proveedor | Variable de modelos | Límites gratuitos (aprox.) | Condiciones |
-|---|---|---|---|
-| **NVIDIA NIM** | `EDUSTUDIO_NVIDIA_FREE_MODELS` (p. ej. `openai/gpt-oss-120b,google/gemma-4-31b-it`) | 40 peticiones/min, 10 000/día | Cuenta gratuita del NVIDIA Developer Program. |
+Ante la saturación de Gemini (errores 503), se examinó la lista comunitaria `awesome-free-llm-apis`. La documentación oficial de cada proveedor prevalece sobre esa lista. NVIDIA se retiró como proveedor directo: sus modelos se usan a través de OpenRouter (`…:free`), que ya los ofrece, así que el administrador solo mantiene la lista de OpenRouter.
 
 **Mistral AI no se ofrece como API gratuita.** Su [documentación de uso y límites](https://docs.mistral.ai/admin/billing-usage/usage-limits) dice que el modo gratuito no incluye acceso a la API y que crear claves y usarla requiere activar la facturación y el pago por uso. La [guía para crear una clave](https://docs.mistral.ai/getting-started/quickstarts/studio/activate-and-generate-api-key) también exige un plan con acceso a la API y remite a configurar un método de pago. Por tanto, EduStudio ignora la antigua variable `EDUSTUDIO_MISTRAL_FREE_MODELS`, no permite confirmar modelos Mistral como gratuitos y no lo usa en la alternancia automática. Se conserva como proveedor BYOK de pago, desactivado hasta que el administrador verifique precios y añada modelos a `EDUSTUDIO_PAID_MODELS_JSON`; cada generación requerirá presupuesto y estimación aprobada.
 
@@ -24,4 +20,4 @@ También conviene actualizar los modelos de **Groq** (ahora `openai/gpt-oss-120b
 
 Se descartan por ahora Cohere (solo uso no comercial), los proveedores que exigen verificación de identidad en China (ModelScope, SiliconFlow, Zhipu), los agregadores con catálogo inestable (Kilo, LLM7) y Cloudflare Workers AI (10 000 «neurons» diarias compartidas y una URL por cuenta).
 
-**Orden y cambio automático:** el primer modelo gratuito confirmado se elige en este orden: Gemini, NVIDIA, Groq, OpenRouter y Ollama. El selector del proyecto permite elegir cualquiera de los modelos gratuitos confirmados para generar la primera versión, adaptar con DUA o pedir cambios al asistente. Si el proveedor responde 429, 503 o 504 (saturado o sin cuota), estas operaciones pueden pasar al siguiente proveedor gratuito confirmado del docente; el asistente solo cambia antes de recibir texto. Nunca pasan a uno de pago.
+**Orden y cambio automático:** el primer modelo gratuito confirmado se elige en este orden: Gemini, Groq, OpenRouter y Ollama. El selector del proyecto permite elegir cualquiera de los modelos gratuitos confirmados para generar la primera versión, adaptar con DUA o pedir cambios al asistente. Si el proveedor responde 429, 503 o 504 (saturado o sin cuota), estas operaciones pueden pasar al siguiente proveedor gratuito confirmado del docente; el asistente solo cambia antes de recibir texto. Nunca pasan a uno de pago.

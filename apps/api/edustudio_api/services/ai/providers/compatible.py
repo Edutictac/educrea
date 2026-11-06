@@ -12,7 +12,6 @@ URLS = {
     "openrouter": "https://openrouter.ai/api/v1/chat/completions",
     "groq": "https://api.groq.com/openai/v1/chat/completions",
     "mistral": "https://api.mistral.ai/v1/chat/completions",
-    "nvidia": "https://integrate.api.nvidia.com/v1/chat/completions",
     "openai": "https://api.openai.com/v1/chat/completions",
 }
 
@@ -45,7 +44,7 @@ class CompatibleProvider:
             return {"model": model, "messages": [{"role": "user", "content": prompt}], "stream": stream,
                     "format": "json", "options": {"num_predict": 8192, "temperature": 0.2}}
         return {"model": model, "messages": [{"role": "user", "content": prompt}], "stream": stream,
-                ("max_completion_tokens" if self.name == "openai" else "max_tokens"): 8192,
+                ("max_completion_tokens" if self.name == "openai" else "max_tokens"): 16384,
                 **({} if self.name == "openai" else {"temperature": 0.2}),
                 **({"stream_options": {"include_usage": True}} if stream else {})}
 
@@ -67,7 +66,10 @@ class CompatibleProvider:
                 choice = (data.get("choices") or [{}])[0]
                 text = choice.get("message", {}).get("content", "")
                 usage = _usage(data)
-                finished = choice.get("finish_reason") == "stop"
+                reason = choice.get("finish_reason")
+                finished = reason == "stop"
+                if reason == "length":
+                    raise ProviderError(f"{self.name} cortó la respuesta por el límite de tokens de salida", 502, truncated=True)
             if not finished or not isinstance(text, str) or not text:
                 raise ProviderError(f"Respuesta incompleta de {self.name}")
             return ProviderResult(text, usage)
@@ -109,7 +111,10 @@ class CompatibleProvider:
                             text = choice.get("delta", {}).get("content") or ""
                             done = choice.get("finish_reason") == "stop"
                             usage = _usage(data) if data.get("usage") else {}
-                            if choice.get("finish_reason") not in (None, "stop"):
+                            reason = choice.get("finish_reason")
+                            if reason == "length":
+                                raise ProviderError(f"{self.name} cortó la respuesta por el límite de tokens de salida", 502, truncated=True)
+                            if reason not in (None, "stop"):
                                 raise ProviderError(f"Respuesta incompleta de {self.name}")
                         finished = finished or done
                         yield ProviderChunk(text=text, usage=usage, finished=done)

@@ -15,7 +15,6 @@ class Settings(BaseSettings):
     openrouter_free_models: str = ""
     groq_free_models: str = ""
     mistral_free_models: str = ""  # Deprecated: Mistral API requires billing; ignored by the free-model registry.
-    nvidia_free_models: str = ""
     ollama_free_models: str = ""
     ollama_base_url: str = ""
     paid_models_json: str = "{}"

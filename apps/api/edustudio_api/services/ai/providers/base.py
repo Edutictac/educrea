@@ -2,9 +2,10 @@ from dataclasses import dataclass, field
 
 
 class ProviderError(Exception):
-    def __init__(self, message: str, status_code: int = 502) -> None:
+    def __init__(self, message: str, status_code: int = 502, truncated: bool = False) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.truncated = truncated
 
 
 @dataclass

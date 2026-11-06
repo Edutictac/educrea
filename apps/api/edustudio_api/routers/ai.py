@@ -54,7 +54,7 @@ def provider_status(provider_name: str, user: User = Depends(current_user), db: 
 @router.put("/ai/providers/{provider_name}/key", status_code=204)
 def save_provider_key(provider_name: str, data: CredentialInput, user: User = Depends(require_csrf),
                       db: Session = Depends(get_db)) -> None:
-    if provider_name not in ("gemini", "openrouter", "groq", "mistral", "nvidia", "openai", "anthropic"):
+    if provider_name not in ("gemini", "openrouter", "groq", "mistral", "openai", "anthropic"):
         raise HTTPException(404, "Proveedor no encontrado")
     value = data.api_key.get_secret_value().strip()
     if len(value) < 10:
@@ -72,7 +72,7 @@ def save_provider_key(provider_name: str, data: CredentialInput, user: User = De
 @router.post("/ai/providers/{provider_name}/free-models/{model:path}/confirm", status_code=204)
 def confirm_provider_model(provider_name: str, model: str, data: FreeConfirmation,
                            user: User = Depends(require_csrf), db: Session = Depends(get_db)) -> None:
-    if provider_name not in ("gemini", "openrouter", "groq", "nvidia") or model not in registry.free_models(provider_name):
+    if provider_name not in ("gemini", "openrouter", "groq") or model not in registry.free_models(provider_name):
         raise HTTPException(403, "Modelo no autorizado en modo gratuito")
     credential = personal_credential(db, user.id, provider_name)
     if credential is None:
@@ -84,7 +84,7 @@ def confirm_provider_model(provider_name: str, model: str, data: FreeConfirmatio
 @router.delete("/ai/providers/{provider_name}/key", status_code=204)
 def revoke_provider_key(provider_name: str, user: User = Depends(require_csrf),
                         db: Session = Depends(get_db)) -> None:
-    if provider_name not in ("gemini", "openrouter", "groq", "mistral", "nvidia", "openai", "anthropic"):
+    if provider_name not in ("gemini", "openrouter", "groq", "mistral", "openai", "anthropic"):
         raise HTTPException(404, "Proveedor no encontrado")
     credential = personal_credential(db, user.id, provider_name)
     if credential:
@@ -162,6 +162,38 @@ async def consult(db: Session, user_id: UUID, project_id: UUID, data: GenerateIn
     return prompt + addition, selected, trace
 
 
+def _error_code(exc: Exception) -> str:
+    if isinstance(exc, ProviderError):
+        if exc.truncated:
+            return "provider_truncated"
+        if exc.status_code == 429:
+            return "provider_quota"
+        if exc.status_code in (503, 504):
+            return "provider_busy"
+        return "provider_error"
+    if isinstance(exc, HTTPException) and exc.status_code == 502:
+        return "provider_invalid"
+    return "ai_error"
+
+
+def _retry_skips(exc: Exception, name: str, model: str, skip_providers: set[str],
+                 skip_models: set[tuple[str, str]]) -> bool:
+    """Whether another free attempt can help. Truncated or invalid drafts skip only that model;
+    quota, saturation or communication failures skip the whole provider."""
+    if isinstance(exc, HTTPException):
+        if exc.status_code != 502:
+            return False
+        skip_models.add((name, model))
+        return True
+    if getattr(exc, "truncated", False):
+        skip_models.add((name, model))
+        return True
+    if exc.status_code in (429, 500, 502, 503, 504):
+        skip_providers.add(name)
+        return True
+    return False
+
+
 @router.post("/projects/{project_id}/ai/proposals", response_model=ProposalOut, status_code=201)
 async def generate_proposal(project_id: UUID, data: GenerateInput,
                             user: User = Depends(require_csrf), db: Session = Depends(get_db),
@@ -173,7 +205,8 @@ async def generate_proposal(project_id: UUID, data: GenerateInput,
     prompt, selected, trace = await consult(db, user_id, project_id, data,
                                             provider if name == "gemini" else registry.adapter(name),
                                             key, name, model, prompt, snapshot, selected)
-    used = {name}
+    skip_providers: set[str] = set()
+    skip_models: set[tuple[str, str]] = set()
     while True:
         reservation = quotas.reserve(db, user_id, name, model, maximum_cost, price, maximum_tokens)
         try:
@@ -184,15 +217,17 @@ async def generate_proposal(project_id: UUID, data: GenerateInput,
                                       passages_used=passages, agent_trace=trace)
             quotas.reconcile(db, reservation, result.usage)
             return engine.apply_if_requested(db, project_id, proposal, data.auto_apply)
-        except ProviderError as exc:
+        except (ProviderError, HTTPException) as exc:
             db.rollback()
             quotas.reconcile(db, reservation, failed=True)
-            alternative = (registry.fallback(db, user_id, used)
-                           if data.mode == "free" and exc.status_code in (429, 503, 504) and data.allow_fallback else None)
+            retryable = _retry_skips(exc, name, model, skip_providers, skip_models)
+            alternative = (registry.next_free(db, user_id, skip_providers, skip_models, prefer_provider=name)
+                           if data.mode == "free" and retryable and data.allow_fallback else None)
             if alternative is None:
+                if isinstance(exc, HTTPException):
+                    raise
                 raise HTTPException(exc.status_code, str(exc)) from exc
             name, model, key = alternative
-            used.add(name)
             db.rollback()
         except BaseException:
             db.rollback()
@@ -261,7 +296,8 @@ async def generate_with_first_free(db: Session, project_id: UUID, user_id: UUID,
     adapter = provider if name == "gemini" else registry.adapter(name)
     prompt, selected, trace = await consult(db, user_id, project_id, data, adapter, key, name, model, prompt,
                                             snapshot, selected)
-    used = {name}
+    skip_providers: set[str] = set()
+    skip_models: set[tuple[str, str]] = set()
     while True:
         reservation = quotas.reserve(db, user_id, name, model)
         try:
@@ -271,15 +307,17 @@ async def generate_with_first_free(db: Session, project_id: UUID, user_id: UUID,
                                       source_ids=source_ids or None, passages_used=passages)
             quotas.reconcile(db, reservation, result.usage)
             return engine.apply_if_requested(db, project_id, proposal, auto_apply)
-        except ProviderError as exc:
+        except (ProviderError, HTTPException) as exc:
             db.rollback()
             quotas.reconcile(db, reservation, failed=True)
-            # Saturated or out of quota: try the teacher's next confirmed free provider (only free ones).
-            alternative = registry.fallback(db, user_id, used) if exc.status_code in (429, 503, 504) else None
+            # Saturated, out of quota, truncated or an unusable draft: try the teacher's next free model.
+            retryable = _retry_skips(exc, name, model, skip_providers, skip_models)
+            alternative = registry.next_free(db, user_id, skip_providers, skip_models, prefer_provider=name) if retryable else None
             if alternative is None:
+                if isinstance(exc, HTTPException):
+                    raise
                 raise HTTPException(exc.status_code, str(exc)) from exc
             name, model, key = alternative
-            used.add(name)
             adapter = provider if name == "gemini" else registry.adapter(name)
         except BaseException:
             db.rollback()
@@ -312,7 +350,8 @@ async def stream_proposal(project_id: UUID, data: GenerateInput,
                 return
             if trace:
                 yield event("consulted", {"capabilities": trace})
-        used = {name}
+        skip_providers: set[str] = set()
+        skip_models: set[tuple[str, str]] = set()
         while True:
             parts: list[str] = []
             response_bytes = 0
@@ -342,16 +381,19 @@ async def stream_proposal(project_id: UUID, data: GenerateInput,
                 db.rollback()
                 if reservation:
                     quotas.reconcile(db, reservation, usage, failed=True)
-                alternative = (registry.fallback(db, user_id, used)
-                               if data.mode == "free" and isinstance(exc, ProviderError) and exc.status_code in (429, 503, 504)
-                               and data.allow_fallback and not parts else None)
+                discard = ((isinstance(exc, ProviderError) and exc.truncated)
+                           or (isinstance(exc, HTTPException) and exc.status_code == 502))
+                retryable = _retry_skips(exc, name, model, skip_providers, skip_models)
+                alternative = (registry.next_free(db, user_id, skip_providers, skip_models, prefer_provider=name)
+                               if data.mode == "free" and retryable and data.allow_fallback
+                               and (not parts or discard) else None)
                 if alternative:
                     name, model, credential = alternative
-                    used.add(name)
                     db.rollback()
                     continue
                 message = exc.detail if isinstance(exc, HTTPException) else str(exc)
-                yield event("error", {"status_code": exc.status_code, "message": message})
+                yield event("error", {"status_code": exc.status_code, "message": message,
+                                      "code": _error_code(exc), "provider": name})
                 return
             finally:
                 if reservation:

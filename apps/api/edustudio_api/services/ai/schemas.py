@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 
 
 class CredentialInput(BaseModel):
@@ -21,7 +21,7 @@ class FreeConfirmation(BaseModel):
 
 class GenerateInput(BaseModel):
     instruction: str = Field(min_length=10, max_length=4000)
-    provider: Literal["gemini", "mistral", "openrouter", "groq", "nvidia", "ollama", "openai", "anthropic"] = "gemini"
+    provider: Literal["gemini", "mistral", "openrouter", "groq", "ollama", "openai", "anthropic"] = "gemini"
     model: str = Field(min_length=1, max_length=100)
     context_paths: list[str] = Field(default_factory=list, max_length=30)
     automatic: bool = False  # the backend picks the context files; context_paths is ignored
@@ -42,7 +42,9 @@ class BudgetInput(BaseModel):
 class DraftChange(BaseModel):
     path: str = Field(min_length=1, max_length=200)
     content: str
-    model_config = ConfigDict(extra="forbid")
+    # Models sometimes copy the «version» field from the project context. Path and content are validated
+    # anyway, so unknown keys are ignored instead of rejecting an otherwise valid proposal.
+    model_config = ConfigDict(extra="ignore")
 
 
 class Citation(BaseModel):
@@ -87,7 +89,29 @@ class DraftProposal(BaseModel):
     not_covered: list[str] = Field(default_factory=list, max_length=20)
     dua: DuaReport | None = None  # only for DUA adaptations
     tool_calls: list[dict] = Field(default_factory=list, max_length=10)  # ignored here; see ToolRound
-    model_config = ConfigDict(extra="forbid")
+    # Free models often add keys they copied from the context. They are ignored (path and content are validated).
+    model_config = ConfigDict(extra="ignore")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _tolerate_common_shapes(cls, data):
+        """Salvage two frequent mistakes: citations nested in a change and not_covered sent as a plain string."""
+        if isinstance(data, dict):
+            changes = data.get("changes")
+            nested: list = []
+            if isinstance(changes, list):
+                for change in changes:
+                    if isinstance(change, dict):
+                        value = change.get("citations")
+                        if isinstance(value, list):
+                            nested.extend(value)
+            if nested:
+                top = data.get("citations")
+                data["citations"] = (top if isinstance(top, list) else []) + nested
+            if isinstance(data.get("not_covered"), str):
+                text = data["not_covered"].strip()
+                data["not_covered"] = [text] if text else []
+        return data
 
 
 class ToolCall(BaseModel):

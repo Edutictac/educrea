@@ -2,7 +2,7 @@ import type { Grounding } from './sources'
 export interface PaidModel { model: string; input_rate_microusd: number; output_rate_microusd: number }
 export interface GeminiStatus { configured: boolean; verified_free_models: string[];
   confirmed_free_models: string[]; paid_models: PaidModel[] }
-export type ProviderName = 'gemini' | 'mistral' | 'openrouter' | 'groq' | 'nvidia' | 'ollama' | 'openai' | 'anthropic'
+export type ProviderName = 'gemini' | 'mistral' | 'openrouter' | 'groq' | 'ollama' | 'openai' | 'anthropic'
 export type ProviderStatuses = Record<ProviderName, GeminiStatus>
 export interface BudgetStatus { monthly_limit_microusd: number; spent_or_reserved_microusd: number;
   maximum_allowed_microusd: number }
@@ -17,6 +17,17 @@ export interface Proposal { id: string; project_id: string; provider: string; mo
   usage: Record<string, number>; created_at: string; applied_at: string | null; grounding?: Grounding | null;
   agent_trace?: AgentStep[] | null }
 export interface AgentStep { name: string; arguments: string; status: 'ok' | 'error' | 'needs_approval'; detail?: string; truncated?: boolean }
+
+export class AiError extends Error {
+  code?: string
+  provider?: string
+  constructor(message: string, code?: string, provider?: string) {
+    super(message)
+    this.name = 'AiError'
+    this.code = code
+    this.provider = provider
+  }
+}
 
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {
@@ -124,7 +135,7 @@ export type AiStreamEvent = { event: 'status'; data: { stage: string; provider?:
   | { event: 'token'; data: { text: string } }
   | { event: 'consulted'; data: { capabilities: AgentStep[] } }
   | { event: 'proposal'; data: Proposal }
-  | { event: 'error'; data: { status_code: number; message: string } }
+  | { event: 'error'; data: { status_code: number; message: string; code?: string; provider?: string } }
 
 export function parseSseBlock(block: string): AiStreamEvent | null {
   const event = block.split('\n').find(line => line.startsWith('event: '))?.slice(7)
@@ -162,7 +173,7 @@ export async function streamProposal(projectId: string, instruction: string, pro
         if (event) {
           onEvent(event)
           if (event.event === 'proposal') completed = true
-          if (event.event === 'error') throw new Error(event.data.message)
+          if (event.event === 'error') throw new AiError(event.data.message, event.data.code, event.data.provider)
         }
         boundary = buffer.indexOf('\n\n')
       }

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { t } from '../i18n'
 import { listSources, type Source } from '../services/sources'
 import { invokeCapability, parseArguments } from '../services/capabilities'
 import { aiChoice, PROVIDER_NAMES } from '../services/aiChoice'
 import { useAuthStore } from '../stores/auth'
-import { budgetStatus, changeProposal, estimatePaid, providersStatus, quotaStatus,
+import { AiError, budgetStatus, changeProposal, estimatePaid, providersStatus, quotaStatus,
   listContextFiles, listProposals, streamProposal,
   type AgentStep, type BudgetStatus, type PaidEstimate, type ProviderStatuses, type ProviderName, type QuotaStatus, type Proposal } from '../services/ai'
 
@@ -19,7 +19,7 @@ const mode = ref<'free' | 'paid'>('free')
 const estimate = ref<PaidEstimate | null>(null)
 const paidConfirmed = ref(false)
 const provider = ref<ProviderName>('gemini')
-const availableProviders = computed(() => (['gemini', 'nvidia', 'groq', 'openrouter', 'ollama', 'mistral', 'openai', 'anthropic'] as ProviderName[])
+const availableProviders = computed(() => (['gemini', 'groq', 'openrouter', 'ollama', 'mistral', 'openai', 'anthropic'] as ProviderName[])
   .filter(name => mode.value === 'free' ? !!statuses.value?.[name].confirmed_free_models.length
     : !!statuses.value?.[name].configured && !!statuses.value?.[name].paid_models.length))
 const models = computed(() => mode.value === 'free' ? statuses.value?.[provider.value].confirmed_free_models ?? []
@@ -44,6 +44,10 @@ const autoChoice = ref(false)
 const useAutomatic = computed(() => props.automatic === true || autoChoice.value)
 const model = ref('')
 const streaming = ref('')
+const streamEl = ref<HTMLElement | null>(null)
+const stickToBottom = ref(true)
+const failedOutput = ref('')
+const failedCopied = ref(false)
 const busy = ref(false)
 const error = ref('')
 const message = ref('')
@@ -94,7 +98,9 @@ async function generate() {
   if (mode.value === 'paid' && (!estimate.value || !paidConfirmed.value)) {
     error.value = t('confirmPaidEstimate'); return
   }
-  error.value = ''; message.value = ''; streaming.value = ''; busy.value = true
+  error.value = ''; message.value = ''; streaming.value = ''; failedOutput.value = ''; failedCopied.value = false
+  stickToBottom.value = true
+  busy.value = true
   controller = new AbortController()
   try {
     await streamProposal(props.projectId, instruction.value, provider.value, model.value,
@@ -102,9 +108,14 @@ async function generate() {
       controller.signal, event => {
       if (event.event === 'status' && event.data.stage === 'consulting') message.value = t('agentConsulting')
       if (event.event === 'consulted') message.value = `${t('agentConsulted')}: ${event.data.capabilities.map(step => step.name).join(', ')}`
+      if (event.event === 'status' && event.data.stage === 'generating') {
+        if (streaming.value) failedOutput.value = streaming.value
+        streaming.value = ''
+      }
       if (event.event === 'status') actualProvider.value = `${event.data.provider ?? provider.value} / ${event.data.model ?? model.value}`
       if (event.event === 'token') streaming.value = (streaming.value + event.data.text).slice(-12000)
       if (event.event === 'proposal') {
+        failedOutput.value = ''
         proposals.value.unshift(event.data)
         selectedId.value = event.data.id
         streaming.value = ''
@@ -117,14 +128,42 @@ async function generate() {
       }
     }, mode.value, estimate.value?.maximum_cost_microusd, estimate.value?.fingerprint, useAutomatic.value, props.automatic === true, selectedSources.value)
   } catch (cause) {
+    failedOutput.value = streaming.value
+    streaming.value = ''
     if (controller.signal.aborted) message.value = t('generationCancelled')
-    else error.value = cause instanceof Error ? cause.message : t('error')
+    else error.value = describeError(cause)
   } finally { busy.value = false; controller = null
     quota.value = await quotaStatus().catch(() => quota.value)
     budget.value = await budgetStatus().catch(() => budget.value)
     estimate.value = null; paidConfirmed.value = false }
 }
+const errorKeys: Record<string, Parameters<typeof t>[0]> = {
+  provider_truncated: 'errorTruncated', provider_quota: 'errorQuota', provider_busy: 'errorBusy',
+  provider_invalid: 'errorInvalid', provider_error: 'errorProvider',
+}
+function describeError(cause: unknown): string {
+  if (cause instanceof AiError && cause.code && errorKeys[cause.code]) {
+    const label = cause.provider ? PROVIDER_NAMES[cause.provider as ProviderName] ?? cause.provider : ''
+    return t(errorKeys[cause.code]).replace('{provider}', label).trim()
+  }
+  return cause instanceof Error ? cause.message : t('error')
+}
 function cancel() { controller?.abort() }
+function trackStreamScroll() {
+  const element = streamEl.value
+  if (!element) return
+  stickToBottom.value = element.scrollHeight - element.scrollTop - element.clientHeight < 40
+}
+watch(streaming, async () => {
+  if (!stickToBottom.value) return
+  await nextTick()
+  const element = streamEl.value
+  if (element) element.scrollTop = element.scrollHeight
+})
+async function copyFailedOutput() {
+  try { await navigator.clipboard.writeText(failedOutput.value); failedCopied.value = true
+    setTimeout(() => { failedCopied.value = false }, 2000) } catch { /* clipboard unavailable */ }
+}
 function changeProvider() { model.value = models.value[0] ?? '' }
 function changeMode() { provider.value = availableProviders.value[0] ?? 'gemini'; changeProvider() }
 
@@ -219,7 +258,13 @@ function stateLabel(value: Proposal['status']) {
     </form>
     <p v-if="error" role="alert">{{ error }}</p><p v-if="message" role="status">{{ message }}</p>
     <p v-if="actualProvider" role="status">{{ t('providerLabel') }}: {{ actualProvider }}</p>
-    <pre v-if="streaming" class="stream-output" aria-live="polite">{{ streaming }}</pre>
+    <pre v-if="streaming" ref="streamEl" class="stream-output" aria-live="polite" @scroll="trackStreamScroll">{{ streaming }}</pre>
+    <details v-if="failedOutput" class="failed-output">
+      <summary>{{ t('viewFailedOutput') }}</summary>
+      <p class="hint">{{ t('failedOutputHint') }}</p>
+      <button type="button" class="secondary" @click="copyFailedOutput">{{ failedCopied ? t('copied') : t('copyFailedOutput') }}</button>
+      <pre class="stream-output">{{ failedOutput }}</pre>
+    </details>
     <template v-if="proposals.length">
       <h3>{{ t('proposals') }}</h3>
       <label>{{ t('selectProposal') }}<select v-model="selectedId"><option v-for="item in proposals" :key="item.id" :value="item.id">

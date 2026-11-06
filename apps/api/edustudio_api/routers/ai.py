@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import AiCredential, AiProposal, User
+from ..models import AiCredential, AiProposal, ProjectFile, User
 from ..models.entities import utcnow
 from ..security import current_user, require_csrf
 from ..services.ai import engine
@@ -18,7 +18,8 @@ from ..services.ai.credentials import encrypt_key, personal_credential
 from ..services.ai.providers.base import ProviderError
 from ..services.ai.providers.gemini import GeminiProvider, get_gemini_provider
 from ..services.ai.providers import registry
-from ..services.ai.schemas import BudgetInput, CredentialInput, FreeConfirmation, GenerateInput, ProposalOut
+from ..services.ai.schemas import (BudgetInput, CredentialInput, DuaInput, FreeConfirmation, GenerateInput,
+                                   ProposalOut)
 
 router = APIRouter(tags=["ai"])
 
@@ -181,21 +182,51 @@ async def generate_from_brief(project_id: UUID, user: User = Depends(require_csr
     brief = engine.read_brief(db, project_id)
     if brief is None:
         raise HTTPException(409, "Guarda primero el encargo de la actividad (activity.json)")
+    return await generate_with_first_free(db, project_id, user_id, provider, engine.instruction_for(brief), True)
+
+
+@router.post("/projects/{project_id}/ai/dua", response_model=ProposalOut, status_code=201)
+async def adapt_dua(project_id: UUID, data: DuaInput, user: User = Depends(require_csrf),
+                    db: Session = Depends(get_db),
+                    provider: GeminiProvider = Depends(get_gemini_provider)) -> AiProposal:
+    """Reviews one material with the UDL principles and proposes an adapted version plus a barrier/measure report.
+
+    Teacher mode applies it (undoable); a report missing a principle, or one that leaves the material unchanged,
+    always waits for review."""
+    from .projects import project_for_owner
+
+    user_id = user.id
+    project_for_owner(db, project_id, user_id)
+    if not data.path.lower().endswith(engine.DUA_EXTENSIONS):
+        raise HTTPException(422, "Solo se pueden adaptar actividades HTML o documentos Markdown")
+    exists = db.scalar(select(ProjectFile.id).where(ProjectFile.project_id == project_id,
+                                                    ProjectFile.path == data.path))
+    if exists is None:
+        raise HTTPException(404, "Archivo no encontrado")
+    language = str((engine.read_brief(db, project_id) or {}).get("language") or "") or None
+    instruction = engine.dua_instruction(data.path, data.needs, language)
+    return await generate_with_first_free(db, project_id, user_id, provider, instruction, data.auto_apply,
+                                          dua_target=data.path)
+
+
+async def generate_with_first_free(db: Session, project_id: UUID, user_id: UUID, provider: GeminiProvider,
+                                   instruction: str, auto_apply: bool, dua_target: str | None = None) -> AiProposal:
+    """One generation with the teacher's first confirmed free model; the backend chooses the context files."""
     available = registry.first_free(db, user_id)
     if available is None:
         raise HTTPException(409, "Configura un proveedor gratuito y confirma un modelo antes de generar")
     name, model, key = available
-    data = engine.GenerateInput(instruction=engine.instruction_for(brief), provider=name, model=model,
-                                automatic=True, auto_apply=True, mode="free")
+    data = engine.GenerateInput(instruction=instruction, provider=name, model=model,
+                                automatic=True, auto_apply=auto_apply, mode="free")
     prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)[1:]
     reservation = quotas.reserve(db, user_id, name, model)
     try:
         adapter = provider if name == "gemini" else registry.adapter(name)
         result = await adapter.generate(key, model, prompt)
         proposal = engine.persist(db, project_id, user_id, model, result.text, result.usage, snapshot, selected,
-                                  provider=name)
+                                  provider=name, dua_target=dua_target)
         quotas.reconcile(db, reservation, result.usage)
-        return engine.apply_if_requested(db, project_id, proposal, True)
+        return engine.apply_if_requested(db, project_id, proposal, auto_apply)
     except ProviderError as exc:
         db.rollback()
         quotas.reconcile(db, reservation, failed=True)

@@ -758,3 +758,44 @@ def test_section_check_accepts_translated_heading_variants():
     assert e.missing_sections(valencian) == []
     assert e.missing_sections("### Saberes básicos\n") == [s for s in e.SITUATION_SECTIONS if s != "Saberes básicos"]
     assert "Saberes básicos" in e.missing_sections("## Evaluación\n")
+
+
+def test_dua_adaptation_reports_barriers_and_requires_all_three_principles(client: TestClient):
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    original = '<html lang="es"><h1>Fracciones</h1><p>Responde.</p></html>'
+    client.post(f"{base}/files", headers=headers, json={"path": "index.html", "content": original})
+    route = f"{base}/ai/dua"
+    assert client.post(route, headers=headers, json={"path": "style.css"}).status_code == 422
+    assert client.post(route, headers=headers, json={"path": "otro.html"}).status_code == 404
+    captured = {}
+
+    class Capture(StubGemini):
+        async def generate(self, key, model, prompt):
+            captured["prompt"] = prompt
+            return await super().generate(key, model, prompt)
+
+    measures = [{"principle": p, "barrier": "b", "measure": "m"}
+                for p in ("representacion", "accion_expresion", "implicacion")]
+    adapted = '<html lang="es"><h1>Fracciones</h1><p>Elige cómo responder.</p></html>'
+    good = {"summary": "Adaptación DUA", "changes": [{"path": "index.html", "content": adapted}],
+            "dua": {"barriers": ["Solo texto"], "measures": measures}}
+    app.dependency_overrides[get_gemini_provider] = lambda: Capture(json.dumps(good))
+    body = client.post(route, headers=headers, json={"path": "index.html", "needs": "Dos alumnos con baja visión",
+                                                     "auto_apply": True}).json()
+    assert body["status"] == "applied" and body["grounding"]["kind"] == "dua"
+    assert body["grounding"]["principles_missing"] == [] and body["grounding"]["barriers"] == ["Solo texto"]
+    for expected in ("ADAPTACIÓN DUA", "index.html", "representación", "implicación", "baja visión"):
+        assert expected in captured["prompt"], expected
+    assert client.post(f"{base}/ai/proposals/{body['id']}/restore", headers=headers).json()["status"] == "restored"
+
+    # Missing a principle: never applied automatically.
+    partial = {**good, "dua": {"barriers": [], "measures": measures[:2]}}
+    app.dependency_overrides[get_gemini_provider] = lambda: StubGemini(json.dumps(partial))
+    pending = client.post(route, headers=headers, json={"path": "index.html", "auto_apply": True}).json()
+    assert pending["status"] == "pending" and pending["grounding"]["principles_missing"] == ["Implicación (el porqué)"]
+    # Advanced mode (no auto_apply) always waits for review.
+    app.dependency_overrides[get_gemini_provider] = lambda: StubGemini(json.dumps(good))
+    assert client.post(route, headers=headers, json={"path": "index.html"}).json()["status"] == "pending"
+    index = next(f for f in client.get(f"{base}/files").json() if f["path"] == "index.html")
+    assert client.get(f"{base}/files/{index['id']}").json()["content"] == original

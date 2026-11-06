@@ -5,6 +5,7 @@ import TeacherWorkspace from '../components/TeacherWorkspace.vue'
 import AdvancedWorkspace from '../components/AdvancedWorkspace.vue'
 import AiAssistant from '../components/AiAssistant.vue'
 import MaterialsPanel from '../components/MaterialsPanel.vue'
+import DuaPanel from '../components/DuaPanel.vue'
 import SourcesPanel from '../components/SourcesPanel.vue'
 import HistoryPanel from '../components/HistoryPanel.vue'
 import ActivityPreview from '../components/ActivityPreview.vue'
@@ -94,6 +95,7 @@ async function remove() {
       <AiAssistant :project-id="id" :automatic="mode === 'teacher'" :sources-version="sourcesVersion" :can-generate="canGenerate" :can-apply="canApply" @project-changed="refreshWorkspace" />
       <SourcesPanel :project-id="id" @changed="sourcesVersion += 1" />
       <MaterialsPanel ref="materials" :project-id="id" :refresh-key="workspaceKey" />
+      <DuaPanel :project-id="id" :refresh-key="workspaceKey" :auto-apply="mode === 'teacher'" :can-generate="canGenerate" @changed="refreshWorkspace" />
       <HistoryPanel :project-id="id" @restored="refreshWorkspace" />
       <ActivityPreview :key="workspaceKey" :load-files="loadPreviewFiles" />
     </template>

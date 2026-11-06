@@ -2,7 +2,10 @@ export interface Source { id: string; title: string; filename: string; kind: str
   chunk_count: number; created_at: string; url: string | null; fetched_at: string | null }
 export interface Passage { label: string; source: string; page: number | null; heading: string; text: string }
 export interface Citation { quote: string; chunk: string; used_for: string; verified: boolean; source: string | null; page: number | null }
-export interface Grounding { mode: 'sources_only' | 'template'; kind?: 'actividad' | 'situacion'; sources: string[];
+export type DuaPrinciple = 'representacion' | 'accion_expresion' | 'implicacion'
+export interface DuaMeasure { principle: DuaPrinciple; barrier: string; measure: string }
+export interface Grounding { mode: 'sources_only' | 'template'; kind?: 'actividad' | 'situacion' | 'dua'; sources: string[];
+  target?: string; barriers?: string[]; measures?: DuaMeasure[]; principles_missing?: string[]; target_changed?: boolean;
   citations: Citation[]; verified: number; unverified: number; not_covered: string[]; sections_missing?: string[];
   supported: boolean }
 

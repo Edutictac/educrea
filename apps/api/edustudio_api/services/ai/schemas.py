@@ -51,11 +51,34 @@ class Citation(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
 
+DuaPrinciple = Literal["representacion", "accion_expresion", "implicacion"]
+
+
+class DuaMeasure(BaseModel):
+    principle: DuaPrinciple
+    barrier: str = Field(default="", max_length=400)
+    measure: str = Field(min_length=1, max_length=600)
+    model_config = ConfigDict(extra="ignore")
+
+
+class DuaReport(BaseModel):
+    barriers: list[str] = Field(default_factory=list, max_length=20)
+    measures: list[DuaMeasure] = Field(default_factory=list, max_length=30)
+    model_config = ConfigDict(extra="ignore")
+
+
+class DuaInput(BaseModel):
+    path: str = Field(min_length=1, max_length=200)  # the material to adapt (.html or .md)
+    needs: str = Field(default="", max_length=1500)  # group needs or barriers the teacher already knows
+    auto_apply: bool = False
+
+
 class DraftProposal(BaseModel):
     summary: str = Field(min_length=1, max_length=1000)
     changes: list[DraftChange] = Field(min_length=1, max_length=10)
     citations: list[Citation] = Field(default_factory=list, max_length=40)
     not_covered: list[str] = Field(default_factory=list, max_length=20)
+    dua: DuaReport | None = None  # only for DUA adaptations
     model_config = ConfigDict(extra="forbid")
 
 

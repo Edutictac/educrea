@@ -194,7 +194,12 @@ function stateLabel(value: Proposal['status']) {
         {{ item.summary }} · {{ stateLabel(item.status) }}</option></select></label>
       <div v-if="selected" class="proposal-review">
         <p><strong>{{ selected.summary }}</strong> · {{ stateLabel(selected.status) }} · {{ selected.provider }} / {{ selected.model }}</p>
-        <div v-if="selected.grounding" class="notice" :class="{ ok: selected.grounding.supported }"><strong>{{ t('grounding') }}:</strong>
+        <div v-if="selected.grounding?.kind === 'dua'" class="notice" :class="{ ok: selected.grounding.supported }">
+          <strong>{{ t('duaTitle') }}: {{ selected.grounding.target }}</strong>
+          <p v-if="selected.grounding.principles_missing?.length">{{ t('duaPrinciplesMissing') }}: {{ selected.grounding.principles_missing.join(', ') }}</p>
+          <p v-if="selected.grounding.barriers?.length">{{ t('duaBarriers') }}: {{ selected.grounding.barriers.join('; ') }}</p>
+          <ul><li v-for="(item, index) in selected.grounding.measures" :key="index">{{ t(`dua_${item.principle}` as 'dua_implicacion') }}: {{ item.measure }}</li></ul></div>
+        <div v-else-if="selected.grounding" class="notice" :class="{ ok: selected.grounding.supported }"><strong>{{ t('grounding') }}:</strong>
           {{ selected.grounding.sources.join(', ') }} · {{ selected.grounding.verified }} {{ t('citationsVerified') }}, {{ selected.grounding.unverified }} {{ t('citationsUnverified') }}
           <ul><li v-for="(citation, index) in selected.grounding.citations" :key="index">{{ citation.verified ? '✓' : '✗' }} «{{ citation.quote }}»
             <span v-if="citation.page">({{ t('page') }} {{ citation.page }})</span><span v-if="citation.used_for"> — {{ citation.used_for }}</span></li></ul>

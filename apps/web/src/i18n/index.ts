@@ -87,6 +87,12 @@ const messages = {
     guestIntro: 'Prepara una actividad en modo docente o edita sus archivos en modo avanzado. Puedes cambiar de modo sin perder el borrador.',
     guestLimit: 'El borrador se pierde al recargar o cerrar la página. Para conservarlo como proyecto, crea una cuenta o entra en la tuya. La IA requiere una cuenta y una clave configurada.',
     saveWithAccount: 'Guardar con una cuenta', guestSignIn: 'Entra o crea una cuenta para guardar el borrador que has preparado.',
+    duaTitle: 'Adaptación DUA', duaIntro: 'La IA revisa un material con el Diseño Universal para el Aprendizaje: detecta las barreras y lo adapta con medidas de representación, de acción y expresión y de implicación. El objetivo de aprendizaje no cambia.',
+    duaMaterial: 'Material que se adapta', duaNeeds: 'Necesidades del grupo (opcional)', duaNeedsPlaceholder: 'Por ejemplo: alumnado que aún no lee con fluidez, dos alumnos con baja visión… Sin nombres ni datos personales.',
+    duaAdapt: 'Adaptar con DUA', duaAdapting: 'Adaptando…', duaNoMaterials: 'Primero necesitas una actividad HTML o un documento Markdown.',
+    duaApplied: 'Material adaptado. Si no te convence, pulsa «Deshacer aplicación».', duaPending: 'La adaptación espera tu revisión en el asistente de IA.',
+    duaBarriers: 'Barreras detectadas', duaMeasures: 'Medidas aplicadas', duaPrinciplesMissing: 'Faltan medidas de', duaUnchanged: 'La propuesta no modifica el material elegido.',
+    dua_representacion: 'Representación', dua_accion_expresion: 'Acción y expresión', dua_implicacion: 'Implicación',
   },
   va: {
     title: 'EduStudio AI', projects: 'Els meus projectes', login: 'Entrar', register: 'Crear compte',
@@ -151,6 +157,12 @@ const messages = {
     guestIntro: 'Prepara una activitat en mode docent o edita els fitxers en mode avançat. Pots canviar de mode sense perdre l’esborrany.',
     guestLimit: 'L’esborrany es perd en recarregar o tancar la pàgina. Per a conservar-lo com a projecte, crea un compte o entra en el teu. La IA requereix un compte i una clau configurada.',
     saveWithAccount: 'Guardar amb un compte', guestSignIn: 'Entra o crea un compte per a guardar l’esborrany que has preparat.',
+    duaTitle: 'Adaptació DUA', duaIntro: 'La IA revisa un material amb el Disseny Universal per a l’Aprenentatge: detecta les barreres i l’adapta amb mesures de representació, d’acció i expressió i d’implicació. L’objectiu d’aprenentatge no canvia.',
+    duaMaterial: 'Material que s’adapta', duaNeeds: 'Necessitats del grup (opcional)', duaNeedsPlaceholder: 'Per exemple: alumnat que encara no llig amb fluïdesa, dos alumnes amb baixa visió… Sense noms ni dades personals.',
+    duaAdapt: 'Adaptar amb DUA', duaAdapting: 'Adaptant…', duaNoMaterials: 'Primer necessites una activitat HTML o un document Markdown.',
+    duaApplied: 'Material adaptat. Si no et convenç, prem «Desfer aplicació».', duaPending: 'L’adaptació espera la teua revisió a l’assistent d’IA.',
+    duaBarriers: 'Barreres detectades', duaMeasures: 'Mesures aplicades', duaPrinciplesMissing: 'Falten mesures de', duaUnchanged: 'La proposta no modifica el material triat.',
+    dua_representacion: 'Representació', dua_accion_expresion: 'Acció i expressió', dua_implicacion: 'Implicació',
   },
 } as const
 

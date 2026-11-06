@@ -19,6 +19,12 @@ RESPONSE_SCHEMA = {
             "chunk": {"type": "STRING"}, "quote": {"type": "STRING"}, "used_for": {"type": "STRING"}},
             "required": ["quote"]}},
         "not_covered": {"type": "ARRAY", "items": {"type": "STRING"}},
+        "dua": {"type": "OBJECT", "properties": {
+            "barriers": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "measures": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
+                "principle": {"type": "STRING", "enum": ["representacion", "accion_expresion", "implicacion"]},
+                "barrier": {"type": "STRING"}, "measure": {"type": "STRING"}},
+                "required": ["principle", "measure"]}}}},
     },
     "required": ["summary", "changes"],
 }

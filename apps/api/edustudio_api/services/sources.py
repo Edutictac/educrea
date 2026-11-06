@@ -11,6 +11,8 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
+import time
 import unicodedata
 from collections import Counter
 from pathlib import Path
@@ -93,9 +95,51 @@ def extract(filename: str, data: bytes) -> list[tuple[int | None, str]]:
     if ext == ".pdf":
         pages = [(number, page) for number, page in enumerate(text.split("\f"), 1) if page.strip()]
         if not pages or sum(len(p) for _, p in pages) / max(len(text.split("\f")), 1) < 100:
-            raise HTTPException(422, "El PDF parece escaneado (casi no tiene texto). El OCR todavía no está disponible")
+            return ocr_pdf(data)
         return pages
     return [(None, text)]
+
+
+OCR_MAX_PAGES = 40
+OCR_LANGUAGES = "spa+cat+eng"
+OCR_PAGE_TIMEOUT = 60
+OCR_TOTAL_SECONDS = 300
+_ocr_slots = threading.BoundedSemaphore(1)  # OCR is CPU heavy: one document at a time per server process
+
+
+def ocr_available() -> bool:
+    return all(shutil.which(tool) for tool in ("pdftoppm", "tesseract", "bwrap"))
+
+
+def ocr_pdf(data: bytes) -> list[tuple[int | None, str]]:
+    """Scanned PDF: render each page to an image and read it with Tesseract, inside the same sandbox."""
+    if not ocr_available():
+        raise HTTPException(422, "El PDF parece escaneado (casi no tiene texto) y este servidor no tiene OCR")
+    if not _ocr_slots.acquire(blocking=False):
+        raise HTTPException(429, "Ya se está leyendo otro documento escaneado. Inténtalo de nuevo en unos minutos")
+    try:
+        with tempfile.TemporaryDirectory(prefix="edustudio-ocr-") as tmp:
+            workdir = Path(tmp)
+            (workdir / "input.pdf").write_bytes(data)
+            _run(workdir, ["pdftoppm", "-r", "200", "-gray", "-png", "-l", str(OCR_MAX_PAGES), "input.pdf", "page"], 180)
+            images = sorted(workdir.glob("page-*.png"), key=lambda path: int(path.stem.rsplit("-", 1)[1]))
+            deadline = time.monotonic() + OCR_TOTAL_SECONDS
+            pages: list[tuple[int | None, str]] = []
+            for image in images:
+                if time.monotonic() > deadline:
+                    raise HTTPException(504, "El OCR ha tardado demasiado. Prueba con un PDF de menos páginas")
+                number = int(image.stem.rsplit("-", 1)[1])
+                _run(workdir, ["tesseract", image.name, f"ocr-{number}", "-l", OCR_LANGUAGES], OCR_PAGE_TIMEOUT)
+                image.unlink()
+                result = workdir / f"ocr-{number}.txt"
+                text = result.read_text(encoding="utf-8", errors="replace") if result.is_file() else ""
+                if text.strip():
+                    pages.append((number, text))
+    finally:
+        _ocr_slots.release()
+    if sum(len(text.strip()) for _, text in pages) < 100:
+        raise HTTPException(422, "No se ha podido reconocer texto en el PDF escaneado")
+    return pages
 
 
 # ------------------------------------------------------------------ chunking

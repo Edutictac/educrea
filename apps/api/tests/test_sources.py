@@ -149,3 +149,22 @@ def test_quote_verification_ignores_case_accents_and_spacing(client: TestClient)
             "comparara fracciones con el mismo denominador",
             "corta", "texto que no aparece en ningún sitio del documento"])
     assert [c["verified"] for c in checks] == [True, True, False, False]
+
+
+@pytest.mark.skipif(not service.ocr_available(), reason="pdftoppm/tesseract/bwrap not installed")
+def test_scanned_pdf_is_read_with_ocr_in_sandbox():
+    from pathlib import Path
+
+    data = (Path(__file__).parent / "fixtures" / "escaneado.pdf").read_bytes()
+    pages = service.extract("escaneado.pdf", data)
+    assert pages[0][0] == 1
+    text = service.norm(pages[0][1])
+    for expected in ("competencias especificas", "instrumentos", "criterios de evaluacion"):
+        assert expected in text, expected
+
+
+def test_scanned_pdf_without_ocr_tools_gives_a_clear_error(monkeypatch):
+    monkeypatch.setattr(service, "ocr_available", lambda: False)
+    with pytest.raises(Exception) as caught:
+        service.ocr_pdf(b"%PDF-1.4")
+    assert caught.value.status_code == 422 and "OCR" in caught.value.detail

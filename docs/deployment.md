@@ -6,6 +6,10 @@ Copia `.env.example` a `.env` en la raíz y define `EDUSTUDIO_DOMAIN`. Desde `in
 
 Los volúmenes `postgres_data`, `caddy_data` y `caddy_config` persisten datos y certificados. La base de datos y la API solo viven en la red interna. Planifica copia periódica cifrada del volumen o `pg_dump` y ensaya una restauración. Define responsable, calendario y retención antes de producción. Los logs actuales son los de Docker; el formato JSON estructurado queda pendiente de endurecimiento para producción. El registro de usuarios sigue abierto; limitarlo es necesario antes de un despliegue institucional abierto.
 
+## Aplicaciones del servidor
+
+La API invoca, siempre dentro de `bubblewrap`: `pandoc` (fuentes DOCX/ODT/EPUB/HTML y exportaciones), `xelatex` (PDF), `pdftotext` y `pdftoppm` (`poppler-utils`), `tesseract-ocr` con `tesseract-ocr-spa` y `tesseract-ocr-cat` (OCR de PDF escaneados) y Chromium sin interfaz (PNG de infografías). El `Dockerfile` actual de la API aún no las instala: hay que añadirlas y comprobar que `bwrap` puede crear espacios de nombres en el contenedor antes del despliegue. Sin ellas, cada función responde con un error claro (503 o 422) en vez de fallar.
+
 ## Inicio de sesión único (SSO) con Authentik
 
 Crea siempre `secrets/oidc_client_secret` (`0600`); déjalo **vacío** si no usas SSO. Para activarlo:

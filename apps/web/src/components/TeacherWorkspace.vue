@@ -5,7 +5,7 @@ import { locale, t } from '../i18n'
 import { changeProposal, generateFromBrief, type Proposal } from '../services/ai'
 import { useAuthStore } from '../stores/auth'
 import { useFilesStore, type ProjectFile } from '../stores/files'
-import { listTemplates, type TemplateInfo } from '../services/templates'
+import { listTemplates, templateStatus, updateTemplateEngine, type TemplateInfo } from '../services/templates'
 import StartingMaterial from './StartingMaterial.vue'
 
 const props = defineProps<{ projectId: string }>()
@@ -38,6 +38,11 @@ const template = computed(() => templates.value.find(item => item.id === origina
 const documentKind = computed(() => activity.value.kind === 'situacion' || activity.value.kind === 'ficha')
 const problems = ref<string[]>([])
 const unsupported = ref(false)
+const engineOutdated = ref(false)
+async function updateEngine() {
+  try { await updateTemplateEngine(props.projectId, auth.csrf); engineOutdated.value = false; success.value = t('engineUpdated'); emit('generated') }
+  catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
+}
 const verified = ref(0)
 defineExpose({ hasUnsavedChanges: () => dirty.value })
 
@@ -45,6 +50,7 @@ onMounted(async () => {
   try {
     await files.load(props.projectId)
     templates.value = await listTemplates().catch(() => [])
+    engineOutdated.value = (await templateStatus(props.projectId).catch(() => ({ outdated: [] as string[] }))).outdated.length > 0
     const summary = files.items.find(item => item.path === 'activity.json')
     if (summary) {
       file.value = await files.get(props.projectId, summary.id)
@@ -153,6 +159,7 @@ async function generateFirstVersion() {
       <div class="actions"><button type="button" :disabled="generating" @click="applyAnyway">{{ t('applyAnyway') }}</button>
         <button type="button" class="secondary" :disabled="generating" @click="generateFirstVersion">{{ t('regenerateFirstVersion') }}</button></div>
     </div>
+    <p v-if="engineOutdated" class="notice">{{ t('engineOutdated') }} <button type="button" class="secondary" @click="updateEngine">{{ t('engineUpdate') }}</button></p>
     <StartingMaterial v-if="!loading && !blocked && file" :project-id="projectId" @changed="generated = false" />
     <form v-if="!loading && !blocked" class="form-grid" @submit.prevent="save">
       <p v-if="template" class="full notice ok"><strong>{{ t('templateLabel') }}: {{ template.names[locale] }}</strong> · {{ template.descriptions[locale] }}</p>

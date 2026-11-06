@@ -132,7 +132,7 @@ def run_in_browser(page: str) -> str:
 @pytest.mark.parametrize("template_id,actions,expected", [
     ("cuestionario", "document.querySelector('input[value=\"1\"]').checked = true; document.querySelector('button.principal').click()",
      ["¡Correcto!", "1 de 1"]),
-    ("emparejar", "document.querySelectorAll('select').forEach(function (s, i) { s.value = String(i) }); document.querySelector('button.principal').click()",
+    ("emparejar", "var w = {'Perro': 'Ladra', 'Gato': 'Maúlla', 'Vaca': 'Muge'}; document.querySelectorAll('li.bloque').forEach(function (li) { li.querySelector('select').value = w[li.querySelector('strong').textContent] }); document.querySelector('button.principal').click()",
      ["3 de 3"]),
     ("tarjetas", "document.querySelector('.tarjeta').click()", ['aria-pressed="true"', "La estrella que nos da luz"]),
     ("lectura", "document.querySelector('button.principal').click()", ["Seguimos", "¡Has terminado!", "2 / 2"]),
@@ -184,3 +184,37 @@ def test_dua_on_a_template_project_adapts_the_data_and_validates_it(client: Test
     pending = client.post(f"{base}/ai/dua", headers=headers, json={"path": "datos.js", "auto_apply": True}).json()
     assert pending["status"] == "pending" and pending["grounding"]["template_problems"]
     assert client.post(f"{base}/ai/dua", headers=headers, json={"path": "script.js"}).status_code == 422
+
+
+def test_match_accepts_shared_answers_and_grades_by_text():
+    shared = service.data_js({"title": "Famílies", "pairs": [
+        {"left": "Violí", "right": "Corda"}, {"left": "Violoncel", "right": "Corda"}, {"left": "Trompeta", "right": "Vent metall"}]})
+    assert service.validate_data("emparejar", shared) == []
+    single = service.data_js({"title": "X", "pairs": [{"left": "a", "right": "Igual"}, {"left": "b", "right": "Igual"}]})
+    problems = service.validate_data("emparejar", single)
+    assert problems and not problems[0].split(": ", 1)[1].startswith("Value error")
+    if not (BROWSER and shutil.which("bwrap")):
+        return
+    files = service.initial_files("emparejar", {"title": "Famílies", "language": "va"})
+    files["datos.js"] = shared
+    answer = """var wanted = {'Violí': 'Corda', 'Violoncel': 'Corda', 'Trompeta': 'Vent metall'};
+      document.querySelectorAll('li.bloque').forEach(function (li) { li.querySelector('select').value = wanted[li.querySelector('strong').textContent] });
+      document.querySelector('button.principal').click()"""
+    dom = run_in_browser(inline(files).replace("</body>", f"<script>{answer}</script></body>"))
+    assert "3 de 3" in dom and dom.count('<option value="Corda">') == 3  # one «Corda» per select, not repeated
+
+
+def test_engine_of_existing_projects_can_be_updated_and_keeps_data(client: TestClient):
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    client.post(f"{base}/template", headers=headers, json={"template": "emparejar", "brief": {"title": "Instruments"}})
+    files = {f["path"]: f for f in client.get(f"{base}/files").json()}
+    old = client.get(f"{base}/files/{files['script.js']['id']}").json()
+    client.put(f"{base}/files/{old['id']}", headers=headers, json={"content": "// motor antiguo", "expected_version": old["version"]}).raise_for_status()
+    data_before = client.get(f"{base}/files/{files['datos.js']['id']}").json()["content"]
+    assert client.get(f"{base}/template").json() == {"template": "emparejar", "outdated": ["script.js"]}
+    assert client.post(f"{base}/template/update", headers=headers).json()["updated"] == ["script.js"]
+    assert client.get(f"{base}/template").json()["outdated"] == []
+    assert "se corrige por el texto" in client.get(f"{base}/files/{files['script.js']['id']}").json()["content"]
+    assert client.get(f"{base}/files/{files['datos.js']['id']}").json()["content"] == data_before
+    assert client.post(f"{base}/template/update", headers=headers).json()["updated"] == []

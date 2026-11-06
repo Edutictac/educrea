@@ -68,3 +68,11 @@ export async function applyTemplate(projectId: string, template: string, brief: 
     method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify({ template, brief }),
   }))
 }
+
+export async function templateStatus(projectId: string): Promise<{ template: string | null; outdated: string[] }> {
+  return await (await checked(await fetch(`/api/projects/${projectId}/template`))).json() as { template: string | null; outdated: string[] }
+}
+
+export async function updateTemplateEngine(projectId: string, csrf: string): Promise<{ updated: string[] }> {
+  return await (await checked(await fetch(`/api/projects/${projectId}/template/update`, { method: 'POST', headers: { 'X-CSRF-Token': csrf } }))).json() as { updated: string[] }
+}

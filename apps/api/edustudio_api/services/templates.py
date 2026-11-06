@@ -108,9 +108,11 @@ class MatchData(Base):
     pairs: list[Pair] = Field(min_length=2, max_length=20)
 
     @model_validator(mode="after")
-    def distinct(self):
-        if len({p.right.strip().lower() for p in self.pairs}) != len(self.pairs):
-            raise ValueError("los elementos de la derecha deben ser distintos")
+    def at_least_two_answers(self):
+        # Several pairs may share an answer (e.g. instruments of the same family), but with a single answer
+        # for every pair there would be nothing to choose.
+        if len({p.right.strip().lower() for p in self.pairs}) < 2:
+            raise ValueError("hace falta al menos dos respuestas distintas a la derecha")
         return self
 
 
@@ -209,7 +211,8 @@ TEMPLATES = {t.id: t for t in (
     Template("emparejar", "interactiva", MatchData, {"es": "Emparejar", "va": "Aparellar"},
              {"es": "Relacionar cada elemento con su pareja (sin arrastrar, accesible con teclado).",
               "va": "Relacionar cada element amb la seua parella (sense arrossegar, accessible amb teclat)."},
-             "pairs: lista de {left, right, image y alt opcionales}; los right deben ser distintos entre sí."),
+             "pairs: lista de {left, right, image y alt opcionales}. Varias parejas pueden compartir el mismo right "
+             "(por ejemplo, instrumentos de la misma familia); escribe ese right exactamente igual en todas."),
     Template("ordenar", "interactiva", OrderData, {"es": "Ordenar una secuencia", "va": "Ordenar una seqüència"},
              {"es": "Poner en orden los pasos de un proceso, una historia o una línea del tiempo.",
               "va": "Posar en ordre els passos d’un procés, una història o una línia del temps."},
@@ -273,7 +276,8 @@ def validate_data(template_id: str, content: str) -> list[str]:
         template.schema.model_validate(parse_data(content))
     except ValueError as exc:
         if isinstance(exc, ValidationError):
-            return [f"{'.'.join(str(p) for p in error['loc']) or 'datos'}: {error['msg']}" for error in exc.errors()[:8]]
+            return [f"{'.'.join(str(p) for p in error['loc']) or 'datos'}: {error['msg'].removeprefix('Value error, ')}"
+                    for error in exc.errors()[:8]]
         return [str(exc)]
     return []
 

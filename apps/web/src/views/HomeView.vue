@@ -71,7 +71,7 @@ watch(locale, () => { answer.value = null })
 </template>
 
 <style scoped>
-.home { --ink: #173f43; --muted: #526569; color: var(--ink); background: #faf9f5; }
+.home { --ink: var(--c-ink); --muted: var(--c-muted); color: var(--ink); background: var(--c-bg); }
 .container { width: min(100% - 5rem, 1180px); margin-inline: auto; }
 .home h1, .home h2, .home h3 { color: var(--ink); }
 .home h2 { font-size: clamp(2rem, 3.2vw, 2.9rem); font-weight: 500; letter-spacing: -.045em; line-height: 1.15; }

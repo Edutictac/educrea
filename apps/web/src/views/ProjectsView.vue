@@ -268,5 +268,5 @@ async function create() {
 .details-form { margin-top: 1.2rem; padding-top: .4rem; border-top: 1px solid var(--c-line); }
 .card-action { position: absolute; top: .6rem; right: .6rem; z-index: 1; display: flex; gap: .25rem; }
 .list-title { display: flex; align-items: center; gap: .5rem; margin-top: 1.6rem; }
-.project-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--c-brand-50); color: var(--c-brand); margin-bottom: .6rem; }
+.project-icon { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: rgba(255, 255, 255, .7); color: var(--c-brand); margin-bottom: 1rem; }
 </style>

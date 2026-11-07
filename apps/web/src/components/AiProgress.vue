@@ -59,7 +59,7 @@ watch(() => [props.stage, props.retry, props.section?.index], () => {
 </template>
 
 <style scoped>
-.ai-progress { border: 1px solid var(--c-brand-100); background: linear-gradient(135deg, var(--c-brand-50), #f6fbfd); border-radius: var(--radius); padding: .8rem 1rem; margin: .8rem 0; }
+.ai-progress { border: 1px solid var(--c-brand-100); background: var(--c-brand-50); border-radius: var(--radius); padding: .8rem 1rem; margin: .8rem 0; }
 .ai-progress-head { display: flex; align-items: center; gap: .6rem; }
 .ai-progress-head .clock { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--c-muted); font-size: .9rem; }
 .spinner { width: 20px; height: 20px; flex: none; border-radius: 50%; border: 3px solid var(--c-brand-100); border-top-color: var(--c-brand); animation: spin .9s linear infinite; }

@@ -15,6 +15,15 @@ La demostración es local y no llama a proveedores de IA. La portada explica el 
 propias y el acceso restringido a la IA incluida, sin enlazar el formulario privado de beta.
 El editor y las otras vistas se cargan al abrirlas para aligerar la entrada pública.
 
+## Estilo de la aplicación
+
+La portada y el espacio de trabajo comparten una paleta marfil y azul petróleo, con acentos
+terracota y superficies salvia, arena y azul suave. Los colores, bordes y sombras se definen en
+`apps/web/src/style.css`; formularios, proyectos, plantillas, proveedores y paneles del editor
+utilizan esas variables. El editor mantiene controles compactos y navegación inferior en móvil.
+Los estados de error, confirmación, selección y foco conservan su distinción. El estilo de la
+interfaz no modifica el contenido ni los estilos de las actividades creadas por el docente.
+
 ## Arquitectura
 
 - `apps/web`: Vue 3, TypeScript, Vite, Pinia, Vue Router y Monaco; interfaz en castellano, valenciano e inglés.

@@ -60,7 +60,7 @@ def with_bridge(html: str, scored: bool) -> str:
     return tag + "\n" + html
 
 
-def package(slug: str, title: str, files: list[tuple[str, str]], assets: list, scored: bool) -> bytes:
+def package(slug: str, title: str, files: list[tuple[str, str]], assets: list, scored: bool, audios: list | None = None) -> bytes:
     contents = dict(files)
     if ENTRY not in contents:
         raise HTTPException(409, "El paquete SCORM necesita una actividad con index.html")
@@ -85,5 +85,12 @@ def package(slug: str, title: str, files: list[tuple[str, str]], assets: list, s
         if uses_lucide(files):
             archive.writestr(LUCIDE_NOTICE_PATH, LUCIDE_LICENSE.read_bytes())
             paths.append(LUCIDE_NOTICE_PATH)
+        for audio in audios or []:
+            archive.writestr(audio.path, audio.data)
+            paths.append(audio.path)
+        if audios:
+            from .audios import credits_text as audio_credits
+            archive.writestr("audios/CREDITOS.txt", audio_credits(audios).encode("utf-8"))
+            paths.append("audios/CREDITOS.txt")
         archive.writestr("imsmanifest.xml", manifest(f"educrea-{slug}", title, paths))
     return buffer.getvalue()

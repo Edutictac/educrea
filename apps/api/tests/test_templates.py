@@ -18,10 +18,10 @@ INTERACTIVE = [t.id for t in service.TEMPLATES.values() if t.kind == "interactiv
 BROWSER = shutil.which("chromium") or shutil.which("chromium-browser")
 
 
-def test_catalog_has_eight_bilingual_templates(client: TestClient):
+def test_catalog_has_eleven_bilingual_templates(client: TestClient):
     headers, _ = setup_user(client)
     items = client.get("/api/templates").json()
-    assert len(items) == 8 and all(item["names"]["es"] and item["names"]["va"] for item in items)
+    assert len(items) == 11 and all(item["names"]["es"] and item["names"]["va"] for item in items)
 
 
 @pytest.mark.parametrize("template_id", INTERACTIVE)
@@ -43,6 +43,140 @@ def test_validation_explains_the_problems():
     assert any("alt" in problem for problem in service.validate_data("tarjetas", image))
     remote = service.data_js({"title": "X", "cards": [{"front": "a", "back": "b", "image": "https://x.org/a.png", "alt": "a"}]})
     assert service.validate_data("tarjetas", remote) != []
+
+
+@pytest.mark.parametrize("item", [
+    {"text": "Sin hueco", "answers": ["a"]},
+    {"text": "___ y ___", "answers": ["a"]},
+    {"text": "____", "answers": ["a"]},
+    {"text": "Un ___", "answers": []},
+    {"text": "Un ___", "answers": ["   "]},
+    {"text": "Un ___", "answers": ["a" * 121]},
+])
+def test_gaps_reject_ambiguous_or_unsolvable_items(item):
+    assert service.validate_data("huecos", service.data_js({"title": "X", "items": [item]}))
+
+
+@pytest.mark.parametrize("answer", ["false", "true", 0, 1, None])
+def test_true_false_rejects_answers_that_are_not_json_booleans(answer):
+    data = {"title": "X", "statements": [{"text": "El Sol es una estrella.", "answer": answer, "feedback": "Emite luz."}]}
+    assert service.validate_data("verdadero_falso", service.data_js(data))
+
+
+def test_true_false_ai_requires_explanations_before_auto_applying(client: TestClient):
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    assert client.post(f"{base}/template", headers=headers, json={
+        "template": "verdadero_falso", "brief": {"title": "Astres", "language": "va"}}).status_code == 201
+    data = {"title": "Astres", "language": "va", "statements": [
+        {"text": "La Lluna produeix llum.", "answer": False, "feedback": ""}]}
+    def provider():
+        return StubGemini(json.dumps({"summary": "Astres", "changes": [
+            {"path": "datos.js", "content": service.data_js(data)}]}))
+    app.dependency_overrides[get_gemini_provider] = provider
+    pending = client.post(f"{base}/ai/from-brief", headers=headers).json()
+    assert pending["status"] == "pending"
+    assert any("feedback" in problem for problem in pending["grounding"]["template_problems"])
+    data["statements"][0]["feedback"] = "La Lluna reflecteix la llum del Sol."
+    body = client.post(f"{base}/ai/from-brief", headers=headers).json()
+    assert body["status"] == "applied", body
+    assert body["grounding"]["template_problems"] == []
+
+
+@pytest.mark.skipif(not (BROWSER and shutil.which("bwrap")), reason="chromium/bwrap not installed")
+@pytest.mark.parametrize("language", ["es", "va"])
+def test_true_false_grades_false_and_empty_answers_and_resets(language):
+    files = service.initial_files("verdadero_falso", {"title": "Prueba", "language": language})
+    labels = service.LABELS[language]
+    actions = """
+      var check = document.querySelector('button.principal');
+      var retry = document.querySelector('.acciones button:last-child');
+      window.EduScorm = { score: function (n, total) { document.body.setAttribute('data-score', n + '/' + total) } };
+      function expectScore(value) { if (document.body.getAttribute('data-score') !== value) throw Error('score ' + value) }
+      check.click(); expectScore('0/2');
+      if (!document.querySelector('fieldset p').textContent.includes(UNANSWERED)) throw Error('unanswered');
+      document.querySelector('input[name=vf0][value=true]').click();
+      document.querySelector('input[name=vf1][value=true]').click();
+      check.click(); expectScore('1/2');
+      if (!document.querySelectorAll('fieldset p')[1].textContent.includes(INCORRECT)) throw Error('incorrect');
+      document.querySelector('input[name=vf1][value=false]').click();
+      check.click(); expectScore('2/2');
+      if (document.querySelectorAll('fieldset .bien').length !== 2) throw Error('feedback');
+      if (!document.querySelector('input').labels.length) throw Error('label');
+      retry.click();
+      if (document.querySelector('input:checked') || document.querySelector('[aria-invalid]')) throw Error('reset');
+      if (document.activeElement !== document.querySelector('input')) throw Error('focus');
+      if (document.querySelector('.resultado').textContent || document.querySelector('fieldset p').textContent) throw Error('clear');
+      document.body.setAttribute('data-tested', 'ok');
+    """.replace('UNANSWERED', json.dumps(labels['unanswered'])).replace('INCORRECT', json.dumps(labels['incorrect']))
+    dom = run_in_browser(inline(files).replace("</body>", f"<script>{actions}</script></body>"))
+    assert 'data-tested="ok"' in dom
+    assert labels['true'] in dom and labels['false'] in dom
+
+
+@pytest.mark.parametrize("mode", ["bank", "text"])
+def test_gaps_creation_and_ai_keep_the_chosen_mode(client: TestClient, mode):
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    response = client.post(f"{base}/template", headers=headers, json={
+        "template": "huecos", "brief": {"title": "Astres", "language": "va", "gap_mode": mode}})
+    assert response.status_code == 201
+    files = {f["path"]: f for f in client.get(f"{base}/files").json()}
+    def content(path):
+        return client.get(f"{base}/files/{files[path]['id']}").json()["content"]
+    assert json.loads(content("activity.json"))["gap_mode"] == mode
+    data = service.parse_data(content("datos.js"))
+    assert data["mode"] == mode and data["language"] == "va"
+    data["items"] = [{"text": "El Sol és una ___.", "answers": ["estrela", "estrella"]}]
+    proposal = {"summary": "Astres", "changes": [{"path": "datos.js", "content": service.data_js(data)}]}
+    captured = {}
+    class Capture(StubGemini):
+        async def generate(self, key, model, prompt):
+            captured["prompt"] = prompt
+            return await super().generate(key, model, prompt)
+    app.dependency_overrides[get_gemini_provider] = lambda: Capture(json.dumps(proposal))
+    body = client.post(f"{base}/ai/from-brief", headers=headers).json()
+    assert body["status"] == "applied", body
+    assert body["grounding"]["template_problems"] == []
+    assert f"mode={mode}" in captured["prompt"] and "exactamente un hueco" in captured["prompt"]
+
+
+@pytest.mark.skipif(not (BROWSER and shutil.which("bwrap")), reason="chromium/bwrap not installed")
+@pytest.mark.parametrize("mode", ["bank", "text"])
+@pytest.mark.parametrize("language", ["es", "va"])
+def test_gaps_grade_alternatives_accents_retry_and_report_score(mode, language):
+    files = service.initial_files("huecos", {"title": "Prueba", "language": language, "gap_mode": mode})
+    data = service.parse_data(files["datos.js"])
+    data["items"] = [
+        {"text": "És un ___ natural.", "answers": ["satèl·lit", "satélite natural"], "feedback": "Orbita la Terra."},
+        {"text": "Un ___ verd.", "answers": ["arbre"]},
+        {"text": "Una ___ gran.", "answers": ["casa"]},
+    ]
+    files["datos.js"] = service.data_js(data)
+    actions = """
+      var controls = document.querySelectorAll('select, input[type=text]');
+      var check = document.querySelector('button.principal');
+      var retry = document.querySelector('.acciones button:last-child');
+      window.EduScorm = { score: function (n, total) { document.body.setAttribute('data-score', n + '/' + total) } };
+      check.click();
+      if (document.body.getAttribute('data-score') !== '0/3') throw Error('empty');
+      controls[0].value = MODE === 'bank' ? 'satèl·lit' : '  SATÉLITE   NATURAL  ';
+      controls[1].value = 'arbre';
+      controls[2].value = MODE === 'bank' ? 'arbre' : 'casá';
+      check.click();
+      if (document.body.getAttribute('data-score') !== '2/3') throw Error('grade');
+      if (controls[2].getAttribute('aria-invalid') !== 'true') throw Error('invalid');
+      if (!controls[0].labels.length || !controls[0].getAttribute('aria-describedby')) throw Error('label');
+      if (!document.body.textContent.includes('Orbita la Terra.')) throw Error('feedback');
+      retry.click();
+      if (document.activeElement !== controls[0]) throw Error('focus');
+      if (Array.from(controls).some(function (c) { return c.value || c.hasAttribute('aria-invalid') })) throw Error('reset');
+      if (document.querySelector('.resultado').textContent) throw Error('result');
+      document.body.setAttribute('data-tested', 'ok');
+    """.replace('MODE', json.dumps(mode))
+    dom = run_in_browser(inline(files).replace("</body>", f"<script>{actions}</script></body>"))
+    assert 'data-tested="ok"' in dom
+    assert 'lang="ca"' in dom if language == "va" else 'lang="es"' in dom
 
 
 def test_apply_template_only_on_empty_projects_and_first_version_fills_only_data(client: TestClient):
@@ -103,6 +237,9 @@ def inline(files: dict[str, str]) -> str:
 @pytest.mark.parametrize("template_id,expected", [
     ("cuestionario", ["Comprobar", "Trompeta", 'type="radio"']), ("emparejar", ["<select", "Maúlla"]),
     ("ordenar", ["Subir", "Plantar la semilla"]), ("tarjetas", ['aria-pressed="false"', "Luna"]),
+    ("escucha", ["Añade un audio", 'type="radio"']),
+    ("verdadero_falso", ["Verdadero", "Falso", 'value="false"']),
+    ("huecos", ["Banco de palabras", "<select", "Hueco 1"]),
     ("clasificar", ["Seres vivos", "<select"]), ("lectura", ["Empezamos", "Continuar", "<details"])])
 def test_engines_render_in_a_real_browser(template_id, expected):
     files = service.initial_files(template_id, {"title": "Prueba", "language": "es",
@@ -220,7 +357,8 @@ def test_engine_of_existing_projects_can_be_updated_and_keeps_data(client: TestC
     assert client.post(f"{base}/template/update", headers=headers).json()["updated"] == []
 
 
-def test_scorm_package_for_aules(client: TestClient):
+@pytest.mark.parametrize("template_id", ["cuestionario", "huecos", "verdadero_falso"])
+def test_scorm_package_for_aules(client: TestClient, template_id):
     import io
     import xml.etree.ElementTree as ET
     import zipfile
@@ -228,7 +366,7 @@ def test_scorm_package_for_aules(client: TestClient):
     headers, project_id = setup_user(client)
     base = f"/api/projects/{project_id}"
     assert client.get(f"{base}/export.scorm.zip").status_code == 409  # no activity yet
-    client.post(f"{base}/template", headers=headers, json={"template": "cuestionario", "brief": {"title": "Instruments & veus"}})
+    client.post(f"{base}/template", headers=headers, json={"template": template_id, "brief": {"title": "Instruments & veus"}})
     response = client.get(f"{base}/export.scorm.zip")
     assert response.status_code == 200 and "scorm" in response.headers["content-disposition"]
     archive = zipfile.ZipFile(io.BytesIO(response.content))

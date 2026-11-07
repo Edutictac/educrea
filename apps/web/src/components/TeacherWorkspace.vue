@@ -8,12 +8,13 @@ import { useAuthStore } from '../stores/auth'
 import { useFilesStore, type ProjectFile } from '../stores/files'
 import { listTemplates, templateStatus, updateTemplateEngine, type TemplateInfo } from '../services/templates'
 import StartingMaterial from './StartingMaterial.vue'
+import AudioPanel from './AudioPanel.vue'
 import AiProgress from './AiProgress.vue'
 import { choiceBody } from '../services/aiChoice'
 import { describeAiError, useAiProgress } from '../services/aiProgress'
 
 const props = defineProps<{ projectId: string }>()
-const emit = defineEmits<{ generated: []; openMaterials: [] }>()
+const emit = defineEmits<{ generated: []; openMaterials: []; resourceChanged: [] }>()
 const auth = useAuthStore()
 const generating = ref(false)
 const generated = ref(false)
@@ -200,6 +201,7 @@ async function generateFirstVersion() {
       <div class="actions"><button type="button" :disabled="!chosenSections.length || dirty" @click="developSections">{{ t('developSectionsRun') }}</button>
         <button type="button" class="ghost" @click="chosenSections = chosenSections.length === SECTIONS.length ? [] : [...SECTIONS]">{{ t('selectAll') }}</button></div>
     </details>
+    <AudioPanel v-if="template?.id === 'escucha'" :project-id="projectId" @changed="generated = false; emit('resourceChanged')" />
     <StartingMaterial v-if="!loading && !blocked && file" :project-id="projectId" @changed="generated = false" />
     <form v-if="!loading && !blocked" class="form-grid" @submit.prevent="save">
       <p v-if="template" class="full notice ok"><strong>{{ t('templateLabel') }}: {{ template.names[locale] }}</strong> · {{ template.descriptions[locale] }}</p>

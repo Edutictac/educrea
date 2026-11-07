@@ -81,7 +81,7 @@ def delete_project(project_id: UUID, user: User = Depends(require_csrf),
 def duplicate_project(project_id: UUID, user: User = Depends(require_csrf), db: Session = Depends(get_db)) -> Project:
     """Copy of a project to reuse it with another group: files, images and starting material (sources with their
     fragments). History, AI proposals and usage are not copied; the copy starts at version 1."""
-    from ..models import ProjectAsset, ProjectFile, Source, SourceChunk
+    from ..models import ProjectAsset, ProjectAudio, ProjectFile, Source, SourceChunk
 
     original = project_for_owner(db, project_id, user.id)
     title = f"{original.title} (copia)"[:160]
@@ -94,6 +94,10 @@ def duplicate_project(project_id: UUID, user: User = Depends(require_csrf), db: 
     for asset in db.scalars(select(ProjectAsset).where(ProjectAsset.project_id == project_id)):
         db.add(ProjectAsset(project_id=copy.id, path=asset.path, media_type=asset.media_type, size=asset.size,
                             sha256=asset.sha256, alt=asset.alt, credit=asset.credit, data=asset.data))
+    for audio in db.scalars(select(ProjectAudio).where(ProjectAudio.project_id == project_id)):
+        db.add(ProjectAudio(project_id=copy.id, path=audio.path, media_type=audio.media_type, size=audio.size,
+                            sha256=audio.sha256, description=audio.description, transcript=audio.transcript,
+                            credit=audio.credit, data=audio.data))
     for source in db.scalars(select(Source).where(Source.project_id == project_id)):
         clone = Source(project_id=copy.id, title=source.title, filename=source.filename, kind=source.kind,
                        pages=source.pages, chars=source.chars, chunk_count=source.chunk_count, url=source.url,

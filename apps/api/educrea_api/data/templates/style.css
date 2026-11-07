@@ -1,0 +1,47 @@
+/* EduStudio: estilos comunes de las plantillas. Sin fuentes ni recursos externos. */
+:root { --texto: #1a1a1a; --fondo: #ffffff; --suave: #eaf4f8; --marca: #126382; --bien: #1b6e2a; --mal: #a4161a; --borde: #6b7c85; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 1.05rem; line-height: 1.55; color: var(--texto); background: var(--fondo); }
+body.grande { font-size: 1.4rem; }
+body.contraste { --texto: #000; --fondo: #fff; --suave: #fff; --marca: #00334d; --bien: #004d00; --mal: #8b0000; --borde: #000; }
+body.contraste .bloque, body.contraste button, body.contraste select { border-width: 3px; }
+main { max-width: 860px; margin: 0 auto; padding: 1.2rem; }
+h1 { color: var(--marca); margin-top: 0; }
+h2 { font-size: 1.2em; margin: .2rem 0 .6rem; }
+.consigna { font-size: 1.05em; }
+.bloque { border: 2px solid var(--borde); border-radius: 12px; padding: 1rem; margin: 0 0 1rem; background: var(--suave); }
+fieldset.bloque { min-width: 0; }
+legend { font-weight: 700; padding: 0 .3rem; }
+label.opcion { display: flex; gap: .6rem; align-items: center; padding: .45rem .5rem; border-radius: 8px; cursor: pointer; }
+label.opcion:hover { background: rgba(18, 99, 130, .08); }
+input[type=radio], input[type=checkbox] { width: 1.3em; height: 1.3em; flex: none; }
+button, select { font: inherit; padding: .5rem .9rem; border-radius: 8px; border: 2px solid var(--marca); background: var(--fondo); color: var(--marca); cursor: pointer; }
+button.principal { background: var(--marca); color: #fff; }
+button:disabled { opacity: .55; cursor: default; }
+:focus-visible { outline: 4px solid #f2a900; outline-offset: 2px; }
+.acciones { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1rem 0; }
+.bien { color: var(--bien); font-weight: 700; }
+.mal { color: var(--mal); font-weight: 700; }
+.resultado { font-size: 1.15em; font-weight: 700; }
+.estado { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+img { max-width: 100%; height: auto; border-radius: 8px; }
+.imagen { display: block; max-height: 220px; margin: .4rem 0; }
+.fila { display: flex; flex-wrap: wrap; gap: .8rem; align-items: center; justify-content: space-between; }
+.lista { list-style: none; padding: 0; margin: 0; }
+.lista li { margin: 0 0 .6rem; }
+.rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+.tarjeta { width: 100%; min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4rem; text-align: center; font-size: 1.1em; color: var(--texto); background: var(--fondo); border: 2px solid var(--borde); border-radius: 12px; }
+.tarjeta[aria-pressed=true] { background: var(--suave); border-color: var(--marca); }
+.pista { font-size: .9em; color: var(--marca); }
+@media print { button, .acciones { display: none; } .bloque { break-inside: avoid; } }
+@media (prefers-reduced-motion: no-preference) { .aparece { animation: aparece .35s ease-out; } @keyframes aparece { from { opacity: 0; transform: translateY(8px); } } }
+
+/* Completar huecos: controles adaptados al texto grande y a pantallas pequeñas. */
+.frase-hueco { display: block; margin-bottom: .6rem; }
+.respuesta-hueco { font: inherit; padding: .5rem; border: 2px solid var(--marca); border-radius: 8px; color: var(--texto); background: var(--fondo); width: 100%; max-width: 28rem; }
+body.contraste .respuesta-hueco { border-width: 3px; }
+.frase-hueco ~ select { max-width: 100%; }
+.banco { overflow-wrap: anywhere; }
+
+audio { display: block; width: 100%; margin: .6rem 0; }
+.transcripcion { white-space: pre-wrap; overflow-wrap: anywhere; }

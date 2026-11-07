@@ -75,3 +75,11 @@ no se envían por correo. Para activarlo, crea `secrets/smtp_password` (`0600`) 
 (`docker compose -f compose.yaml -f compose.included.yaml -f compose.mail.yaml up -d`, o
 `COMPOSE_FILE=compose.yaml:compose.included.yaml:compose.mail.yaml` en `infra/.env`).
 El correo requiere remitente, relay TLS, URL pública HTTPS y SSO configurados. Ver [beta-admin.md](beta-admin.md).
+
+## Biblioteca de audio educativo (2026-11-07, pendiente de desplegar)
+
+Antes de arrancar esta versión, aplicar `alembic upgrade head` hasta `0019_project_audios`.
+La migración crea la tabla de audio y es reversible (el downgrade elimina su contenido).
+No requiere paquetes del sistema ni dependencias nuevas. El proxy debe admitir los 10 MB
+más el aumento del 33 % por codificación base64 de la subida JSON; el límite actual de 40 MB basta.
+Comprobar subida, reproducción, transcripción, duplicación y descarga SCORM en la beta.

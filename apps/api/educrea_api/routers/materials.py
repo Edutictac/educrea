@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..models import ProjectFile, User
 from ..security import current_user
-from ..services import assets, converter, materials, render, scorm
+from ..services import assets, audios, converter, materials, render, scorm
 from .files import file_for_owner
 from .projects import project_for_owner
 
@@ -76,11 +76,11 @@ def export_project_zip(project_id: UUID, user: User = Depends(current_user),
                        db: Session = Depends(get_db)) -> Response:
     project = project_for_owner(db, project_id, user.id)
     rows = db.scalars(select(ProjectFile).where(ProjectFile.project_id == project_id).order_by(ProjectFile.path))
-    return attachment(materials.export_zip([(row.path, row.content) for row in rows], assets.assets_for(db, project_id)), "application/zip",
+    return attachment(materials.export_zip([(row.path, row.content) for row in rows], assets.assets_for(db, project_id), audios.audios_for(db, project_id)), "application/zip",
                       download_name(project.slug, ".zip"))
 
 
-SCORED_TEMPLATES = ("cuestionario", "emparejar", "ordenar", "clasificar")
+SCORED_TEMPLATES = ("cuestionario", "emparejar", "ordenar", "clasificar", "huecos", "verdadero_falso", "escucha")
 
 
 @router.get("/export.scorm.zip")
@@ -98,5 +98,5 @@ def export_scorm(project_id: UUID, user: User = Depends(current_user), db: Sessi
     scored = isinstance(brief, dict) and brief.get("template") in SCORED_TEMPLATES
     title = str(brief.get("title") or project.title) if isinstance(brief, dict) else project.title
     data = scorm.package(project.slug, title, [(row.path, row.content) for row in rows],
-                         assets.assets_for(db, project_id), scored)
+                         assets.assets_for(db, project_id), scored, audios.audios_for(db, project_id))
     return attachment(data, "application/zip", download_name(f"{project.slug}-scorm", ".zip"))

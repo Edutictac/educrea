@@ -7,6 +7,7 @@ import AppIcon from './AppIcon.vue'
 import DiffView from './DiffView.vue'
 import { t } from '../i18n'
 import { assetImages } from '../services/assets'
+import { audioResources } from '../services/audios'
 import { listVersions, versionContent } from '../services/history'
 import { buildPreview } from '../services/preview'
 import { useFilesStore } from '../stores/files'
@@ -69,7 +70,7 @@ async function render() {
   } else {
     const contents = Object.fromEntries(await Promise.all(files.items.map(async entry =>
       [entry.path, (await files.get(props.projectId, entry.id)).content] as const)))
-    doc.value = buildPreview(contents[item.path], contents, await assetImages(props.projectId))
+    doc.value = buildPreview(contents[item.path], contents, await assetImages(props.projectId), await audioResources(props.projectId, Object.values(contents).join('\n')))
     kind.value = 'activity'
   }
   updatedAt.value = new Date()

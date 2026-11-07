@@ -11,6 +11,7 @@ import SourcesPanel from '../components/SourcesPanel.vue'
 import HistoryPanel from '../components/HistoryPanel.vue'
 import AssetsPanel from '../components/AssetsPanel.vue'
 import VideoPanel from '../components/VideoPanel.vue'
+import AudioPanel from '../components/AudioPanel.vue'
 import ProjectViewer from '../components/ProjectViewer.vue'
 import AppIcon from '../components/AppIcon.vue'
 import AiPicker from '../components/AiPicker.vue'
@@ -22,7 +23,7 @@ import { useFilesStore } from '../stores/files'
 // On smaller screens the viewer becomes the «Vista previa» tab. Tabs use v-show so unsaved edits survive switching.
 type Workspace = { hasUnsavedChanges: () => boolean }
 type Tab = 'work' | 'assistant' | 'export' | 'tools' | 'preview'
-type Tool = 'sources' | 'images' | 'video' | 'dua' | 'history' | 'capabilities' | 'settings'
+type Tool = 'sources' | 'images' | 'audio' | 'video' | 'dua' | 'history' | 'capabilities' | 'settings'
 const route = useRoute()
 const router = useRouter()
 const projects = useProjectsStore()
@@ -57,6 +58,7 @@ const tabs = computed(() => [
 const tools = computed(() => [
   { id: 'sources' as const, icon: 'library', label: t('sources') },
   { id: 'images' as const, icon: 'image', label: t('projectImages') },
+  { id: 'audio' as const, icon: 'music', label: t('projectAudio') },
   // Video only fits interactive web activities (index.html): not printable worksheets, documents or infographics.
   ...(hasActivity.value ? [{ id: 'video' as const, icon: 'monitor', label: t('projectVideos') }] : []),
   { id: 'dua' as const, icon: 'layers', label: t('duaTitle') },
@@ -146,7 +148,7 @@ async function remove() {
           </div>
 
           <div v-show="tab === 'work'" id="pane-work" role="tabpanel" aria-labelledby="tab-work">
-            <TeacherWorkspace v-if="mode === 'teacher'" :key="workspaceKey" ref="workspace" :project-id="id" @generated="generated" @open-materials="openDocument" />
+            <TeacherWorkspace v-if="mode === 'teacher'" :key="workspaceKey" ref="workspace" :project-id="id" @generated="generated" @resource-changed="viewer?.show()" @open-materials="openDocument" />
             <AdvancedWorkspace v-else :key="workspaceKey" ref="workspace" :project-id="id" />
           </div>
           <div v-show="tab === 'assistant'" id="pane-assistant" role="tabpanel" aria-labelledby="tab-assistant">
@@ -173,6 +175,7 @@ async function remove() {
             </div>
             <SourcesPanel v-if="tool === 'sources'" :project-id="id" embedded @changed="sourcesVersion += 1" />
             <AssetsPanel v-else-if="tool === 'images'" :project-id="id" embedded />
+            <AudioPanel v-else-if="tool === 'audio'" :project-id="id" @changed="viewer?.show()" />
             <VideoPanel v-else-if="tool === 'video'" :project-id="id" />
             <DuaPanel v-else-if="tool === 'dua'" :project-id="id" :refresh-key="workspaceKey" :auto-apply="mode === 'teacher'" :can-generate="canGenerate" embedded @changed="generated" />
             <HistoryPanel v-else-if="tool === 'history'" :project-id="id" embedded @restored="refreshWorkspace" />

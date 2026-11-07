@@ -9,6 +9,8 @@ dist/
 .coverage
 *.egg-info/
 data/
+# Packaged template engines and license notices are application source.
+!apps/api/educrea_api/data/
 *.sqlite3
 *.db
 

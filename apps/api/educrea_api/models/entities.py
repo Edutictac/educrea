@@ -216,6 +216,25 @@ class ProjectVideo(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class ProjectAudio(Base):
+    """Teacher-supplied audio and its reviewed transcript/description, never sent as bytes to AI."""
+
+    __tablename__ = "project_audios"
+    __table_args__ = (UniqueConstraint("project_id", "path"),)
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    path: Mapped[str] = mapped_column(String(160))
+    media_type: Mapped[str] = mapped_column(String(30))
+    size: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64))
+    description: Mapped[str] = mapped_column(String(300))
+    transcript: Mapped[str] = mapped_column(Text)
+    credit: Mapped[str] = mapped_column(String(300), default="")
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class SourceChunk(Base):
     __tablename__ = "source_chunks"
 

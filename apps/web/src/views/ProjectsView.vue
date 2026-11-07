@@ -15,7 +15,7 @@ import { createIllustrations, illustrationPrompts, type IllustrationStyle } from
 // Guided creation (phase 7): 1) what to create, 2) a few details, then the project opens in teacher mode with the
 // template files ready and the AI fills the content from the brief.
 type Choice = { id: string; kind: 'plantilla' | 'situacion' | 'libre'; name: string; description: string; icon: string }
-const ICONS: Record<string, string> = { cuestionario: 'circle-help', emparejar: 'puzzle', ordenar: 'list-ordered', tarjetas: 'layers', clasificar: 'shapes', lectura: 'book-open', infografia: 'palette', ficha: 'file-text', situacion: 'graduation-cap', libre: 'file-plus' }
+const ICONS: Record<string, string> = { escucha: 'music', verdadero_falso: 'circle-help', huecos: 'file-text', cuestionario: 'circle-help', emparejar: 'puzzle', ordenar: 'list-ordered', tarjetas: 'layers', clasificar: 'shapes', lectura: 'book-open', infografia: 'palette', ficha: 'file-text', situacion: 'graduation-cap', libre: 'file-plus' }
 const auth = useAuthStore()
 const projects = useProjectsStore()
 const files = useFilesStore()
@@ -26,6 +26,7 @@ const title = ref('')
 const language = ref<'es' | 'va'>(locale.value)
 const level = ref('primaria')
 const instructions = ref('')
+const gapMode = ref<'bank' | 'text'>('bank')
 const largeText = ref(false)
 const highContrast = ref(false)
 const busy = ref(false)
@@ -92,6 +93,7 @@ async function create() {
     projectId = project.id
     const brief = { title: title.value.trim(), language: language.value, level: level.value, instructions: instructions.value.trim(),
       accessibility: { large_text: largeText.value, high_contrast: highContrast.value },
+      ...(choice.value.id === 'huecos' ? { gap_mode: gapMode.value } : {}),
       ...(canIllustrate.value && illustrationCount.value > 0 ? { illustrations: true } : {}) }
     if (choice.value.kind === 'plantilla') {
       await applyTemplate(project.id, choice.value.id, brief, auth.csrf)
@@ -157,6 +159,9 @@ async function create() {
           <label>{{ t('educationLevel') }}<select v-model="level"><option value="infantil">{{ t('earlyYears') }}</option>
             <option value="primaria">{{ t('primary') }}</option><option value="secundaria">{{ t('secondary') }}</option>
             <option value="otros">{{ t('other') }}</option></select></label>
+          <label v-if="choice.id === 'huecos'" class="full">{{ t('gapMode') }}<select v-model="gapMode">
+            <option value="bank">{{ t('gapBank') }}</option><option value="text">{{ t('gapText') }}</option>
+          </select></label>
           <label class="full">{{ t('whatAbout') }}<textarea v-model="instructions" maxlength="10000" rows="3" :placeholder="t('whatAboutPlaceholder')" /></label>
           <div class="full material-pick">
             <label>{{ t('startingMaterial') }} <span class="hint">({{ t('optional') }})</span>

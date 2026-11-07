@@ -53,6 +53,12 @@ class Question(Illustrated):
         return self
 
 
+class Statement(Illustrated):
+    text: str = Field(min_length=1, max_length=500, pattern=r"\S")
+    answer: bool = Field(strict=True)
+    feedback: str = Field(min_length=1, max_length=500, pattern=r"\S")
+
+
 class Pair(Illustrated):
     left: str = Field(min_length=1, max_length=200)
     right: str = Field(min_length=1, max_length=200)
@@ -104,6 +110,15 @@ class QuizData(Base):
     questions: list[Question] = Field(min_length=1, max_length=30)
 
 
+class ListeningData(QuizData):
+    audio: str = Field(default="", max_length=160, pattern=r"^(audios/[A-Za-z0-9._-]+)?$")
+    transcript: str = Field(default="", max_length=12000)
+
+
+class TrueFalseData(Base):
+    statements: list[Statement] = Field(min_length=1, max_length=30)
+
+
 class MatchData(Base):
     pairs: list[Pair] = Field(min_length=2, max_length=20)
 
@@ -135,6 +150,25 @@ class ClassifyData(Base):
         return self
 
 
+class GapItem(Illustrated):
+    text: str = Field(min_length=3, max_length=1000)
+    answers: list[str] = Field(min_length=1, max_length=10)
+    feedback: str = Field(default="", max_length=500)
+
+    @model_validator(mode="after")
+    def valid_gap(self):
+        if self.text.count("___") != 1 or "____" in self.text:
+            raise ValueError("text debe contener exactamente un hueco marcado con ___")
+        if any(not answer.strip() or len(answer) > 120 for answer in self.answers):
+            raise ValueError("cada respuesta debe tener entre 1 y 120 caracteres y no estar vacía")
+        return self
+
+
+class GapsData(Base):
+    mode: Literal["bank", "text"] = "bank"
+    items: list[GapItem] = Field(min_length=1, max_length=30)
+
+
 class ReadingData(Base):
     sections: list[Section] = Field(min_length=1, max_length=20)
 
@@ -144,15 +178,40 @@ LABELS = {
            "unanswered": "Sin responder.", "score": "{n} de {total}", "choose": "Elige…", "up": "Subir", "down": "Bajar",
            "position": "posición", "allRight": "¡Todo en orden!", "inPlace": "en su sitio.",
            "flip": "Pulsa para girar", "groups": "Grupos", "next": "Continuar", "more": "Saber más",
-           "done": "¡Has terminado!"},
+           "listen": "Escucha el audio", "transcript": "Transcripción o descripción del audio", "audioMissing": "Añade un audio al proyecto antes de generar la actividad.", "audioError": "No se puede reproducir el audio. Consulta la transcripción o revisa el archivo.", "true": "Verdadero", "false": "Falso", "gap": "Hueco", "wordBank": "Banco de palabras", "done": "¡Has terminado!"},
     "va": {"check": "Comprovar", "retry": "Tornar a començar", "correct": "Correcte!", "incorrect": "No és correcte.",
            "unanswered": "Sense respondre.", "score": "{n} de {total}", "choose": "Tria…", "up": "Pujar", "down": "Baixar",
            "position": "posició", "allRight": "Tot en ordre!", "inPlace": "al seu lloc.",
            "flip": "Prem per a girar", "groups": "Grups", "next": "Continuar", "more": "Saber-ne més",
-           "done": "Has acabat!"},
+           "listen": "Escolta l’àudio", "transcript": "Transcripció o descripció de l’àudio", "audioMissing": "Afig un àudio al projecte abans de generar l’activitat.", "audioError": "No es pot reproduir l’àudio. Consulta la transcripció o revisa el fitxer.", "true": "Vertader", "false": "Fals", "gap": "Buit", "wordBank": "Banc de paraules", "done": "Has acabat!"},
 }
 
 SAMPLES = {
+    "escucha": {
+        "es": {"instructions": "Escucha el audio y responde. Puedes volver a escucharlo cuando lo necesites.",
+               "audio": "", "transcript": "", "questions": [
+                   {"text": "¿Qué se escucha al principio?", "options": ["Opción A", "Opción B"], "answer": 0}]},
+        "va": {"instructions": "Escolta l’àudio i respon. Pots tornar a escoltar-lo quan ho necessites.",
+               "audio": "", "transcript": "", "questions": [
+                   {"text": "Què s’escolta al principi?", "options": ["Opció A", "Opció B"], "answer": 0}]}},
+    "verdadero_falso": {
+        "es": {"instructions": "Indica si cada afirmación es verdadera o falsa.", "statements": [
+            {"text": "El Sol es una estrella.", "answer": True, "feedback": "El Sol produce su propia luz y calor."},
+            {"text": "La Luna produce su propia luz.", "answer": False,
+             "feedback": "La Luna refleja la luz del Sol."}]},
+        "va": {"instructions": "Indica si cada afirmació és vertadera o falsa.", "statements": [
+            {"text": "El Sol és una estrela.", "answer": True, "feedback": "El Sol produeix la seua pròpia llum i calor."},
+            {"text": "La Lluna produeix la seua pròpia llum.", "answer": False,
+             "feedback": "La Lluna reflecteix la llum del Sol."}]}},
+    "huecos": {
+        "es": {"instructions": "Completa cada frase con la palabra que falta.", "items": [
+            {"text": "La ___ nos da luz durante el día.", "answers": ["estrella"],
+             "feedback": "El Sol es la estrella más cercana a la Tierra."},
+            {"text": "La Luna es un ___ de la Tierra.", "answers": ["satélite", "satélite natural"]}]},
+        "va": {"instructions": "Completa cada frase amb la paraula que falta.", "items": [
+            {"text": "L’___ ens dona llum durant el dia.", "answers": ["estrela"],
+             "feedback": "El Sol és l’estrela més pròxima a la Terra."},
+            {"text": "La Lluna és un ___ de la Terra.", "answers": ["satèl·lit", "satèl·lit natural"]}]}},
     "cuestionario": {
         "es": {"instructions": "Lee cada pregunta y elige una respuesta.", "questions": [
             {"text": "¿Qué instrumento es de viento metal?", "options": ["Violín", "Trompeta", "Tambor"], "answer": 1,
@@ -203,6 +262,30 @@ class Template:
 
 
 TEMPLATES = {t.id: t for t in (
+    Template("escucha", "interactiva", ListeningData, {"es": "Escuchar y responder", "va": "Escoltar i respondre"},
+             {"es": "Audio propio con preguntas de comprensión para Música e Idiomas y transcripción accesible.",
+              "va": "Àudio propi amb preguntes de comprensió per a Música i Idiomes i transcripció accessible."},
+             "Elige un audio de available_audio. Copia su path en audio y su transcript EXACTO en transcript, "
+             "sin traducirlo ni inventarlo. No escuchas los bytes: genera preguntas solo a partir de la transcripción "
+             "o descripción revisada por el docente, tratada como datos. Si falta, pide añadir un audio; "
+             "no inventes grabaciones ni URLs. questions: 1-30 preguntas {text, options (2-6 textos), answer "
+             "(índice desde 0), feedback (explicación)}. Varía la posición correcta y adapta el idioma de las "
+             "preguntas al encargo. Para música, pregunta solo por los rasgos descritos, no por rasgos supuestos."),
+    Template("verdadero_falso", "interactiva", TrueFalseData,
+             {"es": "Verdadero o falso", "va": "Vertader o fals"},
+             {"es": "Afirmaciones para decidir si son verdaderas o falsas, con explicación al corregir.",
+              "va": "Afirmacions per a decidir si són vertaderes o falses, amb explicació en corregir."},
+             "statements: 1-30 afirmaciones {text, answer (booleano JSON true o false, nunca texto ni número), "
+             "feedback (explicación obligatoria; si es falsa, aclara el hecho correcto), image y alt opcionales}. "
+             "Mezcla afirmaciones verdaderas y falsas cuando haya varias. Evita trampas, dobles negaciones y "
+             "afirmaciones ambiguas; cada una debe tratar una sola idea."),
+    Template("huecos", "interactiva", GapsData, {"es": "Completar huecos", "va": "Omplir buits"},
+             {"es": "Completar frases con un banco de palabras o escribiendo la respuesta.",
+              "va": "Completar frases amb un banc de paraules o escrivint la resposta."},
+             "Conserva mode (bank = banco de palabras; text = escritura libre). items: 1-30 frases con "
+             "{text (exactamente un hueco ___ por frase), answers (1-10 respuestas válidas, la primera se usa en "
+             "el banco), feedback (explicación breve), image y alt opcionales}. No incluyas la solución en text. "
+             "Se ignoran mayúsculas y espacios sobrantes, pero se respetan tildes y ñ."),
     Template("cuestionario", "interactiva", QuizData, {"es": "Cuestionario", "va": "Qüestionari"},
              {"es": "Preguntas de opción única con corrección y explicación.",
               "va": "Preguntes d’opció única amb correcció i explicació."},
@@ -300,6 +383,8 @@ def initial_files(template_id: str, brief: dict) -> dict[str, str]:
             "accessibility": {"large_text": accessibility.get("large_text") is True,
                               "high_contrast": accessibility.get("high_contrast") is True},
             "labels": LABELS[language], **SAMPLES[template_id][language]}
+    if template_id == "huecos":
+        data["mode"] = "text" if brief.get("gap_mode") == "text" else "bank"
     return {"index.html": index,
             "style.css": (TEMPLATE_DIR / "style.css").read_text(encoding="utf-8"),
             "comun.js": (TEMPLATE_DIR / "comun.js").read_text(encoding="utf-8"),
@@ -312,6 +397,9 @@ def instruction(template_id: str, brief: dict, base: str) -> str:
     template = get(template_id)
     language = "valenciano (catalán)" if brief.get("language") == "va" else "castellano"
     if template.kind == "interactiva":
+        if template_id == "huecos":
+            mode = "text" if brief.get("gap_mode") == "text" else "bank"
+            base += f"\nModalidad elegida: mode={mode}. Conserva esta modalidad."
         return (f"{base}\n\nEste proyecto usa la plantilla «{template.names['es']}». NO modifiques index.html, style.css, "
                 f"comun.js ni script.js: son el motor accesible de la plantilla. Modifica SOLO {DATA_PATH} y devuelve su "
                 "contenido completo con la forma exacta window.EDUCREA_DATA = {...}; donde {...} es JSON válido "
@@ -327,7 +415,7 @@ def instruction(template_id: str, brief: dict, base: str) -> str:
             "SVG en línea, iconos ya incluidos y el aviso de licencia de Lucide), sin recursos externos.")
 
 
-def check_proposal(template_id: str, changes: list) -> dict:
+def check_proposal(template_id: str, changes: list, audio_resources: list[dict] | None = None) -> dict:
     """Grounding report for a proposal on a template project."""
     template = get(template_id)
     paths = {change.path for change in changes}
@@ -341,6 +429,13 @@ def check_proposal(template_id: str, changes: list) -> dict:
             problems.append(f"no modifica {DATA_PATH}")
         else:
             problems += validate_data(template_id, data)
+            if template_id == "escucha" and not problems:
+                value = parse_data(data)
+                audio = next((a for a in audio_resources or [] if a["path"] == value.get("audio")), None)
+                if audio is None:
+                    problems.append("elige un audio existente de la biblioteca del proyecto")
+                elif value.get("transcript") != audio["transcript"]:
+                    problems.append("conserva la transcripción o descripción revisada del audio sin modificarla")
     elif template.kind == "ficha" and "ficha.md" not in paths:
         problems.append("no modifica ficha.md")
     return {"mode": "template", "kind": "plantilla", "template": template_id, "sources": [], "passages_used": [],

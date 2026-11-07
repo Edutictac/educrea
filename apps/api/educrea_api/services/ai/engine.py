@@ -16,6 +16,7 @@ from ...routers.projects import project_for_owner
 from .providers.gemini import free_models
 from .providers.registry import authorize, authorize_paid, free_models as provider_free_models
 from .. import assets as asset_service
+from .. import audios as audio_service
 from .. import templates as template_service
 from .. import sources as source_service
 from .schemas import DraftProposal, GenerateInput
@@ -84,9 +85,13 @@ def prepare(db: Session, project_id: UUID, user_id: UUID,
         if len(selected) != len(request.context_paths) or not selected.issubset(snapshot):
             raise HTTPException(422, "Selección de archivos no válida")
     images = asset_service.for_prompt(asset_service.assets_for(db, project_id))
+    audio_resources = audio_service.for_prompt(audio_service.audios_for(db, project_id))
+    if brief_template(read_brief(db, project_id)) == "escucha" and not audio_resources:
+        raise HTTPException(409, "Añade un audio con transcripción o descripción antes de generar la actividad")
     context = {"title": project.title, "description": project.description,
                "available_paths": [file.path for file in files],
                **({"available_images": images} if images else {}),
+               **({"available_audio": audio_resources} if audio_resources else {}),
                **({"not_included_paths": not_included} if not_included else {}), "selected_files": [
                    {"path": file.path, "content": file.content}
                    for file in files if file.path in selected]}
@@ -121,6 +126,10 @@ def prepare(db: Session, project_id: UUID, user_id: UUID,
         + ("Puedes usar las imágenes de available_images con su ruta relativa tal cual (en HTML <img src=\"imagenes/…\" "
            "alt=\"…\">, en Markdown ![texto alternativo](imagenes/…)) y su texto alternativo; no inventes otras "
            "imágenes ni rutas. " if images else "")
+        + ("Los audios de available_audio son recursos locales. Solo recibes su transcripción o descripción "
+           "revisada, no los bytes: no afirmes haber escuchado nada. En la plantilla escucha modifica solo datos.js, "
+           "usa un path existente en audio, copia transcript EXACTAMENTE de ese recurso y basa las preguntas "
+           "exclusivamente en ese texto, sin inventar rasgos musicales ni frases. " if audio_resources else "")
         + "Si el proyecto incluye activity.json, trátalo como el encargo del docente y respétalo al pie de la letra: su "
         "idioma (lang del HTML y todo el texto), nivel educativo, tipo de actividad, instrucciones y preferencias de "
         "accesibilidad (texto grande y alto contraste deben verse aplicados en el HTML/CSS generado). "
@@ -478,11 +487,13 @@ def persist(db: Session, project_id: UUID, user_id: UUID, model: str, text: str,
     else:
         grounding = None
     if template and dua_target == template_service.DATA_PATH:
-        report = template_service.check_proposal(template, draft.changes)
+        report = template_service.check_proposal(template, draft.changes,
+                                                 audio_service.for_prompt(audio_service.audios_for(db, project_id)))
         grounding["template_problems"] = report["template_problems"]
         grounding["supported"] = grounding["supported"] and report["supported"]
     elif template and not dua_target and kind != "situacion":
-        report = template_service.check_proposal(template, draft.changes)
+        report = template_service.check_proposal(template, draft.changes,
+                                                 audio_service.for_prompt(audio_service.audios_for(db, project_id)))
         if grounding is None:
             grounding = report
         else:  # sources and template checks both apply

@@ -48,3 +48,10 @@ Riesgos principales: contenido generado malicioso, acceso entre usuarios, concur
 La modalidad institucional autorizada convive con BYOK en el mismo motor, adaptadores y registro de uso.
 Su router sustituible por EduPrompt Core, claves institucionales, cuota mensual única, reservas y presupuestos
 se documentan en [included-ai.md](included-ai.md).
+
+**Audio educativo (2026-11-07):** biblioteca `project_audios` (migración `0019_project_audios`),
+con audio local MP3/WAV/Ogg, título, transcripción/descripción revisada y crédito. CRUD con propiedad,
+CSRF, tamaño y recuento limitados, duplicación y borrado en cascada. El modelo recibe solo metadatos
+y texto, nunca bytes. La plantilla `escucha` usa reproductor nativo, alternativa textual desplegable
+y cuestionario con nota SCORM. La vista previa permite solo `media-src data:`; ZIP/SCORM incluyen
+los archivos y sus créditos. Ver [templates.md](templates.md#escuchar-y-responder-2026-11-07).

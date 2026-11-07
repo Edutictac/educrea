@@ -79,7 +79,7 @@ def uses_lucide(files: list[tuple[str, str]]) -> bool:
     return any("lucide" in content.lower() for _, content in files)
 
 
-def export_zip(files: list[tuple[str, str]], assets: list | None = None) -> bytes:
+def export_zip(files: list[tuple[str, str]], assets: list | None = None, audios: list | None = None) -> bytes:
     from .assets import credits_text
 
     buffer = io.BytesIO()
@@ -90,6 +90,11 @@ def export_zip(files: list[tuple[str, str]], assets: list | None = None) -> byte
             archive.writestr(asset.path, asset.data)
         if assets:
             archive.writestr("imagenes/CREDITOS.txt", credits_text(assets).encode("utf-8"))
+        for audio in audios or []:
+            archive.writestr(audio.path, audio.data)
+        if audios:
+            from .audios import credits_text as audio_credits
+            archive.writestr("audios/CREDITOS.txt", audio_credits(audios).encode("utf-8"))
         # ISC/MIT require the notice to travel with copies of the icons.
         if uses_lucide(files) and LUCIDE_NOTICE_PATH not in {path for path, _ in files}:
             archive.writestr(LUCIDE_NOTICE_PATH, LUCIDE_LICENSE.read_bytes())

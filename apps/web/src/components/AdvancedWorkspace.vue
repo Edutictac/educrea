@@ -4,6 +4,7 @@ import MonacoEditor from './MonacoEditor.vue'
 import { t } from '../i18n'
 import { buildPreview } from '../services/preview'
 import { assetImages } from '../services/assets'
+import { audioResources } from '../services/audios'
 import { iconNames, insertIcon } from '../services/icons'
 import { INFOGRAPHIC_PATH, infographicTemplate } from '../services/templates'
 import { useFilesStore, type ProjectFile } from '../stores/files'
@@ -93,7 +94,7 @@ async function togglePreview() {
       const open = documents.value[item.id]
       contents[item.path] = open ? drafts.value[item.id] : (await files.get(props.projectId, item.id)).content
     }
-    previewDoc.value = buildPreview(activeContent.value, contents, await assetImages(props.projectId))
+    previewDoc.value = buildPreview(activeContent.value, contents, await assetImages(props.projectId), await audioResources(props.projectId, Object.values(contents).join('\n')))
     previewing.value = true
   } catch (cause) { showError(cause) }
 }

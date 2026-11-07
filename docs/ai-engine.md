@@ -74,3 +74,29 @@ El docente puede subir su propio material (PDF, también escaneado con OCR, DOCX
 La modalidad institucional autorizada convive con BYOK en el mismo motor, adaptadores y registro de uso.
 Su router sustituible por EduPrompt Core, claves institucionales, cuota mensual única, reservas y presupuestos
 se documentan en [included-ai.md](included-ai.md).
+
+## Batería de pruebas con IA real
+
+`apps/api/scripts/ai_battery.sh` lanza 9 encargos típicos contra la API real, en el mismo proceso y sobre una **copia** de la base de desarrollo (`data/battery/`, ignorada por Git):
+- las 6 plantillas interactivas, la ficha y una situación de aprendizaje, en castellano y valenciano;
+- una adaptación DUA sobre la ficha.
+
+Usa las claves BYOK de una cuenta existente, sin mostrarlas nunca, y solo envía contenido inventado. Por cada encargo anota si sale válido y aplicado, si queda pendiente de revisión o si falla, con el código de error. Con `--auto` deja que la API elija y cambie de modelo, como hace «IA automática»; por defecto prueba cada modelo confirmado por separado. Consume cuota gratuita: unas 9 peticiones por modelo.
+
+Primera pasada (2026-11-07), modelo por modelo:
+
+| Modelo | Válidas | Fallos |
+|---|---|---|
+| Gemini `gemini-3.5-flash-lite` | 9/9 (2–7 s) | — |
+| OpenRouter `nvidia/nemotron-3-ultra-550b-a55b:free` | 9/9 (23–81 s) | — |
+| Groq `openai/gpt-oss-120b` | 2/9 | 429 inmediato (límite de tokens por minuto) |
+| Gemini `gemini-3.8-flash` | 0/8 | 503, o 504 tras 90 s de espera |
+| OpenRouter `google/gemma-4-31b-it:free` | 0/8 | 429 en todas las peticiones |
+
+Todas las respuestas que llegaron pasaron la validación (esquema de `datos.js`, secciones de la situación), así que no hubo que ajustar instrucciones. Cambios aplicados:
+- espera máxima de 45 s para Gemini y 120 s para OpenRouter (antes, 90 s para todos);
+- `gemini-3.8-flash` y `gemma-4-31b-it:free` fuera de las listas gratuitas de desarrollo.
+
+Segunda pasada con `--auto`, ya con esos cambios: **9/9 válidas a la primera, entre 2 y 11 s**. Ocho las resolvió Flash Lite. En la DUA, Flash Lite no respondió y la API pasó sola a Groq, que la completó: 6 s en total.
+
+Repetir la batería al cambiar de modelo, de instrucciones o de validación.

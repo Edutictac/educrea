@@ -41,6 +41,15 @@ def _check(response: httpx.Response, provider: str) -> None:
         raise ProviderError(f"{provider} no pudo completar la solicitud", 502, usage=usage)
 
 
+
+# OpenRouter's free models are slow but reliable (Nemotron: 23-81 s for valid answers in the AI battery of
+# 2026-11-07), so they get more room than the default.
+TIMEOUTS = {"openrouter": 120}
+
+
+def timeout_for(provider: str) -> int:
+    return TIMEOUTS.get(provider, 90)
+
 class CompatibleProvider:
     def __init__(self, name: str, client: httpx.AsyncClient | None = None, base_url: str = "",
                  endpoint: str | None = None, max_output_tokens: int | None = None,
@@ -69,7 +78,7 @@ class CompatibleProvider:
         return {} if self.name == "ollama" else {"Authorization": f"Bearer {api_key}"}
 
     async def generate(self, api_key: str, model: str, prompt: str) -> ProviderResult:
-        client = self.client or httpx.AsyncClient(timeout=90)
+        client = self.client or httpx.AsyncClient(timeout=timeout_for(self.name))
         try:
             response = await client.post(self.url, headers=self._headers(api_key), json=self._payload(model, prompt, False))
             _check(response, self.name)
@@ -100,7 +109,7 @@ class CompatibleProvider:
                 await client.aclose()
 
     async def stream(self, api_key: str, model: str, prompt: str) -> AsyncIterator[ProviderChunk]:
-        client = self.client or httpx.AsyncClient(timeout=90)
+        client = self.client or httpx.AsyncClient(timeout=timeout_for(self.name))
         finished = False
         try:
             async with client.stream("POST", self.url, headers=self._headers(api_key),

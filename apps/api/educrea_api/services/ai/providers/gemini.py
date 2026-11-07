@@ -8,6 +8,9 @@ from .base import ProviderChunk, ProviderError, ProviderResult
 
 MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$")
 BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+# Gemini answers in under 10 s when it works; a saturated model used to hold the teacher for 90 s before the
+# automatic mode could try the next free AI (AI battery, 2026-11-07).
+TIMEOUT_SECONDS = 45
 RESPONSE_SCHEMA = {
     "type": "OBJECT",
     "properties": {
@@ -84,7 +87,7 @@ class GeminiProvider:
             raise ProviderError("Gemini no pudo completar la solicitud", 502)
 
     async def generate(self, api_key: str, model: str, prompt: str) -> ProviderResult:
-        client = self.client or httpx.AsyncClient(timeout=90)
+        client = self.client or httpx.AsyncClient(timeout=TIMEOUT_SECONDS)
         try:
             response = await client.post(self.url(model), headers={"x-goog-api-key": api_key}, json=payload(prompt))
             self.check_response(response)
@@ -108,7 +111,7 @@ class GeminiProvider:
                 await client.aclose()
 
     async def stream(self, api_key: str, model: str, prompt: str) -> AsyncIterator[ProviderChunk]:
-        client = self.client or httpx.AsyncClient(timeout=90)
+        client = self.client or httpx.AsyncClient(timeout=TIMEOUT_SECONDS)
         finished = False
         try:
             async with client.stream("POST", self.url(model, stream=True),

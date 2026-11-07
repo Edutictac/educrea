@@ -96,9 +96,9 @@ class GeminiImageProvider:
             try:
                 raw = base64.b64decode(block["data"], validate=True)
             except (ValueError, binascii.Error) as exc:
-                raise ProviderError("Gemini devolvió una imagen no válida", 502) from exc
+                raise ProviderError("Gemini devolvió una imagen no válida", 502, consumed_unknown=True) from exc
             if not raw:
-                raise ProviderError("Gemini devolvió una imagen vacía", 502)
+                raise ProviderError("Gemini devolvió una imagen vacía", 502, consumed_unknown=True)
             return GeneratedImage(raw, block["mime_type"])
         except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
             # The request never reached Google: nothing was billed.

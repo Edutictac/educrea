@@ -1,10 +1,12 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   MAX_INSTRUCTIONS,
+  clearPendingPrompt,
   decodePromptPayload,
   fillInstructions,
   parseBridgeQuery,
   payloadFromHash,
+  peekPendingPrompt,
   storePendingPrompt,
   takePendingPrompt,
 } from './promptBridge'
@@ -92,5 +94,13 @@ describe('direct handoff', () => {
     storePendingPrompt('  Encargo recibido  ')
     expect(takePendingPrompt()).toBe('Encargo recibido')
     expect(takePendingPrompt()).toBeNull()
+  })
+
+  it('peeks and clears a pending brief separately', () => {
+    storePendingPrompt('  Encargo recibido  ')
+    expect(peekPendingPrompt()).toBe('Encargo recibido')
+    expect(peekPendingPrompt()).toBe('Encargo recibido')
+    clearPendingPrompt()
+    expect(peekPendingPrompt()).toBeNull()
   })
 })

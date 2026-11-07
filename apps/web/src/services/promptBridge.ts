@@ -65,11 +65,20 @@ export function storePendingPrompt(text: string): void {
   try { sessionStorage.setItem(HANDOFF_STORAGE_KEY, text.trim()) } catch { /* ignore unavailable storage */ }
 }
 
-export function takePendingPrompt(): string | null {
+export function peekPendingPrompt(): string | null {
   try {
     const text = sessionStorage.getItem(HANDOFF_STORAGE_KEY)
-    if (text !== null) sessionStorage.removeItem(HANDOFF_STORAGE_KEY)
     const result = text ? fillInstructions(text) : null
     return result?.ok ? result.text : null
   } catch { return null }
+}
+
+export function clearPendingPrompt(): void {
+  try { sessionStorage.removeItem(HANDOFF_STORAGE_KEY) } catch { /* ignore unavailable storage */ }
+}
+
+export function takePendingPrompt(): string | null {
+  const text = peekPendingPrompt()
+  if (text !== null) clearPendingPrompt()
+  return text
 }

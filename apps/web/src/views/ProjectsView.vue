@@ -56,6 +56,7 @@ const budgetLeft = computed(() => imageStatus.value
 const illustrationTotal = computed(() => illustrationCount.value * (imageModel.value?.max_cost_microusd ?? 0))
 const illustrationsReady = computed(() => !canIllustrate.value || illustrationCount.value === 0
   || (illustrationCostOk.value && illustrationRightsOk.value && illustrationTotal.value <= budgetLeft.value))
+const canCreate = computed(() => !busy.value && !!title.value.trim() && (!material.value || materialRights.value) && illustrationsReady.value)
 const usd = (micro: number) => `$${(micro / 1000000).toFixed(2)}`
 const error = ref('')
 const detailsHeading = ref<HTMLElement | null>(null)
@@ -193,6 +194,7 @@ async function create() {
       <form v-if="choice" class="form-grid details-form" @submit.prevent="create">
         <h3 ref="detailsHeading" class="full" tabindex="-1">{{ choice.name }}</h3>
         <label class="full">{{ t('activityTitle') }}<input v-model="title" required maxlength="160" :placeholder="t('titlePlaceholder')" /></label>
+        <div v-if="received" class="actions full handoff-actions"><button type="submit" :disabled="!canCreate">{{ busy ? t('creating') : t('createAndOpen') }}</button><span class="hint">{{ t('promptBridgeCreateHint') }}</span></div>
         <template v-if="choice.kind !== 'libre'">
           <label>{{ t('language') }}<select v-model="language"><option value="es">{{ t('languageSpanish') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select></label>
           <label>{{ t('educationLevel') }}<select v-model="level"><option value="infantil">{{ t('earlyYears') }}</option>
@@ -236,7 +238,7 @@ async function create() {
             <label class="check"><input v-model="highContrast" type="checkbox" />{{ t('highContrast') }}</label>
           </details>
         </template>
-        <div class="actions full"><button type="submit" :disabled="busy || !title.trim() || (!!material && !materialRights) || !illustrationsReady">{{ busy ? t('creating') : t('createAndOpen') }}</button>
+        <div class="actions full"><button type="submit" :disabled="!canCreate">{{ busy ? t('creating') : t('createAndOpen') }}</button>
           <span v-if="progress" class="hint" role="status">{{ progress }}</span>
           <button type="button" class="secondary" @click="choice = null">{{ t('cancel') }}</button></div>
         <p v-if="choice.kind !== 'libre'" class="hint full">{{ t('guidedNext') }}</p>

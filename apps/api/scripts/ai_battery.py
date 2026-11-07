@@ -5,7 +5,7 @@ pending because validation found problems, and how many fail. It goes through th
 the database, with the BYOK keys of an existing account (never printed). Only invented classroom content is sent.
 
 Run with scripts/ai_battery.sh (it loads the dev environment). Options:
-  --email teacher@example.org      account whose keys are used
+  --email teacher@example.org   account whose keys are used (or EDUCREA_BATTERY_EMAIL)
   --models gemini:gemini-3.5-flash-lite,groq:openai/gpt-oss-120b   (default: every confirmed free model)
   --tasks cuestionario,ficha    (default: all)
   --pause 4                     seconds between requests (free tiers limit requests per minute)
@@ -145,7 +145,7 @@ def confirmed_models(db: Session, user: User) -> list[tuple[str, str]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--email", default="teacher@example.org")
+    parser.add_argument("--email", default=os.environ.get("EDUCREA_BATTERY_EMAIL", ""), required=not os.environ.get("EDUCREA_BATTERY_EMAIL"))
     parser.add_argument("--models", default="")
     parser.add_argument("--tasks", default="")
     parser.add_argument("--pause", type=float, default=4)

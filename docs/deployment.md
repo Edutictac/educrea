@@ -23,22 +23,22 @@ La pantalla de acceso muestra «Entrar con tu cuenta EduTicTac» cuando el SSO e
 
 **Estado en EduTicTac (2026-11-03):** ya existen en Authentik dos aplicaciones OAuth2 confidenciales, ambas limitadas a los grupos `professorat` y `authentik Admins` y con el ámbito `email` servido por el mapeo propio «EduCrea verified email». El mapeo por defecto de Authentik devuelve siempre `email_verified: false`, y EduCrea rechaza esa identidad; el mapeo propio solo la da por verificada si el atributo `edutictac_verified_email` coincide con el correo actual (el mismo criterio que EduHoot). Una persona sin ese atributo ve «tu cuenta de identidad no tiene un correo verificado».
 
-| Aplicación | Emisor | Client ID | Retorno | Secreto en `pass` |
-|---|---|---|---|---|
-| `educrea` (producción) | `https://id.edutictac.es/application/o/educrea/` | `educrea.edutictac.es` | `https://educrea.edutictac.es/api/auth/oidc/callback` | `RUTA_EN_EL_GESTOR_DE_SECRETOS` |
-| `educrea-pruebas` (solo tailnet, **borrar tras las pruebas**) | `https://id.edutictac.es/application/o/educrea-pruebas/` | `educrea-pruebas` | `http://IP_DE_LA_TAILNET:5173/api/auth/oidc/callback` | `RUTA_EN_EL_GESTOR_DE_SECRETOS` |
+| Aplicación | Emisor | Client ID | Retorno |
+|---|---|---|---|
+| `educrea` (producción) | `https://id.edutictac.es/application/o/educrea/` | `educrea.edutictac.es` | `https://educrea.edutictac.es/api/auth/oidc/callback` |
+| `educrea-pruebas` (solo tailnet, **borrar tras las pruebas**) | `https://id.edutictac.es/application/o/educrea-pruebas/` | `educrea-pruebas` | `http://IP_DE_LA_TAILNET:5173/api/auth/oidc/callback` |
 
 **Dominio de producción: `educrea.edutictac.es`** (decidido el 2026-11-07; antes estaba previsto `studio.edutictac.es`). En `.env` se configura con `EDUCREA_DOMAIN=educrea.edutictac.es`, y Caddy emite el certificado cuando el DNS apunta al servidor.
 
-**Authentik (actualizado el 2026-11-07):** la aplicación de producción es ahora `educrea` (nombre «EduCrea»), con Client ID `educrea.edutictac.es`, emisor `https://id.edutictac.es/application/o/educrea/` y retorno `https://educrea.edutictac.es/api/auth/oidc/callback`. El secreto está en `pass` como `RUTA_EN_EL_GESTOR_DE_SECRETOS`. El DNS resuelve por el wildcard `*.edutictac.es`, no hizo falta crear un registro.
+**Authentik (actualizado el 2026-11-07):** la aplicación de producción es ahora `educrea` (nombre «EduCrea»), con Client ID `educrea.edutictac.es`, emisor `https://id.edutictac.es/application/o/educrea/` y retorno `https://educrea.edutictac.es/api/auth/oidc/callback`. El secreto del cliente se guarda en el gestor de contraseñas del administrador. El DNS resuelve por el wildcard `*.edutictac.es`, no hizo falta crear un registro.
 
 ## Despliegue actual (2026-11-07)
 
-- Servidor: VPS de producción (`IP_DEL_VPS`, SSH `USUARIO_SSH`, puerto `PUERTO_SSH`), directorio `/srv/educrea`.
+- Servidor: VPS de producción (los datos de acceso no se guardan en el repositorio), directorio `/srv/educrea`.
 - Servicios: `db`, `api` y `web` con `infra/compose.yaml` + `infra/compose.nginx.yaml`; el servicio `proxy` (Caddy) no se usa porque el host ya tiene nginx en 80/443.
 - Web publicada en `127.0.0.1:8097`; nginx del host hace de proxy para `https://educrea.edutictac.es` con `client_max_body_size 40m` y timeouts de 300 s para la generación de vídeo.
 - Certificado: `certbot --webroot` con nombre `educrea.edutictac.es`; renovación automática.
-- Secretos en `/srv/educrea/secrets` (`0600`) y copia en `pass`: `RUTA_EN_EL_GESTOR_DE_SECRETOS`, `RUTA_EN_EL_GESTOR_DE_SECRETOS`, `RUTA_EN_EL_GESTOR_DE_SECRETOS` y `RUTA_EN_EL_GESTOR_DE_SECRETOS`.
+- Secretos en `secrets/` del directorio de despliegue (`0600`), con copia en el gestor de contraseñas del administrador: claves de cifrado de credenciales, contraseña y URL de la base de datos y secreto del cliente OIDC.
 - Migración aplicada: `0018_project_videos`. `EDUCREA_LOCAL_AUTH_ENABLED=false`; el acceso es por SSO de Authentik y los visitantes pueden seguir usando el espacio sin cuenta.
 - Comprobado: `/api/health` 200, portada 200, `/api/auth/config` con `oidc_enabled:true`, redirección de login a Authentik y contenedores `db/api/web` saludables.
 

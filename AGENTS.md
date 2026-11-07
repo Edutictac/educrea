@@ -8,3 +8,5 @@ Visión de producto confirmada por el usuario: EduCrea debe ofrecer desde una in
 
 Cuando se autorice la Fase 6, sigue la estrategia de [recursos visuales](docs/visual-resources.md): HTML/SVG editable por defecto, imagen generada solo por elección del docente y sometida a cuotas, autorización y revisión. No introduzcas Bootstrap ni una CDN de iconos como dependencia obligatoria. El cursor con IA queda para una exploración posterior a la beta dirigida al docente.
 
+
+**Datos internos fuera del repositorio (regla del usuario, 2026-11-07):** no escribas en el código, la documentación, los tests ni los mensajes de commit IPs (públicas o de la tailnet), nombres de host internos, usuarios o puertos SSH, rutas de `pass` u otros gestores de secretos, rutas de secretos en servidores, correos personales ni cuentas reales. Usa marcadores (`IP_DE_LA_TAILNET`, `teacher@example.org`) o remite a «los datos de acceso no se guardan en el repositorio». Esos datos viven en la memoria operativa del usuario, fuera del repo. Antes de cada commit, revisa el diff buscando IPs, usuarios, correos y rutas de secretos. Vale aunque el repositorio no tenga remoto.

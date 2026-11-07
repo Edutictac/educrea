@@ -105,3 +105,24 @@ def test_embed_replaces_only_library_references():
     out = embed(html, [asset])
     assert out.count("data:image/jpeg;base64,") == 3
     assert 'src="imagenes/otra.png"' in out and "https://example.org/imagenes/sol.jpg" in out
+
+
+def test_deleting_a_project_removes_everything_it_owns(client: TestClient):
+    """SQLite must cascade like PostgreSQL: no orphan images, versions or files after deleting a project."""
+    from sqlalchemy import func, select
+    from sqlalchemy.orm import Session
+    from conftest import engine
+    from educrea_api.models import FileVersion, ProjectFile
+    from educrea_api.models.entities import ProjectAsset
+
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    created = client.post(f"{base}/files", headers=headers, json={"path": "index.html", "content": "<h1>Hola</h1>"})
+    assert created.status_code == 201
+    assert client.post(f"{base}/assets?filename=trompeta.png&alt=Trompeta", headers=headers,
+                       content=PNG).status_code == 201
+    assert client.delete(base, headers=headers).status_code == 204
+    assert client.get(base).status_code == 404
+    with Session(engine) as db:
+        for model in (ProjectFile, FileVersion, ProjectAsset):
+            assert db.scalar(select(func.count()).select_from(model)) == 0, model.__name__

@@ -6,15 +6,16 @@ import LoginView from './views/LoginView.vue'
 import ProjectsView from './views/ProjectsView.vue'
 import ProjectView from './views/ProjectView.vue'
 import AiProvidersView from './views/AiProvidersView.vue'
-import GuestView from './views/GuestView.vue'
+import BetaAdminView from './views/BetaAdminView.vue'
 import './style.css'
 
 const router = createRouter({ history: createWebHistory(), routes: [
-  { path: '/', redirect: '/explore' },
-  { path: '/explore', component: GuestView },
+  { path: '/', redirect: '/projects' },
+  { path: '/explore', redirect: '/projects' },
   { path: '/login', component: LoginView },
   { path: '/projects', component: ProjectsView },
   { path: '/projects/:id', component: ProjectView, meta: { wide: true } },
+  { path: '/admin/beta', component: BetaAdminView },
   { path: '/ai/providers', component: AiProvidersView },
 ] })
 

@@ -12,7 +12,12 @@ onMounted(async () => {
     oidcEnabled.value = config.oidc_enabled; localEnabled.value = config.local_auth_enabled
   } catch { /* keep local form */ }
 })
-const ssoUrl = () => `/api/auth/oidc/login?next=${encodeURIComponent(route.query.save === 'guest' ? '/explore' : '/projects')}`
+function nextPath() {
+  const next = route.query.next
+  return typeof next === 'string' && next.startsWith('/') && !next.startsWith('//') && !next.includes('\\') && next !== '/login'
+    ? next : '/projects'
+}
+const ssoUrl = () => `/api/auth/oidc/login?next=${encodeURIComponent(nextPath())}`
 const email = ref('')
 const password = ref('')
 const error = ref('')
@@ -22,7 +27,7 @@ const router = useRouter()
 const route = useRoute()
 async function submit(kind: 'login' | 'register') {
   pending.value = true; error.value = ''
-  try { await auth.authenticate(kind, email.value, password.value); router.push(route.query.save === 'guest' ? '/explore' : '/projects') }
+  try { await auth.authenticate(kind, email.value, password.value); router.push(nextPath()) }
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
   finally { pending.value = false }
 }
@@ -31,8 +36,8 @@ async function submit(kind: 'login' | 'register') {
 <template>
   <section class="card narrow">
     <h1>{{ t('title') }}</h1>
-    <p>{{ route.query.save === 'guest' ? t('guestSignIn') : t('welcome') }}</p>
-    <p><RouterLink to="/explore">{{ t('exploreWithoutAccount') }}</RouterLink></p>
+    <p>{{ t('openRegisterHint') }}</p>
+    <p><RouterLink to="/projects">{{ t('exploreWithoutAccount') }}</RouterLink></p>
     <p v-if="oidcEnabled"><a class="button" :href="ssoUrl()">{{ t('ssoLogin') }}</a></p>
     <p v-if="oidcEnabled && localEnabled" class="hint">{{ t('orWithAccount') }}</p>
     <form v-if="localEnabled" @submit.prevent="submit('login')">

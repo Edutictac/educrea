@@ -68,3 +68,9 @@ El docente puede subir su propio material (PDF, también escaneado con OCR, DOCX
 - Se emite el progreso real: `status` con `section`, `index` y `total`, `token` y un evento `section` al terminar cada una. La interfaz muestra «Sección 4 de 9» con una barra.
 - Una sección que falla se reintenta hasta tres veces: con «IA automática», en otro modelo o proveedor gratuito; con una IA elegida, se informa del error. Si llega cortada, se rescata su texto. Si no se consigue, se conserva su texto anterior y la propuesta queda pendiente con el aviso «no se han podido redactar: …».
 - El documento montado (con las nueve cabeceras en orden y en el idioma del encargo) se guarda como **una sola propuesta**, con la comprobación de secciones y la verificación de citas habituales, y se aplica sola si todo es correcto.
+
+## IA EduCrea incluida
+
+La modalidad institucional autorizada convive con BYOK en el mismo motor, adaptadores y registro de uso.
+Su router sustituible por EduPrompt Core, claves institucionales, cuota mensual única, reservas y presupuestos
+se documentan en [included-ai.md](included-ai.md).

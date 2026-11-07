@@ -33,3 +33,23 @@ La pantalla de acceso muestra «Entrar con tu cuenta EduTicTac» cuando el SSO e
 **Pendiente en Authentik (fuera del repositorio):** la aplicación de producción sigue creada con el nombre y los datos antiguos (`edustudio`, Client ID y retorno `studio.edutictac.es`). Para que el login funcione en el dominio nuevo hay que cambiar en Authentik el nombre y el slug (el emisor pasaría a `.../application/o/educrea/`), el Client ID y la URL de retorno `https://educrea.edutictac.es/api/auth/oidc/callback`, y mover el secreto en `pass` a `RUTA_EN_EL_GESTOR_DE_SECRETOS`. Cambiar solo la URL de retorno y dejar el resto basta para empezar, si se prefiere no tocar el slug.
 
 Pendiente también: crear el registro DNS de `educrea.edutictac.es` y desplegar. Hasta entonces solo la aplicación de pruebas es utilizable.
+
+## IA EduCrea institucional (opcional)
+
+Antes de arrancar el Compose actualizado, prepara los archivos `secrets/qwen_api_key` y
+`secrets/deepseek_api_key` con permisos `0600` (vacíos si no se activa el modo incluido).
+Aplica la migración `0013_included_ai` y configura modelos, tarifas y presupuestos antes de activar
+`EDUCREA_FREE_AI_ENABLED`. Revisa [included-ai.md](included-ai.md) para configuración, verificación y rollback.
+
+## Invitaciones y lista de espera
+
+Antes de usar el backend actualizado, aplica hasta `0015_included_ai_waitlist` (`alembic upgrade head`),
+que incluye `0014_included_ai_access`. Las migraciones no conceden acceso a ninguna cuenta existente o nueva.
+La lista de espera se puede utilizar con la IA institucional desactivada. La aprobación se hace desde el servidor
+con la herramienta de [gestión de invitaciones](included-ai.md#invitaciones-y-lista-de-espera), sobre cuentas ya registradas.
+
+## Zona de administración y correo de invitaciones
+
+Aplicar hasta `0016_beta_admin` y asignar explícitamente la primera cuenta administradora desde el servidor.
+Crear también `secrets/smtp_password` (`0600`, vacío si no se usa SMTP) para el Compose actualizado.
+El correo requiere remitente, relay TLS, URL pública HTTPS y SSO configurados. Ver [beta-admin.md](beta-admin.md).

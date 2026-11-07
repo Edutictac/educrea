@@ -80,6 +80,7 @@ def test_login_flow_creates_user_session_and_is_idempotent(client: TestClient, s
     assert done.status_code == 303 and done.headers["location"] == "/projects/abc"
     me = client.get("/api/auth/me")
     assert me.status_code == 200 and me.json()["user"]["email"] == "teacher@example.org"
+    assert me.json()["user"]["included_ai_authorized"] is False  # SSO never auto-invites a new account.
     user_id = me.json()["user"]["id"]
     client.cookies.clear()
     assert login_as(client).status_code == 303
@@ -149,3 +150,14 @@ def test_rejects_forged_signature_and_expired_token(client: TestClient, sso):
     claims_for_next.update({"nonce": query["nonce"][0], "exp": int(time.time()) - 3600})
     assert client.get("/api/auth/oidc/callback", params={"code": "ok", "state": query["state"][0]}).status_code == 401
     assert client.get("/api/auth/me").status_code == 401
+
+
+def test_new_sso_account_can_join_waitlist_but_never_self_invites(client: TestClient, sso):
+    assert login_as(client, included_ai_authorized=True, invited=True).status_code == 303
+    session = client.get('/api/auth/me').json()
+    assert session['user']['included_ai_authorized'] is False
+    headers = {'X-CSRF-Token': session['csrf_token']}
+    response = client.post('/api/ai/included/waitlist', headers=headers, json={
+        'teaching_context': 'Música en Primaria', 'intended_use': 'Crear actividades musicales para el aula.'})
+    assert response.status_code == 200 and response.json()['status'] == 'pending'
+    assert client.get('/api/ai/included').json()['authorized'] is False

@@ -10,6 +10,9 @@ class Credentials(BaseModel):
 
 
 class UserOut(BaseModel):
+    is_guest: bool
+    is_admin: bool
+    included_ai_authorized: bool
     id: UUID
     email: str
     model_config = ConfigDict(from_attributes=True)

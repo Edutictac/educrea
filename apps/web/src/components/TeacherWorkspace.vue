@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import IncludedAiQuota from './IncludedAiQuota.vue'
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { locale, t } from '../i18n'
@@ -164,6 +165,7 @@ async function generateFirstVersion() {
 </script>
 
 <template>
+  <IncludedAiQuota />
   <section class="teacher-panel">
     <h2>{{ t('teacherMode') }}</h2>
     <p>{{ t('teacherIntro') }}</p>

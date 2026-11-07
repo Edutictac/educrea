@@ -59,7 +59,13 @@ def automatic_context(files: list[ProjectFile], instruction: str) -> tuple[set[s
 def prepare(db: Session, project_id: UUID, user_id: UUID,
             request: GenerateInput) -> tuple[str, str, dict[str, dict], set[str], list[dict]]:
     project = project_for_owner(db, project_id, user_id)
-    if request.mode == "paid":
+    if request.mode == "included":
+        from .access import require_access
+        require_access(db, user_id)
+        if request.provider != "educrea":
+            raise HTTPException(422, "Elige IA EduCrea para el modo incluido")
+        key = ""  # Institutional keys are resolved exclusively by the internal router.
+    elif request.mode == "paid":
         key = authorize_paid(db, user_id, request.provider, request.model)
     else:
         allowed = free_models() if request.provider == "gemini" else provider_free_models(request.provider)
@@ -85,6 +91,10 @@ def prepare(db: Session, project_id: UUID, user_id: UUID,
                    {"path": file.path, "content": file.content}
                    for file in files if file.path in selected]}
     encoded = json.dumps(context, ensure_ascii=False)
+    if request.mode == "included":
+        from .included import get_settings
+        if len(encoded.encode()) + 512 > get_settings().free_ai_max_context_tokens:
+            raise HTTPException(413, "El contexto supera el límite de IA EduCrea.")
     if len(encoded.encode()) > MAX_CONTEXT_BYTES:
         raise HTTPException(413, "El proyecto supera el contexto máximo de esta fase")
     passages: list[dict] = []

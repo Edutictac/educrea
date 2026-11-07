@@ -78,3 +78,31 @@ describe('primera versión desde el encargo', () => {
     vi.unstubAllGlobals()
   })
 })
+
+it('sends included AI and task metadata without a personal model or a paid approval', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(new Response(
+    'event: status\ndata: {"stage":"generating","provider":"educrea"}\n\nevent: proposal\ndata: {"id":"included-proposal","provider":"educrea","model":"","usage":{}}\n\n'))
+  vi.stubGlobal('fetch', fetchMock)
+  try {
+    await streamProposal('project-1', 'Redacta una guía', 'educrea', '', [], false, 'csrf',
+      new AbortController().signal, () => {}, 'included', undefined, undefined, true, false, [], 'general')
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      provider: 'educrea', model: '', mode: 'included', task_type: 'general', paid_authorized: false,
+    })
+    expect(fetchMock.mock.calls[0][1].body).not.toContain('api_key')
+  } finally { vi.unstubAllGlobals() }
+})
+
+it('submits a beta request with CSRF, without choosing permission or an account', async () => {
+  const { joinBetaWaitlist } = await import('./ai')
+  const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: 'pending' })))
+  vi.stubGlobal('fetch', fetchMock)
+  try {
+    expect(await joinBetaWaitlist('Música en Primaria', 'Crear actividades musicales', 'csrf')).toEqual({ status: 'pending' })
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/ai/included/waitlist')
+    expect(fetchMock.mock.calls[0][1].headers['X-CSRF-Token']).toBe('csrf')
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      teaching_context: 'Música en Primaria', intended_use: 'Crear actividades musicales',
+    })
+  } finally { vi.unstubAllGlobals() }
+})

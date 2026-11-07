@@ -13,7 +13,7 @@ export function useAiProgress() {
   function reset() { progress.value = { stage: 'preparing', ai: '', passages: 0, chars: 0, retry: false } }
   function track(event: AiStreamEvent) {
     if (event.event === 'status') {
-      const ai = `${PROVIDER_NAMES[event.data.provider as ProviderName] ?? event.data.provider ?? ''} · ${event.data.model ?? ''}`
+      const ai = event.data.provider === 'educrea' ? 'IA EduCrea' : `${PROVIDER_NAMES[event.data.provider as ProviderName] ?? event.data.provider ?? ''} · ${event.data.model ?? ''}`
       progress.value = { ...progress.value, ai, stage: event.data.stage === 'consulting' ? 'consulting' : 'thinking', chars: 0,
         passages: event.data.passages ?? progress.value.passages, retry: event.data.retry ?? progress.value.retry,
         section: event.data.index && event.data.total ? { index: event.data.index, total: event.data.total,
@@ -32,6 +32,7 @@ const errorKeys: Record<string, Parameters<typeof t>[0]> = {
 
 // Readable error; when the teacher picked a specific AI, suggests another one or «IA automática».
 export function describeAiError(cause: unknown, suggest = true): string {
+  if (cause instanceof AiError && cause.provider === 'educrea') return cause.message
   if (cause instanceof AiError && cause.code && errorKeys[cause.code]) {
     const label = cause.provider ? PROVIDER_NAMES[cause.provider as ProviderName] ?? cause.provider : ''
     const text = t(errorKeys[cause.code]).replace('{provider}', label).trim()

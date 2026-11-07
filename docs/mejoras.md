@@ -16,6 +16,7 @@ Lista acordada con el usuario el 2026-11-06 para ir implementando poco a poco. M
 
 ## 3. Grandes, por orden de impacto
 
+- [x] (2026-11-07; pendiente de commit) **Control de acceso a la beta y lista de espera:** permiso por cuenta, concesión/revocación desde el servidor, validación antes de consumir y formulario para solicitar participación sin obtener acceso automáticamente. Las cuentas nuevas de EduTicTac tampoco reciben invitación por defecto. BYOK y registro abiertos; cuota institucional e historial conservados. Pendientes la activación y las pruebas reales del piloto. Ver [roadmap.md](roadmap.md#beta-de-ia-educrea-por-invitación).
 - [ ] **Enlace o QR para el alumnado** (publicación en un origen separado, sin cuentas ni datos personales, con caducidad y despublicación). *Requiere autorización: es publicación.*
 - [x] (2026-11-06) **Documentos largos sección a sección:** la situación de aprendizaje se genera y amplía por secciones (una llamada por sección, progreso «Sección 4 de 9», reintento solo de la sección que falla, «desarrolla solo la evaluación»).
 - [ ] **Batería de pruebas con IA real:** unos 10 encargos típicos contra los modelos gratuitos configurados; medir cuántos salen válidos a la primera y ajustar las instrucciones por modelo. Consume cuota gratuita.
@@ -32,3 +33,5 @@ Lista acordada con el usuario el 2026-11-06 para ir implementando poco a poco. M
 
 - Las filas del diff (`DiffView.vue`) usan `role="row"` sin celdas `role="cell"`; revisarlo en la auditoría de accesibilidad.
 - La exportación PNG elimina los scripts: solo sirve para la infografía, no para las plantillas interactivas.
+
+- [x] (2026-11-07; pendiente de commit) **Zona de administración de la beta:** rol por cuenta, admisión/revocación y envío SMTP de invitaciones con aceptación por correo SSO verificado. Configuración de remitente/SMTP necesaria para envíos reales; ver [beta-admin.md](beta-admin.md).

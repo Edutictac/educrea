@@ -18,10 +18,12 @@ def auth_config() -> dict:
 
 
 @router.get("/oidc/login")
-def oidc_login(next: str | None = Query(default=None, max_length=300), db: Session = Depends(get_db)):
+def oidc_login(request: Request, next: str | None = Query(default=None, max_length=300), db: Session = Depends(get_db)):
     if not oidc.enabled():
         raise HTTPException(404, "El inicio de sesión único no está configurado")
-    url, cookie = oidc.begin(db, next)
+    from ..services.guest_workspace import browser_guest
+    guest = browser_guest(db, request)
+    url, cookie = oidc.begin(db, next, guest_user_id=guest.id if guest else None)
     response = RedirectResponse(url, status_code=303)
     # Lax: the callback is a cross-site top-level navigation coming back from the identity provider.
     response.set_cookie(FLOW_COOKIE, cookie, httponly=True, secure=get_settings().cookie_secure, samesite="lax",

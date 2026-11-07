@@ -15,14 +15,91 @@ from ..services.ai import agent, engine, sections as section_service
 from ..services import sources as source_service
 from ..services.ai import quotas
 from ..services.ai import pricing
+from ..services.ai import included
+from ..services.ai.routing import TaskContext, get_router
 from ..services.ai.credentials import encrypt_key, personal_credential
 from ..services.ai.providers.base import ProviderError
 from ..services.ai.providers.gemini import GeminiProvider, get_gemini_provider
 from ..services.ai.providers import registry
 from ..services.ai.schemas import (BudgetInput, CredentialInput, DuaInput, FreeConfirmation, GenerateInput,
-                                   PreferredModel, ProposalOut, SectionsInput)
+                                   PreferredModel, ProposalOut, SectionsInput, WaitlistInput)
 
 router = APIRouter(tags=["ai"])
+
+
+@router.get("/ai/included")
+def included_status(user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    return included.summary(db, user.id)
+
+
+@router.get("/ai/included/history")
+def included_history(user: User = Depends(current_user), db: Session = Depends(get_db)) -> list:
+    return included.history(db, user.id)
+
+
+@router.get("/ai/included/waitlist")
+def waitlist_status(user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
+    return included.access.waitlist_status(db, user.id)
+
+
+@router.post("/ai/included/waitlist")
+def join_waitlist(data: WaitlistInput, user: User = Depends(require_csrf), db: Session = Depends(get_db)) -> dict:
+    return included.access.join_waitlist(db, user.id, data.teaching_context, data.intended_use)
+
+
+def wants_included(db, user_id, choice=None):
+    # Explicit BYOK stays BYOK, even when the included service is paused.
+    return (choice is not None and choice.provider == "educrea") or (
+        (choice is None or not choice.provider) and included.get_settings().free_ai_enabled
+        and included.access.status(db, user_id) == "invited")
+
+
+def included_request(instruction, auto_apply, source_ids=None):
+    return GenerateInput.model_construct(instruction=instruction, provider="educrea", model="",
+        mode="included", automatic=True, auto_apply=auto_apply, source_ids=source_ids or [],
+        whole_sources=bool(source_ids))
+
+
+async def included_events(db, project_id, user_id, data, *, dua_target=None):
+    try:
+        # Same context, structured output, ownership, proposal history and apply/undo as BYOK.
+        _, prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)
+        brief = engine.read_brief(db, project_id)
+        path = dua_target or (data.context_paths[0] if len(data.context_paths) == 1 else "")
+        chosen = get_router().select(TaskContext.from_project(data.task_type, data.output_type, data.generator_type, path, brief))
+    except HTTPException as exc:
+        yield _sse("error", {"status_code": exc.status_code, "message": exc.detail, "provider": "educrea"})
+        return
+
+    def finish(content, _usage):
+        return engine.persist(db, project_id, user_id, "", content, {}, snapshot, selected,
+            provider="educrea", source_ids=data.source_ids, passages_used=passages, dua_target=dua_target)
+
+    try:
+        async for name, value in included.run(db, user_id, chosen, prompt, finish, task_type=data.task_type):
+            if name == "result":
+                proposal = engine.apply_if_requested(db, project_id, value, data.auto_apply)
+                yield _sse("proposal", ProposalOut.model_validate(proposal).model_dump(mode="json"))
+            else:
+                yield _sse(name, value)
+    except HTTPException as exc:
+        yield _sse("error", {"status_code": exc.status_code, "message": exc.detail, "provider": "educrea"})
+
+
+async def included_proposal(db, project_id, user_id, data, *, dua_target=None):
+    _, prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)
+    chosen = get_router().select(TaskContext.from_project(data.task_type, data.output_type, data.generator_type,
+        dua_target or (data.context_paths[0] if len(data.context_paths) == 1 else ""),
+        engine.read_brief(db, project_id)))
+
+    def finish(content, _usage):
+        return engine.persist(db, project_id, user_id, "", content, {}, snapshot, selected,
+            provider="educrea", source_ids=data.source_ids, passages_used=passages, dua_target=dua_target)
+
+    async for name, value in included.run(db, user_id, chosen, prompt, finish,
+                                         task_type=data.task_type, streaming=False):
+        if name == "result":
+            return engine.apply_if_requested(db, project_id, value, data.auto_apply)
 
 
 @router.get("/ai/quota")
@@ -55,6 +132,8 @@ def provider_status(provider_name: str, user: User = Depends(current_user), db: 
 @router.put("/ai/providers/{provider_name}/key", status_code=204)
 def save_provider_key(provider_name: str, data: CredentialInput, user: User = Depends(require_csrf),
                       db: Session = Depends(get_db)) -> None:
+    if user.is_guest:
+        raise HTTPException(403, "Regístrate para guardar claves de API. Sin cuenta puedes usarlas de forma temporal.")
     if provider_name not in ("gemini", "openrouter", "groq", "mistral", "openai", "anthropic", "deepseek"):
         raise HTTPException(404, "Proveedor no encontrado")
     value = data.api_key.get_secret_value().strip()
@@ -73,6 +152,8 @@ def save_provider_key(provider_name: str, data: CredentialInput, user: User = De
 @router.post("/ai/providers/{provider_name}/free-models/{model:path}/confirm", status_code=204)
 def confirm_provider_model(provider_name: str, model: str, data: FreeConfirmation,
                            user: User = Depends(require_csrf), db: Session = Depends(get_db)) -> None:
+    if user.is_guest:
+        raise HTTPException(403, "Regístrate para guardar claves de API. Sin cuenta puedes usarlas de forma temporal.")
     if provider_name not in ("gemini", "openrouter", "groq") or model not in registry.free_models(provider_name):
         raise HTTPException(403, "Modelo no autorizado en modo gratuito")
     credential = personal_credential(db, user.id, provider_name)
@@ -85,6 +166,8 @@ def confirm_provider_model(provider_name: str, model: str, data: FreeConfirmatio
 @router.delete("/ai/providers/{provider_name}/key", status_code=204)
 def revoke_provider_key(provider_name: str, user: User = Depends(require_csrf),
                         db: Session = Depends(get_db)) -> None:
+    if user.is_guest:
+        raise HTTPException(403, "Regístrate para guardar claves de API. Sin cuenta puedes usarlas de forma temporal.")
     if provider_name not in ("gemini", "openrouter", "groq", "mistral", "openai", "anthropic", "deepseek"):
         raise HTTPException(404, "Proveedor no encontrado")
     credential = personal_credential(db, user.id, provider_name)
@@ -200,6 +283,8 @@ async def generate_proposal(project_id: UUID, data: GenerateInput,
                             user: User = Depends(require_csrf), db: Session = Depends(get_db),
                             provider: GeminiProvider = Depends(get_gemini_provider)) -> AiProposal:
     user_id = user.id
+    if data.mode == "included":
+        return await included_proposal(db, project_id, user_id, data)
     key, prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)
     maximum_cost, price, maximum_tokens = paid_terms(data, prompt)
     name, model = data.provider, data.model
@@ -272,6 +357,9 @@ async def generate_with_first_free(db: Session, project_id: UUID, user_id: UUID,
                                    choice: PreferredModel | None = None) -> AiProposal:
     """One generation with the AI picked in the selector (or the first confirmed free one); the backend chooses
     the context files and falls back to the next free AI if the chosen one is saturated."""
+    if wants_included(db, user_id, choice):
+        return await included_proposal(db, project_id, user_id,
+            included_request(instruction, auto_apply, source_ids), dua_target=dua_target)
     available = registry.preferred_free(db, user_id, choice.provider if choice else None, choice.model if choice else None)
     if available is None:
         raise HTTPException(409, "Configura un proveedor gratuito y confirma un modelo antes de generar")
@@ -420,6 +508,10 @@ async def stream_proposal(project_id: UUID, data: GenerateInput,
                           user: User = Depends(require_csrf), db: Session = Depends(get_db),
                           provider: GeminiProvider = Depends(get_gemini_provider)) -> StreamingResponse:
     user_id = user.id
+    if data.mode == "included":
+        from .projects import project_for_owner
+        project_for_owner(db, project_id, user_id)
+        return _streaming(included_events(db, project_id, user_id, data))
     key, prompt, snapshot, selected, passages = engine.prepare(db, project_id, user_id, data)
     maximum_cost, price, maximum_tokens = paid_terms(data, prompt)
     return _streaming(ai_events(db, project_id, user_id, data, provider, key, prompt, snapshot, selected, passages,
@@ -473,6 +565,8 @@ async def stream_from_brief(project_id: UUID, choice: PreferredModel | None = No
 
     project_for_owner(db, project_id, user.id)
     instruction, source_ids = brief_request(db, project_id)
+    if wants_included(db, user.id, choice):
+        return _streaming(included_events(db, project_id, user.id, included_request(instruction, True, source_ids)))
     data, key, prompt, snapshot, selected, passages = first_free_request(db, project_id, user.id, instruction, True,
                                                                         choice, source_ids)
     return _streaming(ai_events(db, project_id, user.id, data, provider, key, prompt, snapshot, selected, passages))
@@ -483,6 +577,9 @@ async def stream_dua(project_id: UUID, data: DuaInput, user: User = Depends(requ
                      db: Session = Depends(get_db),
                      provider: GeminiProvider = Depends(get_gemini_provider)) -> StreamingResponse:
     instruction = dua_request(db, project_id, user.id, data)
+    if wants_included(db, user.id, data):
+        return _streaming(included_events(db, project_id, user.id,
+            included_request(instruction, data.auto_apply), dua_target=data.path))
     request, key, prompt, snapshot, selected, passages = first_free_request(db, project_id, user.id, instruction,
                                                                            data.auto_apply, data)
     return _streaming(ai_events(db, project_id, user.id, request, provider, key, prompt, snapshot, selected, passages,
@@ -529,7 +626,10 @@ async def stream_sections(project_id: UUID, data: SectionsInput, user: User = De
         raise HTTPException(422, "Sección desconocida")
     targets = [name for name in engine.SITUATION_SECTIONS if not data.sections or name in data.sections]
     explicit = bool(data.provider and data.model)
-    available = registry.preferred_free(db, user_id, data.provider, data.model)
+    institutional = wants_included(db, user_id, data)
+    explicit = explicit or institutional
+    available = (("educrea", "", "") if institutional else
+                 registry.preferred_free(db, user_id, data.provider, data.model))
     if available is None:
         raise HTTPException(409, "Configura un proveedor gratuito y confirma un modelo antes de generar")
     files = list(db.scalars(select(ProjectFile).where(ProjectFile.project_id == project_id)))
@@ -569,28 +669,44 @@ async def stream_sections(project_id: UUID, data: SectionsInput, user: User = De
                                       "section": local[section], "index": index, "total": len(targets)})
                 pieces: list[str] = []
                 usage: dict = {}
-                reservation = quotas.reserve(db, user_id, name, model)
+                reservation = None if institutional else quotas.reserve(db, user_id, name, model)
                 try:
-                    adapter = provider if name == "gemini" else registry.adapter(name)
-                    async for chunk in adapter.stream(key, model, prompt):
-                        if chunk.text:
-                            pieces.append(chunk.text)
-                            yield _sse("token", {"text": chunk.text})
-                        if chunk.usage:
-                            usage = chunk.usage
+                    if institutional:
+                        def validate_section(content, _usage):
+                            parsed = engine.parse_draft(content, "educrea")
+                            if len(section_service.clean(parsed.changes[0].content, local[section])) < section_service.MIN_SECTION_CHARS:
+                                raise HTTPException(502, "La sección de IA EduCrea llegó vacía.")
+                            return parsed
+                        if len(prompt.encode()) + 512 > included.get_settings().free_ai_max_context_tokens:
+                            raise HTTPException(413, "El contexto supera el límite de IA EduCrea.")
+                        async for event, value in included.run(db, user_id, get_router().select(TaskContext(task_type="planning")), prompt,
+                                                              validate_section, task_type="planning"):
+                            if event == "token":
+                                pieces.append(value["text"])
+                                yield _sse("token", value)
+                    else:
+                        adapter = provider if name == "gemini" else registry.adapter(name)
+                        async for chunk in adapter.stream(key, model, prompt):
+                            if chunk.text:
+                                pieces.append(chunk.text)
+                                yield _sse("token", {"text": chunk.text})
+                            if chunk.usage:
+                                usage = chunk.usage
                     draft = engine.parse_draft("".join(pieces), name)
                     content = section_service.clean(draft.changes[0].content, local[section])
                     if len(content) < section_service.MIN_SECTION_CHARS:
                         raise HTTPException(502, "La sección llegó vacía")
-                    quotas.reconcile(db, reservation, usage)
+                    if reservation:
+                        quotas.reconcile(db, reservation, usage)
                     parts_by_section[section] = content
                     citations += [c.model_dump() for c in draft.citations]
                     not_covered += draft.not_covered
                     done = True
                 except (ProviderError, HTTPException) as exc:
                     db.rollback()
-                    quotas.reconcile(db, reservation, usage, failed=True)
-                    salvaged = engine.salvage_document("".join(pieces), "seccion.md") if pieces else None
+                    if reservation:
+                        quotas.reconcile(db, reservation, usage, failed=True)
+                    salvaged = engine.salvage_document("".join(pieces), "seccion.md") if pieces and not institutional else None
                     if salvaged:
                         parts_by_section[section] = section_service.clean(salvaged, local[section])
                         rescued.append(local[section])
@@ -603,7 +719,7 @@ async def stream_sections(project_id: UUID, data: SectionsInput, user: User = De
                         if alternative is not None:
                             name, model, key = alternative
                             continue
-                        if explicit and retryable:
+                        if institutional or (explicit and retryable):
                             yield _sse("error", {"status_code": getattr(exc, "status_code", 502),
                                                  "message": str(getattr(exc, "detail", exc)),
                                                  "code": _error_code(exc), "provider": name, "explicit": True})

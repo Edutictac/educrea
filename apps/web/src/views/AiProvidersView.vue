@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import IncludedAiQuota from '../components/IncludedAiQuota.vue'
 import ProviderGuide from '../components/ProviderGuide.vue'
 import { providerGuides, suggestedProvider } from '../services/providerGuide'
 import { t } from '../i18n'
@@ -57,7 +58,7 @@ async function loadBudget() {
 async function refresh() { statuses.value = await providersStatus(); providerLoadState.value = 'ready'; providerLoadError.value = '' }
 async function save() {
   busy.value = true; error.value = ''; message.value = ''
-  try { await saveProviderKey(provider.value, key.value, auth.csrf); key.value = ''; await refresh(); message.value = t('keySaved') }
+  try { await saveProviderKey(provider.value, key.value, auth.csrf); key.value = ''; await refresh(); message.value = t(auth.user?.is_guest ? 'temporaryKeyReady' : 'keySaved') }
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
   finally { busy.value = false }
 }
@@ -90,7 +91,8 @@ async function saveBudget() {
   <section class="card narrow">
     <RouterLink to="/projects">← {{ t('back') }}</RouterLink>
     <h1>{{ t('myProviders') }}</h1>
-    <p>{{ t('byokIntro') }}</p>
+    <IncludedAiQuota />
+    <p>{{ t(auth.user?.is_guest ? 'temporaryKeyIntro' : 'byokIntro') }}</p>
     <label>{{ t('providerLabel') }}<select v-model="provider" @change="providerSelected = true">
       <option v-for="name in names" :key="name" :value="name">{{ name }}</option>
     </select></label>
@@ -100,7 +102,7 @@ async function saveBudget() {
     <p v-if="providerLoadState === 'error'" role="alert">{{ t('guideLoadFailed') }}: {{ providerLoadError }}
       <button type="button" class="secondary" @click="loadProviders">{{ t('guideRetry') }}</button></p>
     <ProviderGuide :provider="provider" :mode="setupMode" :status-state="providerLoadState"
-      :configured="status?.configured ?? false" :confirmed-free="!!status?.confirmed_free_models.length"
+      :ephemeral="!!auth.user?.is_guest" :configured="status?.configured ?? false" :confirmed-free="!!status?.confirmed_free_models.length"
       :has-free-models="!!status?.verified_free_models.length" :has-paid-models="!!status?.paid_models.length"
       :paid-ready="!!budget?.monthly_limit_microusd">
       <template #key>
@@ -109,7 +111,7 @@ async function saveBudget() {
           <p v-if="status" role="status">{{ status.configured ? t('keyConfigured') : t('keyMissing') }}</p>
           <form @submit.prevent="save"><label>{{ t('providerKey') }}
             <input v-model="key" type="password" autocomplete="off" minlength="10" required /></label>
-            <div class="actions"><button :disabled="busy" type="submit">{{ t('saveKey') }}</button>
+            <div class="actions"><button :disabled="busy" type="submit">{{ t(auth.user?.is_guest ? 'useTemporaryKey' : 'saveKey') }}</button>
               <button v-if="status?.configured" :disabled="busy" type="button" class="danger" @click="revoke">{{ t('revokeKey') }}</button></div>
           </form>
         </template>
@@ -143,6 +145,6 @@ async function saveBudget() {
       </template>
     </ProviderGuide>
     <p v-if="error" role="alert">{{ error }}</p><p v-if="message" role="status">{{ message }}</p>
-    <p class="notice">{{ t('keyPrivacy') }}</p>
+    <p class="notice">{{ t(auth.user?.is_guest ? 'temporaryKeyIntro' : 'keyPrivacy') }}</p>
   </section>
 </template>

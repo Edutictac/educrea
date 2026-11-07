@@ -5,8 +5,15 @@ Protocolo para la primera ronda de pruebas con profesorado. Lo prepara el equipo
 ## Participantes y preparación
 
 - De 5 a 8 docentes: Infantil, Primaria y algún especialista (Música, Inglés, PT/AL). Mezcla de perfiles: con soltura digital y sin ella.
-- Cuenta EduTicTac o cuenta local de pruebas, con un proveedor gratuito ya configurado. No usar datos del alumnado: ni nombres en los encargos ni fotos con alumnado identificable.
+- Cuenta EduTicTac o cuenta local de pruebas **invitada a IA EduCrea**, sin necesidad de configurar claves personales, con el control de acceso por invitación implementado (decisión del 2026-11-07; ver [roadmap.md](roadmap.md)). El registro y BYOK siguen abiertos para las cuentas no invitadas.
+- Incluir una comprobación de regresión con API propia y cuentas no invitadas o con acceso revocado: deben poder usar BYOK, pero no gastar presupuesto institucional.
+- No usar datos del alumnado: ni nombres en los encargos ni fotos con alumnado identificable.
 - Sesión de 45 minutos, en persona o por videollamada con pantalla compartida. Pedir permiso para tomar notas; no grabar sin consentimiento por escrito.
+
+Las cuentas nuevas de EduTicTac no tienen acceso institucional por defecto. Pueden solicitar participación
+mediante la lista de espera, indicando nivel/especialidad y uso previsto; la aprobación manual habilita la beta.
+Mientras esperan pueden utilizar BYOK. Para la ronda guiada, comprobar que las cuentas participantes ya están
+aprobadas, sin pedirles claves personales.
 
 ## Tareas (sin ayuda, pensando en voz alta)
 

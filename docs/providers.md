@@ -21,3 +21,9 @@ También conviene actualizar los modelos de **Groq** (ahora `openai/gpt-oss-120b
 Se descartan por ahora Cohere (solo uso no comercial), los proveedores que exigen verificación de identidad en China (ModelScope, SiliconFlow, Zhipu), los agregadores con catálogo inestable (Kilo, LLM7) y Cloudflare Workers AI (10 000 «neurons» diarias compartidas y una URL por cuenta).
 
 **Orden y cambio automático:** el primer modelo gratuito confirmado se elige en este orden: Gemini, Groq, OpenRouter y Ollama. El selector del proyecto permite elegir cualquiera de los modelos gratuitos confirmados para generar la primera versión, adaptar con DUA o pedir cambios al asistente. Si el proveedor responde 429, 503 o 504 (saturado o sin cuota), estas operaciones pueden pasar al siguiente proveedor gratuito confirmado del docente; el asistente solo cambia antes de recibir texto. Nunca pasan a uno de pago.
+
+## IA EduCrea incluida
+
+La modalidad institucional autorizada convive con BYOK en el mismo motor, adaptadores y registro de uso.
+Su router sustituible por EduPrompt Core, claves institucionales, cuota mensual única, reservas y presupuestos
+se documentan en [included-ai.md](included-ai.md).

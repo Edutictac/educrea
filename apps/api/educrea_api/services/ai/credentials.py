@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...config import get_settings
-from ...models import AiCredential
+from ...models import AiCredential, User
 
 
 @lru_cache
@@ -43,5 +43,8 @@ def rotate_ciphertext(value: str) -> str:
 
 
 def personal_credential(db: Session, user_id: UUID, provider: str = "gemini") -> AiCredential | None:
+    user = db.get(User, user_id)
+    if user and user.is_guest:
+        return None
     return db.scalar(select(AiCredential).where(AiCredential.user_id == user_id, AiCredential.provider == provider))
 

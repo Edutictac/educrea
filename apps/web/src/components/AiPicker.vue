@@ -3,14 +3,17 @@
 // because they need an estimate and an explicit approval for every generation.
 import { computed, onMounted, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { useAuthStore } from '../stores/auth'
 import { t } from '../i18n'
 import { providersStatus, type ProviderName, type ProviderStatuses } from '../services/ai'
 import { aiChoice, PROVIDER_NAMES } from '../services/aiChoice'
 
+const auth = useAuthStore()
+const included = computed(() => auth.user?.included_ai_authorized === true)
 const statuses = ref<ProviderStatuses | null>(null)
 const options = computed(() => {
   if (!statuses.value) return []
-  return (Object.keys(PROVIDER_NAMES) as ProviderName[]).flatMap(provider =>
+  return (Object.keys(statuses.value) as ProviderName[]).flatMap(provider =>
     (statuses.value?.[provider]?.confirmed_free_models ?? []).map(model => ({ value: `${provider}|${model}`, provider, model,
       label: `${PROVIDER_NAMES[provider]} · ${model}` })))
 })
@@ -18,28 +21,31 @@ const value = computed({
   get: () => aiChoice.value.provider ? `${aiChoice.value.provider}|${aiChoice.value.model}` : '',
   set: (next: string) => {
     const [provider, ...rest] = next.split('|')
-    aiChoice.value = next ? { provider: provider as ProviderName, model: rest.join('|') } : { provider: '', model: '' }
+    aiChoice.value = next === 'educrea|included' ? { provider: 'educrea', model: 'included' } : next ? { provider: provider as ProviderName, model: rest.join('|') } : { provider: '', model: '' }
   },
 })
 onMounted(async () => {
   try { statuses.value = await providersStatus() } catch { statuses.value = null }
   // A saved choice that is no longer configured falls back to «Automática».
-  if (aiChoice.value.provider && !options.value.some(item => item.value === value.value)) value.value = ''
+  if (statuses.value && aiChoice.value.provider && aiChoice.value.provider !== 'educrea' && !options.value.some(item => item.value === value.value)) {
+    aiChoice.value = included.value ? { provider: 'educrea', model: 'included' } : { provider: '', model: '' }
+  }
 })
 </script>
 
 <template>
   <div class="ai-picker">
     <AppIcon name="sparkles" :size="18" />
-    <template v-if="options.length">
+    <template v-if="options.length || included">
       <label class="sr-only" for="ai-picker">{{ t('aiPicker') }}</label>
       <select id="ai-picker" v-model="value" :title="t('aiPickerHint')">
-        <option value="">{{ t('aiAutomatic') }}</option>
+        <option v-if="included" value="educrea|included">IA EduCrea</option>
+        <option value="">{{ t('includedByok') }} · {{ t('aiAutomatic') }}</option>
         <option v-for="item in options" :key="item.value" :value="item.value">{{ item.label }}</option>
       </select>
     </template>
     <RouterLink v-else-if="statuses" to="/ai/providers" class="button secondary">{{ t('aiConfigure') }}</RouterLink>
-    <RouterLink v-if="options.length" to="/ai/providers" class="button ghost icon-only" :title="t('myProviders')"><AppIcon name="settings" :size="16" /><span class="sr-only">{{ t('myProviders') }}</span></RouterLink>
+    <RouterLink v-if="options.length || included" to="/ai/providers" class="button ghost icon-only" :title="t('myProviders')"><AppIcon name="settings" :size="16" /><span class="sr-only">{{ t('myProviders') }}</span></RouterLink>
   </div>
 </template>
 

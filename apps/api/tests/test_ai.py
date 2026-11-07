@@ -390,7 +390,7 @@ def test_ollama_adapter_uses_managed_url_and_json_format():
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("provider", ["openai", "deepseek"])
+@pytest.mark.parametrize("provider", ["openai", "deepseek", "anthropic", "openrouter", "groq", "gemini", "mistral"])
 def test_paid_estimate_budget_authorization_and_accounting(client: TestClient, monkeypatch, provider):
     headers, project_id = setup_user(client)
     monkeypatch.setattr(pricing, "get_settings", lambda: Settings(paid_models_json=json.dumps({
@@ -401,6 +401,7 @@ def test_paid_estimate_budget_authorization_and_accounting(client: TestClient, m
     assert "test-openai-personal-key" not in client.get("/api/ai/providers").text
     draft = {"summary": "Actividad", "changes": [{"path": "index.html", "content": "<h1>Hola</h1>"}]}
     monkeypatch.setattr(registry, "adapter", lambda _name: StubGemini(json.dumps(draft)))
+    app.dependency_overrides[get_gemini_provider] = lambda: StubGemini(json.dumps(draft))
     request = {"instruction": "Crea una actividad de fracciones", "provider": provider,
                "model": "paid-test", "mode": "paid"}
     estimate_route = f"/api/projects/{project_id}/ai/estimate"

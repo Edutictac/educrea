@@ -20,19 +20,28 @@ class FreeConfirmation(BaseModel):
 
 
 class GenerateInput(BaseModel):
+    task_type: str = Field(default="unknown", max_length=60)
+    output_type: str = Field(default="", max_length=40)
+    generator_type: str = Field(default="", max_length=60)
     instruction: str = Field(min_length=10, max_length=4000)
-    provider: Literal["gemini", "mistral", "openrouter", "groq", "ollama", "openai", "anthropic", "deepseek"] = "gemini"
-    model: str = Field(min_length=1, max_length=100)
+    provider: Literal["gemini", "mistral", "openrouter", "groq", "ollama", "openai", "anthropic", "deepseek", "educrea"] = "gemini"
+    model: str = Field(default="", max_length=100)
     context_paths: list[str] = Field(default_factory=list, max_length=30)
     automatic: bool = False  # the backend picks the context files; context_paths is ignored
     source_ids: list[UUID] = Field(default_factory=list, max_length=5)  # work only with these sources
     auto_apply: bool = False  # teacher mode: apply the proposal right away (still undoable and kept in history)
     whole_sources: bool = False  # send the whole material when it fits (content created from the teacher's material)
     allow_fallback: bool = False
-    mode: Literal["free", "paid"] = "free"
+    mode: Literal["free", "paid", "included"] = "free"
     paid_authorized: bool = False
     approved_max_cost_microusd: int | None = Field(default=None, ge=0)
     approved_estimate_fingerprint: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+
+    @model_validator(mode="after")
+    def require_byok_model(self):
+        if self.mode != "included" and not self.model:
+            raise ValueError("Indica el modelo de tu API propia")
+        return self
 
 
 class BudgetInput(BaseModel):
@@ -155,3 +164,14 @@ class ProposalOut(BaseModel):
     agent_trace: list[dict] | None = None
     model_config = ConfigDict(from_attributes=True)
 
+
+
+class WaitlistInput(BaseModel):
+    teaching_context: str = Field(min_length=2, max_length=300)
+    intended_use: str = Field(min_length=10, max_length=1000)
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("teaching_context", "intended_use", mode="before")
+    @classmethod
+    def trim_fields(cls, value):
+        return value.strip() if isinstance(value, str) else value

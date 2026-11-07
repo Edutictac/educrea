@@ -5,6 +5,7 @@ import { listSources, type Source } from '../services/sources'
 import { invokeCapability, parseArguments } from '../services/capabilities'
 import { aiChoice, PROVIDER_NAMES } from '../services/aiChoice'
 import AiProgress from './AiProgress.vue'
+import IncludedAiQuota from './IncludedAiQuota.vue'
 import { describeAiError, useAiProgress } from '../services/aiProgress'
 import { useAuthStore } from '../stores/auth'
 import { AiError, budgetStatus, changeProposal, estimatePaid, providersStatus, quotaStatus,
@@ -17,14 +18,15 @@ const auth = useAuthStore()
 const statuses = ref<ProviderStatuses | null>(null)
 const quota = ref<QuotaStatus | null>(null)
 const budget = ref<BudgetStatus | null>(null)
-const mode = ref<'free' | 'paid'>('free')
+const mode = ref<'free' | 'paid' | 'included'>(auth.user?.included_ai_authorized && aiChoice.value.provider === 'educrea' ? 'included' : 'free')
 const estimate = ref<PaidEstimate | null>(null)
 const paidConfirmed = ref(false)
 const provider = ref<ProviderName>('gemini')
 const availableProviders = computed(() => (['gemini', 'groq', 'openrouter', 'ollama', 'mistral', 'openai', 'anthropic', 'deepseek'] as ProviderName[])
   .filter(name => mode.value === 'free' ? !!statuses.value?.[name].confirmed_free_models.length
     : !!statuses.value?.[name].configured && !!statuses.value?.[name].paid_models.length))
-const models = computed(() => mode.value === 'free' ? statuses.value?.[provider.value].confirmed_free_models ?? []
+const taskType = ref('unknown')
+const models = computed(() => mode.value === 'included' ? auth.user?.included_ai_authorized ? ['included'] : [] : mode.value === 'free' ? statuses.value?.[provider.value].confirmed_free_models ?? []
   : statuses.value?.[provider.value].paid_models.map(item => item.model) ?? [])
 const allowFallback = ref(false)
 const actualProvider = ref('')
@@ -44,7 +46,7 @@ watch(() => props.sourcesVersion, loadSources)
 // Teacher mode: the AI always decides which files to read and change. Advanced mode: manual by default, optional switch.
 const autoChoice = ref(false)
 const useAutomatic = computed(() => props.automatic === true || autoChoice.value)
-const model = ref('')
+const model = ref(mode.value === 'included' ? 'included' : '')
 const streaming = ref('')
 const streamEl = ref<HTMLElement | null>(null)
 const stickToBottom = ref(true)
@@ -74,9 +76,12 @@ onMounted(async () => {
 })
 // Follow the project selector: its free AI, or the first available one when «Automática» (with fallback).
 function applyChoice() {
-  if (mode.value !== 'free' || !statuses.value) return
+  if (!statuses.value) return
   const chosen = aiChoice.value
-  if (chosen.provider && statuses.value[chosen.provider]?.confirmed_free_models.includes(chosen.model)) {
+  if (chosen.provider === 'educrea' && auth.user?.included_ai_authorized) { mode.value = 'included'; model.value = 'included'; return }
+  if (mode.value === 'included') mode.value = 'free'
+  if (mode.value !== 'free') return
+  if (chosen.provider && chosen.provider !== 'educrea' && statuses.value[chosen.provider]?.confirmed_free_models.includes(chosen.model)) {
     // An AI chosen explicitly is respected: no automatic switch (the error suggests «IA automática»).
     provider.value = chosen.provider; model.value = chosen.model; allowFallback.value = false
   } else {
@@ -109,7 +114,7 @@ async function generate() {
   busy.value = true; generatingAi.value = true
   controller = new AbortController()
   try {
-    await streamProposal(props.projectId, instruction.value, provider.value, model.value,
+    await streamProposal(props.projectId, instruction.value, mode.value === 'included' ? 'educrea' : provider.value, model.value,
       selectedPaths.value, allowFallback.value, auth.csrf,
       controller.signal, event => {
       trackProgress(event)
@@ -119,7 +124,7 @@ async function generate() {
         if (streaming.value) failedOutput.value = streaming.value
         streaming.value = ''
       }
-      if (event.event === 'status') actualProvider.value = `${event.data.provider ?? provider.value} / ${event.data.model ?? model.value}`
+      if (event.event === 'status') actualProvider.value = event.data.provider === 'educrea' ? 'IA EduCrea' : `${event.data.provider ?? provider.value} / ${event.data.model ?? model.value}`
       if (event.event === 'token') streaming.value = (streaming.value + event.data.text).slice(-12000)
       if (event.event === 'proposal') {
         failedOutput.value = ''
@@ -134,7 +139,7 @@ async function generate() {
           : event.data.grounding && !event.data.grounding.supported ? t('proposalUnsupported')
           : props.automatic === true ? t('proposalAutoPending') : t('proposalReady')
       }
-    }, mode.value, estimate.value?.maximum_cost_microusd, estimate.value?.fingerprint, useAutomatic.value, props.automatic === true, selectedSources.value)
+    }, mode.value, estimate.value?.maximum_cost_microusd, estimate.value?.fingerprint, useAutomatic.value, props.automatic === true, selectedSources.value, taskType.value)
   } catch (cause) {
     failedOutput.value = streaming.value
     streaming.value = ''
@@ -163,7 +168,8 @@ async function copyFailedOutput() {
     setTimeout(() => { failedCopied.value = false }, 2000) } catch { /* clipboard unavailable */ }
 }
 function changeProvider() { model.value = models.value[0] ?? '' }
-function changeMode() { provider.value = availableProviders.value[0] ?? 'gemini'; changeProvider() }
+function changeMode() { if (mode.value === 'included') { model.value = 'included'; return }
+  provider.value = availableProviders.value[0] ?? 'gemini'; changeProvider() }
 
 async function change(action: 'apply' | 'reject' | 'restore') {
   const proposal = selected.value
@@ -206,25 +212,31 @@ function stateLabel(value: Proposal['status']) {
   <section class="ai-panel card" :aria-label="t('aiAssistant')">
     <h2>{{ t('aiAssistant') }}</h2>
     <p>{{ t('aiReviewIntro') }}</p>
-    <p v-if="statuses && !availableProviders.length" class="notice">
+    <IncludedAiQuota v-if="mode === 'included'" />
+    <p v-if="mode !== 'included' && statuses && !availableProviders.length" class="notice">
       {{ t('configureGemini') }} <RouterLink to="/ai/providers">{{ t('myProviders') }}</RouterLink>
     </p>
     <form @submit.prevent="generate">
       <label>{{ t('aiInstruction') }}<textarea v-model="instruction" rows="4" minlength="10" maxlength="4000" required
         :placeholder="t('aiPlaceholder')" /></label>
-      <p v-if="automatic" class="hint full">{{ t('aiUsing') }}: <strong>{{ model ? `${PROVIDER_NAMES[provider]} · ${model}` : t('aiNone') }}</strong> · {{ t('aiChangeInHeader') }}</p>
+      <p v-if="automatic" class="hint full">{{ t('aiUsing') }}: <strong>{{ mode === 'included' ? t('includedTitle') : model ? `${PROVIDER_NAMES[provider]} · ${model}` : t('aiNone') }}</strong> · {{ t('aiChangeInHeader') }}</p>
       <template v-else>
       <label>{{ t('modelMode') }}<select v-model="mode" @change="changeMode">
-        <option value="free">{{ t('freeMode') }}</option><option value="paid">{{ t('paidMode') }}</option>
+        <option v-if="auth.user?.included_ai_authorized" value="included">IA EduCrea</option><option value="free">{{ t('freeMode') }}</option><option value="paid">{{ t('paidMode') }}</option>
       </select></label>
-      <label>{{ t('providerLabel') }}<select v-model="provider" :disabled="!availableProviders.length" @change="changeProvider">
+      <label v-if="mode !== 'included'">{{ t('providerLabel') }}<select v-model="provider" :disabled="!availableProviders.length" @change="changeProvider">
         <option v-for="name in availableProviders" :key="name" :value="name">{{ name }}</option>
       </select></label>
-      <label>{{ t('aiModel') }}<select v-model="model" :disabled="!models.length">
+      <label v-if="mode !== 'included'">{{ t('aiModel') }}<select v-model="model" :disabled="!models.length">
         <option v-for="item in models" :key="item" :value="item">{{ item }}</option>
       </select></label>
       <label v-if="mode === 'free' && availableProviders.length > 1" class="check"><input v-model="allowFallback" type="checkbox" />{{ t('allowFallback') }}</label>
       </template>
+      <label v-if="mode === 'included'">{{ t('includedTask') }}<select v-model="taskType">
+        <option value="unknown">{{ t('includedTaskAuto') }}</option>
+        <option value="general">{{ t('includedTaskGeneral') }}</option>
+        <option value="code">{{ t('includedTaskCode') }}</option>
+      </select></label>
       <label v-if="!automatic" class="check"><input v-model="autoChoice" type="checkbox" />{{ t('aiDecidesFiles') }}</label>
       <p v-if="useAutomatic" class="hint">{{ automatic ? t('automaticApplyNote') : t('automaticContextNote') }}</p>
       <fieldset v-else-if="filePaths.length" class="full"><legend>{{ t('contextFiles') }}</legend>
@@ -236,7 +248,7 @@ function stateLabel(value: Proposal['status']) {
         <label v-for="source in sources" :key="source.id" class="check"><input v-model="selectedSources" type="checkbox" :value="source.id" />{{ source.title }}</label>
       </fieldset>
       <p v-if="mode === 'free'">{{ t('freeOnly') }}</p>
-      <template v-else>
+      <template v-else-if="mode === 'paid'">
         <p v-if="budget">{{ t('monthlyBudget') }}: ${{ (budget.monthly_limit_microusd / 1000000).toFixed(2) }} ·
           {{ t('budgetUsed') }}: ${{ (budget.spent_or_reserved_microusd / 1000000).toFixed(4) }}
           <RouterLink to="/ai/providers">{{ t('changeBudget') }}</RouterLink></p>
@@ -248,9 +260,9 @@ function stateLabel(value: Proposal['status']) {
           <label class="check"><input v-model="paidConfirmed" type="checkbox" />{{ t('approvePaid') }}</label>
         </div>
       </template>
-      <p v-if="quota">{{ t('quotaToday') }}: {{ quota.requests_used }} {{ t('requestsToday') }} · {{ quota.tokens_used_or_reserved }} {{ t('tokens') }}
+      <p v-if="quota && mode !== 'included'">{{ t('quotaToday') }}: {{ quota.requests_used }} {{ t('requestsToday') }} · {{ quota.tokens_used_or_reserved }} {{ t('tokens') }}
         <template v-if="quota.shared.requests_used"> · {{ t('sharedServer') }}: {{ quota.shared.requests_used }}/{{ quota.shared.requests_limit }}</template></p>
-      <p class="hint">{{ t('quotaProviderNote') }}</p>
+      <p v-if="mode !== 'included'" class="hint">{{ t('quotaProviderNote') }}</p>
       <div class="actions"><button type="submit" :disabled="busy || !model || (mode === 'paid' && !paidConfirmed)">{{ t('proposeChanges') }}</button>
         <button v-if="busy" type="button" class="secondary" @click="cancel">{{ t('cancel') }}</button></div>
     </form>
@@ -269,7 +281,7 @@ function stateLabel(value: Proposal['status']) {
       <label>{{ t('selectProposal') }}<select v-model="selectedId"><option v-for="item in proposals" :key="item.id" :value="item.id">
         {{ item.summary }} · {{ stateLabel(item.status) }}</option></select></label>
       <div v-if="selected" class="proposal-review">
-        <p><strong>{{ selected.summary }}</strong> · {{ stateLabel(selected.status) }} · {{ selected.provider }} / {{ selected.model }}</p>
+        <p><strong>{{ selected.summary }}</strong> · {{ stateLabel(selected.status) }} · <span v-if="selected.provider === 'educrea'">IA EduCrea</span><span v-else>{{ selected.provider }} / {{ selected.model }}</span></p>
         <div v-if="selected.grounding?.template_problems?.length" class="notice"><strong>{{ t('proposalNeedsReview') }}</strong>
           <p>{{ t('templateProblems') }}</p><ul><li v-for="(item, index) in selected.grounding.template_problems" :key="index">{{ item }}</li></ul></div>
         <div v-if="selected.grounding?.kind === 'dua'" class="notice" :class="{ ok: selected.grounding.supported }">

@@ -7,6 +7,13 @@ secret_file = os.environ.pop("EDUCREA_DATABASE_URL_FILE")
 os.environ["EDUCREA_DATABASE_URL"] = Path(secret_file).read_text().strip()
 keys_file = os.environ.pop("EDUCREA_CREDENTIAL_KEYS_FILE")
 os.environ["EDUCREA_CREDENTIAL_KEYS"] = Path(keys_file).read_text().strip()
+for name in ("QWEN", "DEEPSEEK"):
+    secret_path = os.environ.pop(f"EDUCREA_{name}_API_KEY_FILE", "")
+    if secret_path:
+        os.environ[f"EDUCREA_{name}_API_KEY"] = Path(secret_path).read_text().strip()
+smtp_path = os.environ.pop("EDUCREA_SMTP_PASSWORD_FILE", "")
+if smtp_path:
+    os.environ["EDUCREA_SMTP_PASSWORD"] = Path(smtp_path).read_text().strip()
 os.setgroups([])
 os.setgid(10001)
 os.setuid(10001)

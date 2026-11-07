@@ -75,7 +75,7 @@ def safe_next(value: str | None) -> str:
     return "/projects"
 
 
-def begin(db: Session, next_path: str | None) -> tuple[str, str]:
+def begin(db: Session, next_path: str | None, guest_user_id=None) -> tuple[str, str]:
     """Returns (authorization URL, browser cookie value)."""
     settings = get_settings()
     meta = discovery()
@@ -83,7 +83,7 @@ def begin(db: Session, next_path: str | None) -> tuple[str, str]:
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
     db.execute(delete(OidcFlow).where(OidcFlow.expires_at < utcnow()))
-    db.add(OidcFlow(cookie_hash=digest(cookie), state=state, nonce=nonce, verifier=verifier,
+    db.add(OidcFlow(guest_user_id=guest_user_id, cookie_hash=digest(cookie), state=state, nonce=nonce, verifier=verifier,
                     next_path=safe_next(next_path), expires_at=utcnow() + timedelta(minutes=FLOW_MINUTES)))
     db.commit()
     query = urlencode({"response_type": "code", "client_id": settings.oidc_client_id,
@@ -101,6 +101,7 @@ def finish(db: Session, cookie: str | None, state: str, code: str) -> tuple[User
     expires = flow.expires_at if flow.expires_at.tzinfo else flow.expires_at.replace(tzinfo=utcnow().tzinfo)
     valid = secrets.compare_digest(flow.state, state) and expires > utcnow()
     nonce, verifier, next_path = flow.nonce, flow.verifier, flow.next_path
+    guest_user_id = flow.guest_user_id
     db.delete(flow)  # one use only
     db.commit()
     if not valid:
@@ -117,7 +118,11 @@ def finish(db: Session, cookie: str | None, state: str, code: str) -> tuple[User
     except (httpx.HTTPError, ValueError, KeyError) as exc:
         raise HTTPException(502, "El proveedor de identidad rechazó el inicio de sesión") from exc
     claims = _verify_id_token(id_token, meta, nonce)
-    return _user_for(db, settings.oidc_issuer.rstrip("/"), claims), next_path
+    user = _user_for(db, settings.oidc_issuer.rstrip("/"), claims, guest_user_id=guest_user_id)
+    if claims.get("email_verified") is True:
+        from .beta_invitations import claim_verified
+        claim_verified(db, user.id, str(claims.get("email", "")))
+    return user, next_path
 
 
 def _verify_id_token(token: str, meta: dict, nonce: str) -> dict:
@@ -136,17 +141,26 @@ def _verify_id_token(token: str, meta: dict, nonce: str) -> dict:
     return dict(claims)
 
 
-def _user_for(db: Session, issuer: str, claims: dict) -> User:
+def _user_for(db: Session, issuer: str, claims: dict, guest_user_id=None) -> User:
     subject = str(claims["sub"])[:255]
     email = str(claims.get("email", "")).strip().lower()
+    if not email or claims.get("email_verified") is not True:
+        raise HTTPException(403, "Tu cuenta de identidad no tiene un correo verificado")
     identity = db.scalar(select(OidcIdentity).where(OidcIdentity.issuer == issuer, OidcIdentity.subject == subject))
     if identity is not None:
-        return db.get(User, identity.user_id)
-    if not email or claims.get("email_verified") is False:
-        raise HTTPException(403, "Tu cuenta de identidad no tiene un correo verificado")
+        user = db.get(User, identity.user_id)
+        if guest_user_id:
+            from .guest_workspace import adopt
+            adopt(db, guest_user_id, user)
+            db.commit()
+        return user
     user = db.scalar(select(User).where(User.email == email))
+    guest = db.get(User, guest_user_id) if guest_user_id else None
     if user is None:
-        user = User(email=email, password_hash=hash_password(secrets.token_urlsafe(48)))  # unusable local password
+        user = guest if guest and guest.is_guest else User()
+        user.email = email
+        user.is_guest = False
+        user.password_hash = hash_password(secrets.token_urlsafe(48))  # unusable local password
         db.add(user)
         db.flush()
     elif get_settings().oidc_link_by_email:
@@ -155,6 +169,11 @@ def _user_for(db: Session, issuer: str, claims: dict) -> User:
         db.execute(delete(SessionToken).where(SessionToken.user_id == user.id))
     else:
         raise HTTPException(409, "Ya existe una cuenta local con ese correo")
+    if guest_user_id and guest_user_id != user.id:
+        from .guest_workspace import adopt
+        adopt(db, guest_user_id, user)
+    elif guest_user_id:
+        db.execute(delete(SessionToken).where(SessionToken.user_id == guest_user_id))
     db.add(OidcIdentity(user_id=user.id, issuer=issuer, subject=subject, email=email))
     db.commit()
     return user

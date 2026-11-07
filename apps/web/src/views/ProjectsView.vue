@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/auth'
 import { useFilesStore } from '../stores/files'
 import { useProjectsStore } from '../stores/projects'
 import AppIcon from '../components/AppIcon.vue'
+import IncludedAiQuota from '../components/IncludedAiQuota.vue'
 import { MATERIAL_ACCEPT, uploadSource } from '../services/sources'
 
 // Guided creation (phase 7): 1) what to create, 2) a few details, then the project opens in teacher mode with the
@@ -90,6 +91,7 @@ async function create() {
   <section>
     <div class="page-head"><div><h1>{{ t('projects') }}</h1><p>{{ t('welcome') }}</p></div>
       <button v-if="projects.items.length && !creating" type="button" @click="startCreating"><AppIcon name="plus" :size="18" />{{ t('newProject') }}</button></div>
+    <IncludedAiQuota v-if="auth.user" />
     <p v-if="error" role="alert">{{ error }}</p>
     <section v-if="creating" class="card create-card" :aria-label="t('create')">
       <div class="create-head"><h2>{{ t('createGuided') }}</h2>

@@ -10,6 +10,35 @@
 8. **Identidad única (SSO con Authentik de EduTicTac) — prioridad inmediata**: inicio de sesión OIDC implementado en código y probado con un proveedor simulado (PKCE, validación del ID token, vinculación de cuentas existentes sin perder proyectos). Aplicaciones ya registradas en Authentik (producción `educrea.edutictac.es` y pruebas en la tailnet). Pendiente: prueba de inicio de sesión con una cuenta real, DNS y despliegue del dominio, y cierre de sesión único.
 9. **Servicio alojado de pago (propuesta posterior a la beta)**: modelos avanzados mediante una cuenta institucional de OpenRouter, cobro al usuario, controles de gasto y margen transparente. Diseño detallado con saldo prepagado y **comisión fija del 10 %** sobre el coste del proveedor en [monetizacion.md](monetizacion.md) (2026-11-06). La edición libre y la instalación propia seguirán disponibles.
 
+## Beta de IA EduCrea por invitación
+
+Decisión del 2026-11-07; control de acceso y lista de espera implementados el mismo día, pendientes de commit.
+El registro y **API propia / BYOK siguen abiertos**. Las cuentas nuevas, incluidas las de EduTicTac por SSO,
+no reciben acceso institucional por defecto. La invitación autoriza únicamente la IA financiada por EduCrea,
+con Qwen/DeepSeek preconfigurados, selección automática y una única bolsa mensual de créditos.
+
+Flujo de incorporación: registro → formulario de lista de espera → solicitud pendiente → aprobación manual
+por cuenta desde el servidor → acceso a IA EduCrea. Apuntarse nunca concede permisos ni consume presupuesto.
+El formulario recoge nivel/especialidad y uso previsto, asociados a la cuenta; cada persona consulta solo su
+solicitud. El registro y los proveedores personales se pueden utilizar mientras se espera.
+
+- [x] Permiso persistente por cuenta, concesión y revocación mediante herramienta de servidor y zona de administración con rol explícito.
+- [x] Panel para revisar solicitudes e invitaciones por correo, con caducidad, límites y aceptación por SSO verificado. Configuración y operación en [beta-admin.md](beta-admin.md).
+- [x] Validación en backend antes de reservar créditos o llamar a un proveedor institucional, incluidos
+  streaming, DUA, primera versión y redacción por secciones.
+- [x] Lista de espera con una solicitud por cuenta, estado pendiente y revisión manual. Aprobar marca la
+  solicitud como aceptada; revocar cierra su acceso y permite solicitar participación de nuevo.
+- [x] Interfaz según permisos y preferencias por cuenta: IA EduCrea predeterminada para nuevas cuentas
+  invitadas; BYOK para cuentas no invitadas. Se conservan las elecciones personales explícitas.
+- [x] Cuota, historial, proyectos y claves personales intactos tras revocar o volver a conceder acceso.
+- [x] Pruebas de cuentas invitadas, no invitadas y revocadas, de registro local/SSO y de regresión BYOK;
+  intentos institucionales denegados sin consumo; concurrencia y migraciones reversibles.
+- [ ] Aplicar las migraciones en el entorno de beta, configurar claves/modelos/tarifas/presupuestos y
+  realizar las pruebas reales con el grupo piloto antes de abrir el servicio.
+
+La gestión operativa se describe en [included-ai.md](included-ai.md#invitaciones-y-lista-de-espera).
+El despliegue público sigue siendo una acción posterior.
+
 ## Generación de imágenes con modelos de pago (pendiente, sin fecha)
 
 Comprobado el 2026-11-06: el nivel gratuito de Gemini no ofrece cuota para ningún modelo de imagen (`gemini-2.5-flash-image`, `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`…): todos responden 429 desde la primera petición, mientras que el texto funciona con la misma clave. Por eso la generación de imágenes con IA se hará solo con **modelos de pago BYOK**, reutilizando lo de la Fase 5:

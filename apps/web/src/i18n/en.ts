@@ -154,6 +154,7 @@ export const en = {
   promptBridgeLandingTitle: 'Brief received',
   promptBridgeLandingLead: 'Review the brief and create the material in one step.',
   promptBridgeWhatCreate: 'What do you want to create?',
+  promptBridgeTypeProposed: 'Type proposed from the EduTicTac Prompt brief.',
   promptBridgeDefaultTitle: 'Brief-based material',
   promptBridgeBrief: 'View the received brief',
   promptBridgeBriefHint: 'You can review or adjust the brief before creating.',

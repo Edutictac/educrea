@@ -7,9 +7,11 @@ import {
   PROMPT_APP_URL,
   clearPendingPrompt,
   decodePromptPayload,
+  eduCreaTypeForPrompt,
   payloadFromHash,
   peekPendingPrompt,
   storePendingPrompt,
+  templateFromHash,
 } from '../services/promptBridge'
 import { applyTemplate, listTemplates, type TemplateInfo } from '../services/templates'
 import { useAuthStore } from '../stores/auth'
@@ -21,6 +23,8 @@ const auth = useAuthStore()
 const projects = useProjectsStore()
 const files = useFilesStore()
 const templates = ref<TemplateInfo[]>([])
+const promptTemplate = ref('')
+const proposedType = computed(() => eduCreaTypeForPrompt(promptTemplate.value))
 const instructions = ref('')
 const title = ref(t('promptBridgeDefaultTitle'))
 const type = ref('situacion')
@@ -37,6 +41,7 @@ const templateName = (item: TemplateInfo) => item.names[locale.value]
 
 onMounted(async () => {
   const payload = payloadFromHash(window.location.hash)
+  promptTemplate.value = templateFromHash(window.location.hash)
   let brief = payload ? await decodePromptPayload(payload) : null
   if (!brief) brief = peekPendingPrompt()
   if (brief) {
@@ -51,7 +56,9 @@ onMounted(async () => {
   if (!brief) return
   try {
     templates.value = await listTemplates()
-    if (!typeTouched.value && templates.value.some(item => item.id === 'ficha')) type.value = 'ficha'
+    if (!typeTouched.value && proposedType.value
+      && (proposedType.value === 'situacion' || templates.value.some(item => item.id === proposedType.value))) type.value = proposedType.value
+    else if (!typeTouched.value && templates.value.some(item => item.id === 'ficha')) type.value = 'ficha'
   } catch (cause) {
     templatesError.value = cause instanceof Error ? cause.message : t('error')
     type.value = 'situacion'
@@ -109,7 +116,7 @@ async function create() {
           <label>{{ t('promptBridgeWhatCreate') }}<select v-model="type" @change="typeTouched = true">
             <option value="situacion">{{ t('kindSituationShort') }}</option>
             <option v-for="item in templates" :key="item.id" :value="item.id">{{ templateName(item) }}</option>
-          </select></label>
+          </select><small v-if="proposedType && type === proposedType" class="hint">{{ t('promptBridgeTypeProposed') }}</small></label>
           <label>{{ t('language') }}<select v-model="language">
             <option value="es">{{ t('languageSpanish') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option>
           </select></label>

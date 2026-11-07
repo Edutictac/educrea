@@ -3,12 +3,14 @@ import {
   MAX_INSTRUCTIONS,
   clearPendingPrompt,
   decodePromptPayload,
+  eduCreaTypeForPrompt,
   fillInstructions,
   parseBridgeQuery,
   payloadFromHash,
   peekPendingPrompt,
   storePendingPrompt,
   takePendingPrompt,
+  templateFromHash,
 } from './promptBridge'
 
 function base64url(bytes: Uint8Array): string {
@@ -67,10 +69,19 @@ describe('fillInstructions', () => {
 })
 
 describe('direct handoff', () => {
-  it('reads the payload from the URL fragment', () => {
+  it('reads the payload and the Prompt template from the URL fragment', () => {
     expect(payloadFromHash('#encargo=z.abc')).toBe('z.abc')
     expect(payloadFromHash('#otro=1&encargo=r.xyz')).toBe('r.xyz')
     expect(payloadFromHash('')).toBe('')
+    expect(templateFromHash('#encargo=z.abc&plantilla=learning-situation')).toBe('learning-situation')
+    expect(templateFromHash('#encargo=z.abc')).toBe('')
+  })
+
+  it('maps the Prompt product to the matching EduCrea type', () => {
+    expect(eduCreaTypeForPrompt('learning-situation')).toBe('situacion')
+    expect(eduCreaTypeForPrompt('infographic')).toBe('infografia')
+    expect(eduCreaTypeForPrompt('multiple-choice')).toBe('cuestionario')
+    expect(eduCreaTypeForPrompt('unknown')).toBe('')
   })
 
   it('decodes a plain payload', async () => {

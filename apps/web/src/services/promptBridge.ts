@@ -27,6 +27,21 @@ export function payloadFromHash(hash: string): string {
   return new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash).get('encargo') ?? ''
 }
 
+export function templateFromHash(hash: string): string {
+  if (!hash) return ''
+  return new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash).get('plantilla') ?? ''
+}
+
+const PROMPT_TYPE_TO_EDUCREA: Record<string, string> = {
+  'learning-situation': 'situacion',
+  infographic: 'infografia',
+  'multiple-choice': 'cuestionario',
+}
+
+export function eduCreaTypeForPrompt(template: string): string {
+  return PROMPT_TYPE_TO_EDUCREA[template] ?? ''
+}
+
 function base64urlToBytes(value: string): Uint8Array | null {
   if (!value || !/^[A-Za-z0-9_-]+$/.test(value)) return null
   const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(value.length + (4 - value.length % 4) % 4, '=')

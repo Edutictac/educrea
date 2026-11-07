@@ -16,7 +16,7 @@ from .projects import project_for_owner
 
 router = APIRouter(tags=["templates"])
 
-BRIEF_FIELDS = ("title", "instructions", "language", "level", "accessibility", "area", "course")
+BRIEF_FIELDS = ("title", "instructions", "language", "level", "accessibility", "area", "course", "illustrations")
 
 
 class ApplyTemplate(BaseModel):
@@ -38,6 +38,8 @@ def apply_template(project_id: UUID, data: ApplyTemplate, user: User = Depends(r
     if db.scalar(select(func.count(ProjectFile.id)).where(ProjectFile.project_id == project_id)):
         raise HTTPException(409, "Las plantillas solo se aplican a proyectos vacíos")
     brief = {key: data.brief[key] for key in BRIEF_FIELDS if key in data.brief}
+    if "illustrations" in brief:
+        brief["illustrations"] = brief["illustrations"] is True  # only a flag: never text for the prompt
     brief["title"] = str(brief.get("title") or project.title)[:160]
     brief["language"] = "va" if brief.get("language") == "va" else "es"
     brief.update(kind="ficha" if template.kind == "ficha" else "actividad", template=template.id)

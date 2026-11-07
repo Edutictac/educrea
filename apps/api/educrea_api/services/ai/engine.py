@@ -260,7 +260,17 @@ def brief_template(brief: dict | None) -> str | None:
     return value if isinstance(value, str) and value in template_service.TEMPLATES else None
 
 
+ILLUSTRATIONS_RULE = ("\n\nEl docente ha generado ilustraciones para este recurso: están en available_images. Úsalas todas, "
+                     "cada una una sola vez y donde mejor apoyen el contenido (en una plantilla, en el campo image del "
+                     "elemento que representan, con su alt; en Markdown, como ![alt](ruta)). No inventes otras rutas.")
+
+
 def instruction_for(brief: dict) -> str:
+    text = _instruction_for(brief)
+    return text + ILLUSTRATIONS_RULE if brief.get("illustrations") is True else text
+
+
+def _instruction_for(brief: dict) -> str:
     if brief_kind(brief) == "situacion":
         return situation_instruction(brief)
     template = brief_template(brief)

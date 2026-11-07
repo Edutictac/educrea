@@ -9,6 +9,8 @@ import { useProjectsStore } from '../stores/projects'
 import AppIcon from '../components/AppIcon.vue'
 import IncludedAiQuota from '../components/IncludedAiQuota.vue'
 import { MATERIAL_ACCEPT, uploadSource } from '../services/sources'
+import { imageModels, type ImageModels } from '../services/images'
+import { createIllustrations, illustrationPrompts, type IllustrationStyle } from '../services/illustrations'
 
 // Guided creation (phase 7): 1) what to create, 2) a few details, then the project opens in teacher mode with the
 // template files ready and the AI fills the content from the brief.
@@ -30,6 +32,22 @@ const busy = ref(false)
 const material = ref<File | null>(null)
 const materialRights = ref(false)
 const progress = ref('')
+// Optional AI illustrations (paid BYOK images), generated before the first version so the AI can place them.
+const imageStatus = ref<ImageModels | null>(null)
+const illustrationCount = ref(0)
+const illustrationStyle = ref<IllustrationStyle>('plana')
+const illustrationCostOk = ref(false)
+const illustrationRightsOk = ref(false)
+const imageModel = computed(() => imageStatus.value?.models.find(item => item.model === imageStatus.value?.default)
+  ?? imageStatus.value?.models[0])
+const canIllustrate = computed(() => !!choice.value && choice.value.kind === 'plantilla' && choice.value.id !== 'infografia'
+  && !!imageModel.value && imageStatus.value?.configured === true)
+const budgetLeft = computed(() => imageStatus.value
+  ? imageStatus.value.budget.monthly_limit_microusd - imageStatus.value.budget.spent_or_reserved_microusd : 0)
+const illustrationTotal = computed(() => illustrationCount.value * (imageModel.value?.max_cost_microusd ?? 0))
+const illustrationsReady = computed(() => !canIllustrate.value || illustrationCount.value === 0
+  || (illustrationCostOk.value && illustrationRightsOk.value && illustrationTotal.value <= budgetLeft.value))
+const usd = (micro: number) => `$${(micro / 1000000).toFixed(2)}`
 const error = ref('')
 const detailsHeading = ref<HTMLElement | null>(null)
 const creating = ref(false)
@@ -43,6 +61,7 @@ const choices = computed<Choice[]>(() => [
 
 onMounted(async () => {
   if (!auth.user) { router.replace('/explore'); return }
+  void imageModels().then(value => { imageStatus.value = value }).catch(() => undefined)
   try { [templates.value] = await Promise.all([listTemplates(), projects.load()]); creating.value = projects.items.length === 0 }
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 })
@@ -63,7 +82,8 @@ async function create() {
     const project = await projects.create(title.value, '')
     projectId = project.id
     const brief = { title: title.value.trim(), language: language.value, level: level.value, instructions: instructions.value.trim(),
-      accessibility: { large_text: largeText.value, high_contrast: highContrast.value } }
+      accessibility: { large_text: largeText.value, high_contrast: highContrast.value },
+      ...(canIllustrate.value && illustrationCount.value > 0 ? { illustrations: true } : {}) }
     if (choice.value.kind === 'plantilla') {
       await applyTemplate(project.id, choice.value.id, brief, auth.csrf)
       if (choice.value.id === 'infografia') {
@@ -78,6 +98,16 @@ async function create() {
       // The project is already useful without the material: a failed upload is reported, never rolled back.
       try { await uploadSource(project.id, material.value, material.value.name.replace(/\.[^.]+$/, ''), auth.csrf) }
       catch (cause) { alert(`${t('materialFailed')} ${cause instanceof Error ? cause.message : ''}`) }
+    }
+    if (canIllustrate.value && illustrationCount.value > 0 && imageModel.value) {
+      // The project is useful without images: failures are reported, never rolled back.
+      try {
+        progress.value = t('illustrationsWriting')
+        const prompts = await illustrationPrompts(project.id, illustrationCount.value, illustrationStyle.value, auth.csrf)
+        const result = await createIllustrations(project.id, prompts, imageModel.value.model, auth.csrf,
+          (index, total) => { progress.value = t('illustrationProgress').replace('{n}', String(index)).replace('{total}', String(total)) })
+        if (result.errors.length) alert(`${t('illustrationsPartial').replace('{n}', String(result.saved))} ${result.errors[0]}`)
+      } catch (cause) { alert(`${t('illustrationsFailed')} ${cause instanceof Error ? cause.message : ''}`) }
     }
     router.push(`/projects/${project.id}`)
   } catch (cause) {
@@ -125,12 +155,28 @@ async function create() {
             <p class="hint">{{ t('startingMaterialIntro') }}</p>
             <label v-if="material" class="check"><input v-model="materialRights" type="checkbox" required />{{ t('sourceRights') }}</label>
           </div>
+          <fieldset v-if="canIllustrate" class="full material-pick">
+            <legend>{{ t('illustrationsTitle') }} <span class="hint">({{ t('optional') }})</span></legend>
+            <label>{{ t('illustrationsCount') }}<select v-model.number="illustrationCount">
+              <option :value="0">{{ t('illustrationsNone') }}</option><option v-for="n in 6" :key="n" :value="n">{{ n }}</option></select></label>
+            <template v-if="illustrationCount > 0">
+              <label>{{ t('illustrationsStyle') }}<select v-model="illustrationStyle">
+                <option value="plana">{{ t('styleFlat') }}</option><option value="acuarela">{{ t('styleWatercolor') }}</option>
+                <option value="realista">{{ t('styleRealistic') }}</option><option value="colorear">{{ t('styleColoring') }}</option></select></label>
+              <p class="hint">{{ t('illustrationsIntro') }}</p>
+              <p v-if="illustrationTotal > budgetLeft" role="alert">{{ t('illustrationsOverBudget') }}
+                <RouterLink to="/ai/providers">{{ t('changeBudget') }}</RouterLink></p>
+              <label class="check"><input v-model="illustrationCostOk" type="checkbox" />
+                {{ t('illustrationsCost').replace('{cost}', usd(illustrationTotal)) }}</label>
+              <label class="check"><input v-model="illustrationRightsOk" type="checkbox" />{{ t('imageRightsNoPersonal') }}</label>
+            </template>
+          </fieldset>
           <details class="full"><summary>{{ t('accessibility') }}</summary>
             <label class="check"><input v-model="largeText" type="checkbox" />{{ t('largeText') }}</label>
             <label class="check"><input v-model="highContrast" type="checkbox" />{{ t('highContrast') }}</label>
           </details>
         </template>
-        <div class="actions full"><button type="submit" :disabled="busy || !title.trim() || (!!material && !materialRights)">{{ busy ? t('creating') : t('createAndOpen') }}</button>
+        <div class="actions full"><button type="submit" :disabled="busy || !title.trim() || (!!material && !materialRights) || !illustrationsReady">{{ busy ? t('creating') : t('createAndOpen') }}</button>
           <span v-if="progress" class="hint" role="status">{{ progress }}</span>
           <button type="button" class="secondary" @click="choice = null">{{ t('cancel') }}</button></div>
         <p v-if="choice.kind !== 'libre'" class="hint full">{{ t('guidedNext') }}</p>

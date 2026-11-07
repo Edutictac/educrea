@@ -9,6 +9,7 @@ export interface ImageModel {
   sizes: string[]
   prices: Record<string, number>
   input_microusd_per_million: number
+  max_cost_microusd: number  // upper bound for any accepted prompt
 }
 
 export interface ImageModels {

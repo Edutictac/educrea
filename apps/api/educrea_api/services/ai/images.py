@@ -65,8 +65,12 @@ def models() -> list[dict]:
     result = []
     for model, sizes in catalog().get(PROVIDER, {}).items():
         entry = sizes[SIZE]
+        # Upper bound for any prompt the API accepts (4 UTF-8 bytes per character at most), so the creation form can
+        # confirm a total before the illustration prompts exist; each image is still estimated and confirmed exactly.
+        worst = entry["image_microusd"] + cost(MAX_PROMPT_CHARS * 4 + 1024, 0,
+                                               Price(entry["input_microusd_per_million"], 0))
         result.append({"provider": PROVIDER, "model": model, "sizes": [SIZE],
-                       "prices": {SIZE: entry["image_microusd"]},
+                       "prices": {SIZE: entry["image_microusd"]}, "max_cost_microusd": worst,
                        "input_microusd_per_million": entry["input_microusd_per_million"]})
     return sorted(result, key=lambda item: (item["prices"][SIZE], item["model"]))
 

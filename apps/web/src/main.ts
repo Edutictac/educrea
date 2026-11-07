@@ -4,6 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import LoginView from './views/LoginView.vue'
 import ProjectsView from './views/ProjectsView.vue'
+import EduPromptView from './views/EduPromptView.vue'
 import ProjectView from './views/ProjectView.vue'
 import AiProvidersView from './views/AiProvidersView.vue'
 import BetaAdminView from './views/BetaAdminView.vue'
@@ -16,6 +17,7 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/explore', redirect: '/projects' },
   { path: '/login', component: LoginView },
   { path: '/projects', component: ProjectsView },
+  { path: '/eduprompt', component: EduPromptView },
   { path: '/projects/:id', component: ProjectView, meta: { wide: true } },
   { path: '/admin/beta', component: BetaAdminView },
   { path: '/beta', component: BetaRequestView },

@@ -11,7 +11,7 @@ import IncludedAiQuota from '../components/IncludedAiQuota.vue'
 import { MATERIAL_ACCEPT, uploadSource } from '../services/sources'
 import { imageModels, type ImageModels } from '../services/images'
 import { createIllustrations, illustrationPrompts, type IllustrationStyle } from '../services/illustrations'
-import { MAX_INSTRUCTIONS, fillInstructions, parseBridgeQuery } from '../services/promptBridge'
+import { MAX_INSTRUCTIONS, fillInstructions, parseBridgeQuery, takePendingPrompt } from '../services/promptBridge'
 
 // Guided creation (phase 7): 1) what to create, 2) a few details, then the project opens in teacher mode with the
 // template files ready and the AI fills the content from the brief.
@@ -37,6 +37,7 @@ const materialRights = ref(false)
 const progress = ref('')
 // Handoff from EduTicTac Prompt: open the guided creation and help paste the prompt into the brief.
 const fromPrompt = ref(false)
+const received = ref(false)
 const bridgeMessage = ref('')
 const bridgeError = ref('')
 const instructionsEl = ref<HTMLTextAreaElement | null>(null)
@@ -59,7 +60,7 @@ const usd = (micro: number) => `$${(micro / 1000000).toFixed(2)}`
 const error = ref('')
 const detailsHeading = ref<HTMLElement | null>(null)
 const creating = ref(false)
-async function startCreating() { creating.value = true; await nextTick(); document.querySelector<HTMLElement>('.choice')?.focus() }
+async function startCreating() { creating.value = true; fromPrompt.value = false; received.value = false; bridgeMessage.value = ''; bridgeError.value = ''; await nextTick(); document.querySelector<HTMLElement>('.choice')?.focus() }
 
 const choices = computed<Choice[]>(() => [
   ...templates.value.map(item => ({ id: item.id, kind: 'plantilla' as const, name: item.names[locale.value], description: item.descriptions[locale.value], icon: ICONS[item.id] ?? 'layout-template' })),
@@ -70,17 +71,22 @@ const choices = computed<Choice[]>(() => [
 onMounted(async () => {
   const bridge = parseBridgeQuery(route.query as Record<string, unknown>)
   fromPrompt.value = bridge.fromPrompt
+  if (bridge.fromPrompt) {
+    const pending = takePendingPrompt()
+    if (pending) { instructions.value = pending; received.value = true }
+    else if (route.query.handoff === 'invalid') bridgeError.value = t('promptBridgeInvalid')
+  }
   if (bridge.openCreate) creating.value = true
   if (bridge.openCreate || bridge.fromPrompt) router.replace({ path: '/projects' })
   if (!auth.user) { router.replace('/explore'); return }
   void imageModels().then(value => { imageStatus.value = value }).catch(() => undefined)
-  try { [templates.value] = await Promise.all([listTemplates(), projects.load()]); creating.value = projects.items.length === 0 }
+  try { [templates.value] = await Promise.all([listTemplates(), projects.load()]); creating.value = bridge.openCreate || projects.items.length === 0 }
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 })
 async function pick(item: Choice) {
   choice.value = item; error.value = ''
   await nextTick(); detailsHeading.value?.focus()
-  if (fromPrompt.value && item.kind !== 'libre') { await nextTick(); instructionsEl.value?.focus() }
+  if (fromPrompt.value && !received.value && item.kind !== 'libre') { await nextTick(); instructionsEl.value?.focus() }
 }
 async function pasteFromClipboard() {
   bridgeMessage.value = ''; bridgeError.value = ''
@@ -91,6 +97,7 @@ async function pasteFromClipboard() {
       return
     }
     instructions.value = result.text
+    received.value = true
     bridgeMessage.value = t('promptBridgePasted')
     await nextTick(); instructionsEl.value?.focus()
   } catch {
@@ -172,6 +179,10 @@ async function create() {
         <li aria-hidden="true"><AppIcon name="chevron-right" :size="16" /></li>
         <li class="step"><span class="num">3</span>{{ t('stepGenerate') }}</li>
       </ol>
+      <div v-if="fromPrompt && received" class="notice">
+        <strong>{{ t('promptBridgeIncoming') }}</strong>
+        <p>{{ t('promptBridgeReceived') }}</p>
+      </div>
       <ul class="choice-grid">
         <li v-for="item in choices" :key="item.id">
           <button type="button" class="choice" :aria-pressed="choice?.id === item.id" @click="pick(item)">
@@ -192,8 +203,8 @@ async function create() {
           </select></label>
           <div v-if="fromPrompt" class="notice full">
             <strong>{{ t('promptBridgeIncoming') }}</strong>
-            <p>{{ t('promptBridgeDocumentHint') }}</p>
-            <button type="button" class="secondary" @click="pasteFromClipboard">{{ t('promptBridgePaste') }}</button>
+            <p>{{ received ? t('promptBridgeReceived') : t('promptBridgeDocumentHint') }}</p>
+            <button v-if="!received" type="button" class="secondary" @click="pasteFromClipboard">{{ t('promptBridgePaste') }}</button>
             <p v-if="bridgeMessage" role="status">{{ bridgeMessage }}</p>
             <p v-if="bridgeError" role="alert">{{ bridgeError }}</p>
           </div>

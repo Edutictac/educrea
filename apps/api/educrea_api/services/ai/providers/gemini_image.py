@@ -100,10 +100,18 @@ class GeminiImageProvider:
             if not raw:
                 raise ProviderError("Gemini devolvió una imagen vacía", 502)
             return GeneratedImage(raw, block["mime_type"])
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            # The request never reached Google: nothing was billed.
+            raise ProviderError("No se ha podido conectar con Gemini para generar la imagen", 502) from exc
         except httpx.TimeoutException as exc:
-            raise ProviderError("Gemini tardó demasiado en generar la imagen", 504) from exc
-        except (httpx.RequestError, ValueError, KeyError, TypeError) as exc:
-            raise ProviderError("Error de comunicación con Gemini al generar la imagen") from exc
+            # Sent but unanswered: Google may still have generated and billed the image.
+            raise ProviderError("Gemini tardó demasiado en generar la imagen", 504, consumed_unknown=True) from exc
+        except httpx.RequestError as exc:
+            raise ProviderError("Error de comunicación con Gemini al generar la imagen", 502,
+                                consumed_unknown=True) from exc
+        except (ValueError, KeyError, TypeError) as exc:
+            # A 200 response we could not read: the image was generated and billed.
+            raise ProviderError("Gemini devolvió una respuesta que no se puede leer", 502, consumed_unknown=True) from exc
         finally:
             if self.client is None:
                 await client.aclose()

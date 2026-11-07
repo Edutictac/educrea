@@ -80,12 +80,17 @@ def reserve_fixed(db: Session, user_id: UUID, provider: str, model: str, maximum
 
 
 def reconcile_fixed(db: Session, reservation_id: UUID, actual_cost_microusd: int, failed: bool = False) -> None:
-    """Settle a fixed-price reservation. Failed generations release the internal budget."""
+    """Settle a fixed-price reservation.
+
+    A failed generation releases the internal budget when called with 0. When the provider may already have billed
+    it (timeout after sending, or an image that arrived but could not be used), pass the cost with failed=True: the
+    entry is marked failed but keeps counting against the monthly budget.
+    """
     entry = db.get(AiUsage, reservation_id)
     if entry is None or entry.status != "reserved":
         return
     entry.actual_tokens = 0
-    entry.actual_cost_microusd = 0 if failed else actual_cost_microusd
+    entry.actual_cost_microusd = actual_cost_microusd
     entry.status = "failed" if failed else "completed"
     db.commit()
 

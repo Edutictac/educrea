@@ -133,6 +133,47 @@ def test_failed_generation_refunds_budget(client: TestClient, images):
         assert row.status == "failed" and row.actual_cost_microusd == 0
 
 
+@pytest.mark.parametrize("failure", ["timeout", "unreadable"])
+def test_possibly_billed_failures_keep_counting_against_the_budget(client: TestClient, images, failure):
+    headers, project_id = setup_user(client)
+    budget(client, headers)
+    est = estimate(client, headers, project_id)
+
+    class TimedOut:
+        async def generate(self, *args):
+            raise ProviderError("tardó demasiado", 504, consumed_unknown=True)
+
+    # «unreadable»: Google delivered (and billed) bytes that are not an image.
+    app.dependency_overrides[get_gemini_image_provider] = (
+        (lambda: TimedOut()) if failure == "timeout" else (lambda: StubImage(data=b"not an image")))
+    response = client.post(f"/api/projects/{project_id}/ai/images", headers=headers, json=body(est))
+    assert response.status_code in (502, 504)
+    assert client.get("/api/ai/budget").json()["spent_or_reserved_microusd"] == est["maximum_cost_microusd"]
+    with Session(engine) as db:
+        row = db.scalar(select(AiUsage))
+        assert row.status == "failed" and row.actual_cost_microusd == est["maximum_cost_microusd"]
+
+
+def test_adapter_marks_unanswered_requests_as_possibly_billed():
+    async def run():
+        async def slow(request: httpx.Request) -> httpx.Response:
+            raise httpx.ReadTimeout("no answer", request=request)
+
+        async def unreachable(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("no route", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(slow)) as client:
+            with pytest.raises(ProviderError) as error:
+                await GeminiImageProvider(client).generate("test-key", MODEL, "Una trompeta")
+            assert error.value.status_code == 504 and error.value.consumed_unknown
+        async with httpx.AsyncClient(transport=httpx.MockTransport(unreachable)) as client:
+            with pytest.raises(ProviderError) as error:
+                await GeminiImageProvider(client).generate("test-key", MODEL, "Una trompeta")
+            assert not error.value.consumed_unknown
+
+    asyncio.run(run())
+
+
 def test_guest_uses_temporary_key_and_cannot_save_a_key(client: TestClient, images):
     opened = client.post("/api/auth/guest")
     assert opened.status_code == 200

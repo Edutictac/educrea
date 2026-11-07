@@ -62,19 +62,23 @@ async def generate_image(project_id: UUID, data: ImageGenerateInput, user: User 
     image_service.check_daily_limit(db, user.id)
     reservation = quotas.reserve_fixed(db, user.id, image_service.PROVIDER, data.model,
                                        estimate["maximum_cost_microusd"])
+    maximum = estimate["maximum_cost_microusd"]
     try:
         generated = await provider.generate(key, data.model, data.prompt, data.aspect_ratio, image_service.SIZE)
-        normalized, media_type = image_service.normalize(generated.data)
     except ProviderError as exc:
-        quotas.reconcile_fixed(db, reservation, 0, failed=True)
+        # A clear rejection (quota, key, bad request) costs nothing; a timeout or an unreadable answer may have been
+        # billed by Google, so it keeps counting against the monthly budget.
+        quotas.reconcile_fixed(db, reservation, maximum if exc.consumed_unknown else 0, failed=True)
         raise HTTPException(exc.status_code, str(exc)) from None
-    except HTTPException:
-        quotas.reconcile_fixed(db, reservation, 0, failed=True)
-        raise
     except BaseException:
         quotas.reconcile_fixed(db, reservation, 0, failed=True)
         raise
-    quotas.reconcile_fixed(db, reservation, estimate["maximum_cost_microusd"])
+    try:
+        normalized, media_type = image_service.normalize(generated.data)
+    except BaseException:
+        quotas.reconcile_fixed(db, reservation, maximum, failed=True)  # Google already delivered and billed it
+        raise
+    quotas.reconcile_fixed(db, reservation, maximum)
     return {"provider": image_service.PROVIDER, "model": data.model, "size": image_service.SIZE,
             "aspect_ratio": data.aspect_ratio, "media_type": media_type,
             "image_base64": base64.b64encode(normalized).decode(),

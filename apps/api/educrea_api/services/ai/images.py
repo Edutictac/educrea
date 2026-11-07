@@ -139,7 +139,7 @@ def normalize(data: bytes) -> tuple[bytes, str]:
     try:
         image = Image.open(io.BytesIO(data))
         image.load()
-    except (UnidentifiedImageError, OSError, ValueError) as exc:
+    except (UnidentifiedImageError, Image.DecompressionBombError, OSError, ValueError) as exc:
         raise HTTPException(502, "El proveedor devolvió una imagen no válida") from exc
     image = ImageOps.exif_transpose(image)
     has_alpha = image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info)

@@ -19,7 +19,7 @@ watch(aiChoice, value => { try { localStorage.setItem(KEY, JSON.stringify(value)
 
 export const PROVIDER_NAMES: Record<ProviderName, string> = {
   gemini: 'Gemini (Google)', mistral: 'Mistral', groq: 'Groq', openrouter: 'OpenRouter',
-  ollama: 'Ollama (servidor)', openai: 'OpenAI', anthropic: 'Anthropic (Claude)',
+  ollama: 'Ollama (servidor)', openai: 'OpenAI', anthropic: 'Anthropic (Claude)', deepseek: 'DeepSeek',
 }
 
 // Body for /ai/from-brief and /ai/dua: nothing when «Automática».

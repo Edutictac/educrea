@@ -13,7 +13,7 @@ from .gemini import GeminiProvider, free_models as gemini_free_models
 from ..credentials import decrypt_key, personal_credential
 
 MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")
-PROVIDERS = ("gemini", "mistral", "openrouter", "groq", "ollama", "openai", "anthropic")
+PROVIDERS = ("gemini", "mistral", "openrouter", "groq", "ollama", "openai", "anthropic", "deepseek")
 # Order used to pick the first confirmed free model and to fall back when one is saturated (429/503).
 FREE_PROVIDERS = ("gemini", "groq", "openrouter", "ollama")
 

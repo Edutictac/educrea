@@ -10,6 +10,7 @@ export const providerGuides: Record<ProviderName, ProviderGuide> = {
   mistral: { url: 'https://console.mistral.ai/api-keys', paid: true, steps: 'mistral' },
   openai: { url: 'https://platform.openai.com/api-keys', paid: true, steps: 'paid' },
   anthropic: { url: 'https://console.anthropic.com/settings/keys', paid: true, steps: 'paid' },
+  deepseek: { url: 'https://platform.deepseek.com/api_keys', paid: true, steps: 'paid' },
   ollama: { url: '', paid: false, steps: 'managed' },
 }
 

@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from ...config import get_settings
 
-PAID_PROVIDERS = ("gemini", "openrouter", "groq", "mistral", "openai", "anthropic")
+PAID_PROVIDERS = ("gemini", "openrouter", "groq", "mistral", "openai", "anthropic", "deepseek")
 MAX_OUTPUT_TOKENS = 8192
 
 

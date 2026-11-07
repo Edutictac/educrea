@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator
 
 import httpx
 
+from ..pricing import MAX_OUTPUT_TOKENS
 from .base import ProviderChunk, ProviderError, ProviderResult
 
 
@@ -13,6 +14,7 @@ URLS = {
     "groq": "https://api.groq.com/openai/v1/chat/completions",
     "mistral": "https://api.mistral.ai/v1/chat/completions",
     "openai": "https://api.openai.com/v1/chat/completions",
+    "deepseek": "https://api.deepseek.com/chat/completions",
 }
 
 
@@ -44,7 +46,9 @@ class CompatibleProvider:
             return {"model": model, "messages": [{"role": "user", "content": prompt}], "stream": stream,
                     "format": "json", "options": {"num_predict": 8192, "temperature": 0.2}}
         return {"model": model, "messages": [{"role": "user", "content": prompt}], "stream": stream,
-                ("max_completion_tokens" if self.name == "openai" else "max_tokens"): 16384,
+                ("max_completion_tokens" if self.name == "openai" else "max_tokens"):
+                    MAX_OUTPUT_TOKENS if self.name == "deepseek" else 16384,
+                **({"thinking": {"type": "disabled"}} if self.name == "deepseek" else {}),
                 **({} if self.name == "openai" else {"temperature": 0.2}),
                 **({"stream_options": {"include_usage": True}} if stream else {})}
 

@@ -10,7 +10,7 @@ import { budgetStatus, confirmProviderModel, providersStatus, revokeProviderKey,
 
 const auth = useAuthStore()
 const router = useRouter()
-const names: ProviderName[] = ['gemini', 'mistral', 'groq', 'openrouter', 'ollama', 'openai', 'anthropic']
+const names: ProviderName[] = ['gemini', 'mistral', 'groq', 'openrouter', 'ollama', 'openai', 'anthropic', 'deepseek']
 const provider = ref<ProviderName>('gemini')
 const setupMode = ref<'free' | 'paid'>('free')
 const statuses = ref<ProviderStatuses | null>(null)

@@ -19,7 +19,7 @@ Lista acordada con el usuario el 2026-11-06 para ir implementando poco a poco. M
 - [ ] **Enlace o QR para el alumnado** (publicación en un origen separado, sin cuentas ni datos personales, con caducidad y despublicación). *Requiere autorización: es publicación.*
 - [x] (2026-11-06) **Documentos largos sección a sección:** la situación de aprendizaje se genera y amplía por secciones (una llamada por sección, progreso «Sección 4 de 9», reintento solo de la sección que falla, «desarrolla solo la evaluación»).
 - [ ] **Batería de pruebas con IA real:** unos 10 encargos típicos contra los modelos gratuitos configurados; medir cuántos salen válidos a la primera y ajustar las instrucciones por modelo. Consume cuota gratuita.
-- [ ] **Despliegue en `studio.edutictac.es`:** `Dockerfile` con Pandoc, xelatex, poppler, Tesseract (spa/cat) y Chromium; inicio de sesión real con Authentik; DNS. *Requiere autorización en cada paso.*
+- [ ] **Despliegue en `educrea.edutictac.es`:** `Dockerfile` con Pandoc, xelatex, poppler, Tesseract (spa/cat) y Chromium; inicio de sesión real con Authentik; DNS. *Requiere autorización en cada paso.*
 
 ## 4. Nuevas funciones
 

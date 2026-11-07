@@ -21,7 +21,7 @@ class FreeConfirmation(BaseModel):
 
 class GenerateInput(BaseModel):
     instruction: str = Field(min_length=10, max_length=4000)
-    provider: Literal["gemini", "mistral", "openrouter", "groq", "ollama", "openai", "anthropic"] = "gemini"
+    provider: Literal["gemini", "mistral", "openrouter", "groq", "ollama", "openai", "anthropic", "deepseek"] = "gemini"
     model: str = Field(min_length=1, max_length=100)
     context_paths: list[str] = Field(default_factory=list, max_length=30)
     automatic: bool = False  # the backend picks the context files; context_paths is ignored

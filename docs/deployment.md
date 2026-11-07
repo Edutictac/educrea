@@ -25,7 +25,11 @@ La pantalla de acceso muestra «Entrar con tu cuenta EduTicTac» cuando el SSO e
 
 | Aplicación | Emisor | Client ID | Retorno | Secreto en `pass` |
 |---|---|---|---|---|
-| `educrea` (producción) | `https://id.edutictac.es/application/o/educrea/` | `studio.edutictac.es` | `https://studio.edutictac.es/api/auth/oidc/callback` | `RUTA_EN_EL_GESTOR_DE_SECRETOS` |
+| `educrea` (producción) | `https://id.edutictac.es/application/o/educrea/` | `educrea.edutictac.es` | `https://educrea.edutictac.es/api/auth/oidc/callback` | `RUTA_EN_EL_GESTOR_DE_SECRETOS` |
 | `educrea-pruebas` (solo tailnet, **borrar tras las pruebas**) | `https://id.edutictac.es/application/o/educrea-pruebas/` | `educrea-pruebas` | `http://IP_DE_LA_TAILNET:5173/api/auth/oidc/callback` | `RUTA_EN_EL_GESTOR_DE_SECRETOS` |
 
-Pendiente: crear el DNS y el despliegue de `studio.edutictac.es`. Hasta entonces solo la aplicación de pruebas es utilizable.
+**Dominio de producción: `educrea.edutictac.es`** (decidido el 2026-11-07; antes estaba previsto `studio.edutictac.es`). En `.env` se configura con `EDUCREA_DOMAIN=educrea.edutictac.es`, y Caddy emite el certificado cuando el DNS apunta al servidor.
+
+**Pendiente en Authentik (fuera del repositorio):** la aplicación de producción sigue creada con el nombre y los datos antiguos (`edustudio`, Client ID y retorno `studio.edutictac.es`). Para que el login funcione en el dominio nuevo hay que cambiar en Authentik el nombre y el slug (el emisor pasaría a `.../application/o/educrea/`), el Client ID y la URL de retorno `https://educrea.edutictac.es/api/auth/oidc/callback`, y mover el secreto en `pass` a `RUTA_EN_EL_GESTOR_DE_SECRETOS`. Cambiar solo la URL de retorno y dejar el resto basta para empezar, si se prefiere no tocar el slug.
+
+Pendiente también: crear el registro DNS de `educrea.edutictac.es` y desplegar. Hasta entonces solo la aplicación de pruebas es utilizable.

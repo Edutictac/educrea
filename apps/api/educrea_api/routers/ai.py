@@ -55,7 +55,7 @@ def provider_status(provider_name: str, user: User = Depends(current_user), db: 
 @router.put("/ai/providers/{provider_name}/key", status_code=204)
 def save_provider_key(provider_name: str, data: CredentialInput, user: User = Depends(require_csrf),
                       db: Session = Depends(get_db)) -> None:
-    if provider_name not in ("gemini", "openrouter", "groq", "mistral", "openai", "anthropic"):
+    if provider_name not in ("gemini", "openrouter", "groq", "mistral", "openai", "anthropic", "deepseek"):
         raise HTTPException(404, "Proveedor no encontrado")
     value = data.api_key.get_secret_value().strip()
     if len(value) < 10:
@@ -85,7 +85,7 @@ def confirm_provider_model(provider_name: str, model: str, data: FreeConfirmatio
 @router.delete("/ai/providers/{provider_name}/key", status_code=204)
 def revoke_provider_key(provider_name: str, user: User = Depends(require_csrf),
                         db: Session = Depends(get_db)) -> None:
-    if provider_name not in ("gemini", "openrouter", "groq", "mistral", "openai", "anthropic"):
+    if provider_name not in ("gemini", "openrouter", "groq", "mistral", "openai", "anthropic", "deepseek"):
         raise HTTPException(404, "Proveedor no encontrado")
     credential = personal_credential(db, user.id, provider_name)
     if credential:

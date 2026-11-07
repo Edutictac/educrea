@@ -390,18 +390,19 @@ def test_ollama_adapter_uses_managed_url_and_json_format():
     asyncio.run(run())
 
 
-def test_paid_estimate_budget_authorization_and_accounting(client: TestClient, monkeypatch):
+@pytest.mark.parametrize("provider", ["openai", "deepseek"])
+def test_paid_estimate_budget_authorization_and_accounting(client: TestClient, monkeypatch, provider):
     headers, project_id = setup_user(client)
     monkeypatch.setattr(pricing, "get_settings", lambda: Settings(paid_models_json=json.dumps({
-        "openai": {"openai-test": {"input": 500000, "output": 2000000}}})))
-    assert client.get("/api/ai/providers").json()["openai"]["paid_models"][0]["model"] == "openai-test"
-    assert client.put("/api/ai/providers/openai/key", headers=headers,
+        provider: {"paid-test": {"input": 500000, "output": 2000000}}})))
+    assert client.get("/api/ai/providers").json()[provider]["paid_models"][0]["model"] == "paid-test"
+    assert client.put(f"/api/ai/providers/{provider}/key", headers=headers,
                       json={"api_key": "test-openai-personal-key"}).status_code == 204
     assert "test-openai-personal-key" not in client.get("/api/ai/providers").text
     draft = {"summary": "Actividad", "changes": [{"path": "index.html", "content": "<h1>Hola</h1>"}]}
     monkeypatch.setattr(registry, "adapter", lambda _name: StubGemini(json.dumps(draft)))
-    request = {"instruction": "Crea una actividad de fracciones", "provider": "openai",
-               "model": "openai-test", "mode": "paid"}
+    request = {"instruction": "Crea una actividad de fracciones", "provider": provider,
+               "model": "paid-test", "mode": "paid"}
     estimate_route = f"/api/projects/{project_id}/ai/estimate"
     estimate = client.post(estimate_route, headers=headers, json=request)
     assert estimate.status_code == 200
@@ -427,7 +428,7 @@ def test_paid_estimate_budget_authorization_and_accounting(client: TestClient, m
         "instruction": "Crea una actividad de fraccionez"}).status_code == 403
     response = client.post(route, headers=headers, json=approved)
     assert response.status_code == 201
-    assert response.json()["provider"] == "openai"
+    assert response.json()["provider"] == provider
     expected = pricing.cost(20, 30, pricing.Price(500000, 2000000))
     assert client.get("/api/ai/budget").json()["spent_or_reserved_microusd"] == expected
     client.post("/api/auth/logout", headers=headers)

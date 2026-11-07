@@ -374,7 +374,7 @@ def dua_grounding(draft: DraftProposal, target: str) -> dict:
 
 
 PROVIDER_LABELS = {"gemini": "Gemini", "groq": "Groq", "openrouter": "OpenRouter", "ollama": "Ollama",
-                   "mistral": "Mistral", "openai": "OpenAI", "anthropic": "Anthropic"}
+                   "mistral": "Mistral", "openai": "OpenAI", "anthropic": "Anthropic", "deepseek": "DeepSeek"}
 logger = logging.getLogger(__name__)
 CODE_FENCE = re.compile(r"^```[A-Za-z0-9_-]*\s*|\s*```$")
 TRAILING_COMMA = re.compile(r",\s*([}\]])")

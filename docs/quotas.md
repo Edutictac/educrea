@@ -2,7 +2,7 @@
 
 Los límites internos se aplican **según quién controla el recurso**, no de forma global:
 
-- **Proveedores con clave personal** (Gemini, OpenRouter, Groq, OpenAI, Anthropic): la cuota real la impone el proveedor sobre la cuenta del propio docente, y EduCrea la trata cuando llega el 429. Internamente solo se mantiene una generación simultánea por usuario y un tope diario alto contra bucles (`EDUCREA_AI_DAILY_PERSONAL_REQUESTS`, 200 por defecto, día UTC). No hay tope global ni de tokens, y el uso de otros usuarios no bloquea a nadie.
+- **Proveedores con clave personal** (Gemini, OpenRouter, Groq, Mistral, OpenAI, Anthropic, DeepSeek): la cuota real la impone el proveedor sobre la cuenta del propio docente, y EduCrea la trata cuando llega el 429. Internamente solo se mantiene una generación simultánea por usuario y un tope diario alto contra bucles (`EDUCREA_AI_DAILY_PERSONAL_REQUESTS`, 200 por defecto, día UTC). No hay tope global ni de tokens, y el uso de otros usuarios no bloquea a nadie.
 - **Ollama (solo pruebas):** es un recurso compartido que paga el administrador y no se prevé en producción, porque el servidor de desarrollo no tiene potencia para dar servicio. Mientras exista se limita por usuario y por instalación: 20 peticiones y 400 000 tokens por usuario, 200 peticiones y 4 000 000 tokens por instalación y día UTC (`EDUCREA_AI_DAILY_USER_*` y `EDUCREA_AI_DAILY_INSTALLATION_*`), contando solo el uso de Ollama.
 - **Modelos de pago:** además de lo anterior, el presupuesto mensual del usuario (ver más abajo).
 

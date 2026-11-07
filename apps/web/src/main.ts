@@ -7,6 +7,7 @@ import ProjectsView from './views/ProjectsView.vue'
 import ProjectView from './views/ProjectView.vue'
 import AiProvidersView from './views/AiProvidersView.vue'
 import BetaAdminView from './views/BetaAdminView.vue'
+import BetaRequestView from './views/BetaRequestView.vue'
 import { useAuthStore } from './stores/auth'
 import './style.css'
 
@@ -17,6 +18,7 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/projects', component: ProjectsView },
   { path: '/projects/:id', component: ProjectView, meta: { wide: true } },
   { path: '/admin/beta', component: BetaAdminView },
+  { path: '/beta', component: BetaRequestView },
   { path: '/ai/providers', component: AiProvidersView },
 ] })
 

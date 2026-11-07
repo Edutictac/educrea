@@ -38,6 +38,7 @@ async function submit() {
     <h3>{{ t('betaWaitlist') }}</h3>
     <p>{{ t('betaWaitlistPurpose') }}</p>
     <p v-if="status?.status === 'pending'" role="status">{{ t('betaWaitlistPending') }}</p>
+    <p v-if="status?.status === 'accepted'" role="status">{{ t('betaWaitlistAccepted') }}</p>
     <button v-if="status?.status === 'pending'" type="button" class="secondary" @click="checkStatus">{{ t('betaCheckStatus') }}</button>
     <form v-if="loaded && status?.status !== 'pending' && status?.status !== 'accepted'" @submit.prevent="submit">
       <label>{{ t('betaTeachingContext') }}

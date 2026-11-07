@@ -1,5 +1,7 @@
 # Administración de la beta
 
+La solicitud pública de acceso está en **`/beta`**. No hay enlaces a esa página desde la aplicación: se comparte directamente con quien se quiera invitar a pedir plaza. Las cuentas invitadas ven su cuota de IA EduCrea en su espacio, pero la solicitud no aparece en el resto de pantallas.
+
 Zona `/admin/beta` para cuentas con rol persistente `users.is_admin`. La navegación solo muestra
 «Administración de la beta» a esas cuentas; todos los endpoints comprueban el rol en el servidor y
 las mutaciones requieren CSRF. Las respuestas administrativas llevan `Cache-Control: no-store`.

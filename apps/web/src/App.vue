@@ -3,12 +3,13 @@ import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from './components/AppIcon.vue'
 import { locale, t } from './i18n'
-import { initializeAiChoice, clearAiChoice } from './services/aiChoice'
+import { includedStatus } from './services/ai'
+import { startAiChoice, clearAiChoice } from './services/aiChoice'
 import { useAuthStore } from './stores/auth'
 
 const auth = useAuthStore()
 watch(() => [auth.user?.id, auth.user?.included_ai_authorized] as const, ([id, authorized]) => {
-  if (id) initializeAiChoice(id, authorized === true)
+  if (id) void startAiChoice(id, authorized === true, includedStatus)
   else clearAiChoice()
 }, { immediate: true, flush: 'sync' })
 const router = useRouter()

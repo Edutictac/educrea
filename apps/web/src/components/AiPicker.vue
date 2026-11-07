@@ -5,11 +5,12 @@ import { computed, onMounted, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
 import { useAuthStore } from '../stores/auth'
 import { t } from '../i18n'
-import { providersStatus, type ProviderName, type ProviderStatuses } from '../services/ai'
-import { aiChoice, PROVIDER_NAMES } from '../services/aiChoice'
+import { includedStatus, providersStatus, type IncludedStatus, type ProviderName, type ProviderStatuses } from '../services/ai'
+import { aiChoice, includedOffered, PROVIDER_NAMES } from '../services/aiChoice'
 
 const auth = useAuthStore()
-const included = computed(() => auth.user?.included_ai_authorized === true)
+const includedState = ref<IncludedStatus | null>(null)
+const included = computed(() => includedOffered(auth.user?.included_ai_authorized === true, includedState.value))
 const statuses = ref<ProviderStatuses | null>(null)
 const options = computed(() => {
   if (!statuses.value) return []
@@ -26,6 +27,11 @@ const value = computed({
 })
 onMounted(async () => {
   try { statuses.value = await providersStatus() } catch { statuses.value = null }
+  if (auth.user?.included_ai_authorized === true) {
+    try { includedState.value = await includedStatus() } catch { includedState.value = null }
+  }
+  // A saved institutional choice falls back to «Automática» when the service is paused or unavailable.
+  if (aiChoice.value.provider === 'educrea' && !included.value) aiChoice.value = { provider: '', model: '' }
   // A saved choice that is no longer configured falls back to «Automática».
   if (statuses.value && aiChoice.value.provider && aiChoice.value.provider !== 'educrea' && !options.value.some(item => item.value === value.value)) {
     aiChoice.value = included.value ? { provider: 'educrea', model: 'included' } : { provider: '', model: '' }

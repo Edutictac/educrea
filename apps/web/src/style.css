@@ -77,6 +77,9 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .
 .brand-mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #1a86ad, #0b4359); box-shadow: var(--shadow-sm); }
 .brand small { font-weight: 600; color: var(--c-muted); font-size: .8rem; margin-left: .1rem; }
 .topbar nav { display: flex; gap: .25rem; align-items: center; }
+.topbar-end { display: flex; align-items: center; gap: .5rem; margin-left: auto; }
+edutictac-account.site-account:empty { display: none; }
+.account-fallback edutictac-account { display: none; }
 .topbar nav a { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .75rem; border-radius: var(--radius-sm); color: var(--c-ink-2); text-decoration: none; font-weight: 600; }
 .topbar nav a:hover { background: var(--c-brand-50); color: var(--c-brand-700); }
 .topbar nav a.router-link-active { background: var(--c-brand-50); color: var(--c-brand-700); }

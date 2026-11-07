@@ -32,6 +32,20 @@ La pantalla de acceso muestra «Entrar con tu cuenta EduTicTac» cuando el SSO e
 
 **Authentik (actualizado el 2026-11-07):** la aplicación de producción es ahora `educrea` (nombre «EduCrea»), con Client ID `educrea.edutictac.es`, emisor `https://id.edutictac.es/application/o/educrea/` y retorno `https://educrea.edutictac.es/api/auth/oidc/callback`. El secreto del cliente se guarda en el gestor de contraseñas del administrador. El DNS resuelve por el wildcard `*.edutictac.es`, no hizo falta crear un registro.
 
+## Chip de cuenta central (Commons)
+
+La web carga `https://commons.edutictac.es/assets/account-widget.js` y monta `<edutictac-account>` en la cabecera
+(`apps/web/src/components/EduTicTacAccount.vue`). Muestra la **sesión central de Commons**, independiente del SSO
+de EduCrea; la convivencia es intencionada hasta la unificación.
+
+- `apps/web/nginx.conf` permite `https://commons.edutictac.es` en `script-src`, `style-src-elem`, `img-src` y
+  `connect-src`. Si el nginx del host añade su propia CSP, debe permitir ese origen; si no, el chip no cargará.
+- En Commons, añade `https://educrea.edutictac.es` a `EDUTICTAC_ID_ALLOWED_ORIGINS`. Sin ese origen el script
+  carga pero la sesión se bloquea por CORS y el chip se queda sin cuenta. Para el chip de EduTicTac Prompt hay que
+  añadir también `https://pages.edutictac.es`.
+- El chip no sustituye al login propio de EduCrea ni al de Prompt. No se han conectado los adaptadores de
+  idioma/tema, así que el chip no muestra esos selectores y se mantienen los propios de cada app.
+
 ## Despliegue actual (2026-11-07)
 
 - Servidor: VPS de producción (los datos de acceso no se guardan en el repositorio), directorio `/srv/educrea`.

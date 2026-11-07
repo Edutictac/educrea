@@ -28,3 +28,7 @@ los `prompt_tokens` al precio de entrada configurado; para estimar de forma cons
 entrada **sin acierto de caché** y la tarifa de salida normal. Los descuentos de caché no reducen la reserva
 interna. Cada solicitud requiere presupuesto y aceptación de su estimación. DeepSeek no participa en la
 selección ni en la alternancia gratuita. Pruebas con transporte simulado, sin claves reales ni cargos.
+
+## Imágenes de pago BYOK
+
+La generación de imágenes es una modalidad BYOK independiente del catálogo de tokens: usa la clave de Gemini del docente y un catálogo propio de modelos y precios por imagen. Está documentada en [image-models.md](image-models.md). El modelo por defecto es Nano Banana 2 Lite, solo 1K, y requiere confirmación de coste, presupuesto mensual y aceptación de derechos y ausencia de datos personales. La IA incluida no genera imágenes.

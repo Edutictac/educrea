@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     ollama_free_models: str = ""
     ollama_base_url: str = ""
     paid_models_json: str = "{}"
+    # BYOK image generation. Empty by default: only administrator-approved models and prices can spend money.
+    image_models_json: str = "{}"
+    ai_daily_image_requests: int = Field(default=20, gt=0)
+    image_request_timeout_seconds: int = Field(default=120, ge=1, le=300)
     # Included institutional AI. No personal credentials or implicit paid-model activation.
     free_ai_enabled: bool = False
     free_ai_monthly_credits: int = Field(default=10000, ge=0)

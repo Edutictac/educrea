@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import ImageGenerator from './ImageGenerator.vue'
 import { t } from '../i18n'
 import { assetUrl, deleteAsset, htmlSnippet, listAssets, markdownSnippet, MAX_IMAGE_BYTES, updateAsset, uploadAsset, type Asset } from '../services/assets'
 import { useAuthStore } from '../stores/auth'
@@ -67,6 +68,7 @@ onMounted(() => { if (props.embedded && !open.value) void toggle() })
     <div v-if="!embedded" class="actions"><button type="button" class="secondary" :aria-expanded="open" @click="toggle">{{ t('projectImages') }}{{ items.length ? ` (${items.length})` : '' }}</button></div>
     <div v-if="open">
       <p>{{ t('imagesIntro') }}</p>
+      <ImageGenerator :project-id="projectId" @saved="load" />
       <form class="form-grid" @submit.prevent="upload">
         <label>{{ t('imageFile') }}<input ref="input" type="file" accept="image/png,image/jpeg" @change="pick" /></label>
         <label>{{ t('imageAlt') }}<input v-model="alt" maxlength="300" required :placeholder="t('imageAltPlaceholder')" /></label>

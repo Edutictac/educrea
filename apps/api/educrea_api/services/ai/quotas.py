@@ -73,6 +73,23 @@ def reserve(db: Session, user_id: UUID, provider: str, model: str,
     return entry.id
 
 
+def reserve_fixed(db: Session, user_id: UUID, provider: str, model: str, maximum_cost_microusd: int) -> UUID:
+    """Reserve a fixed price (an image, for example) without token accounting."""
+    return reserve(db, user_id, provider, model, maximum_cost_microusd=maximum_cost_microusd,
+                   price=Price(0, 0), maximum_tokens=0)
+
+
+def reconcile_fixed(db: Session, reservation_id: UUID, actual_cost_microusd: int, failed: bool = False) -> None:
+    """Settle a fixed-price reservation. Failed generations release the internal budget."""
+    entry = db.get(AiUsage, reservation_id)
+    if entry is None or entry.status != "reserved":
+        return
+    entry.actual_tokens = 0
+    entry.actual_cost_microusd = 0 if failed else actual_cost_microusd
+    entry.status = "failed" if failed else "completed"
+    db.commit()
+
+
 def reconcile(db: Session, reservation_id: UUID, usage: dict | None = None, failed: bool = False) -> None:
     entry = db.get(AiUsage, reservation_id)
     if entry is None or entry.status != "reserved":

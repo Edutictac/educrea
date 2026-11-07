@@ -1,6 +1,6 @@
 # Recursos visuales pedagógicos: decisión de diseño
 
-**Estado:** planificación. Esta funcionalidad pertenece a la Fase 6; el cursor con IA es una exploración posterior a la beta. No hay generación ni exportación de imágenes en la Fase 3.
+**Estado:** la biblioteca de imágenes, la exportación PNG de infografías y la generación BYOK con Gemini Nano Banana están implementadas. Esta última usa solo imágenes 1K y se documenta en [image-models.md](image-models.md); el cursor con IA sigue siendo una exploración posterior a la beta.
 
 ## Criterio de creación
 

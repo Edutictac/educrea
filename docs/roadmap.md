@@ -39,14 +39,15 @@ solicitud. El registro y los proveedores personales se pueden utilizar mientras 
 La gestión operativa se describe en [included-ai.md](included-ai.md#invitaciones-y-lista-de-espera).
 El despliegue público sigue siendo una acción posterior.
 
-## Generación de imágenes con modelos de pago (pendiente, sin fecha)
+## Generación de imágenes BYOK (implementada el 2026-11-07)
 
-Comprobado el 2026-11-06: el nivel gratuito de Gemini no ofrece cuota para ningún modelo de imagen (`gemini-2.5-flash-image`, `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`…): todos responden 429 desde la primera petición, mientras que el texto funciona con la misma clave. Por eso la generación de imágenes con IA se hará solo con **modelos de pago BYOK**, reutilizando lo de la Fase 5:
+Comprobado el 2026-11-06: el nivel gratuito de Gemini no ofrece cuota para ningún modelo de imagen (`gemini-2.5-flash-image`, `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`…): todos responden 429 desde la primera petición, mientras que el texto funciona con la misma clave. La generación se implementa solo con **modelos de pago BYOK** y queda documentada en [image-models.md](image-models.md):
 
+- Modelo por defecto aprobado por el administrador: `gemini-3.1-flash-lite-image` (Nano Banana 2 Lite), 0,0336 USD por imagen 1K. Solo 1K en esta fase.
 - Estimación del coste antes de cada imagen, presupuesto mensual interno y aprobación expresa por generación; nunca automática ni en modo docente sin confirmar.
 - El docente describe la ilustración, personaje, escena o recurso (prioridad: Infantil y Primaria) y revisa el resultado antes de guardarlo en la biblioteca de imágenes del proyecto, con el texto alternativo y el crédito «Generada con IA (proveedor, modelo, fecha)».
-- Solo proveedores y modelos con capacidad de imagen comprobada para la cuenta (Gemini Flash Image, OpenAI y los de OpenRouter que corresponda) y con condiciones de uso revisadas. Sin personas reales identificables ni alumnado.
-- Para probarla hace falta activar la facturación en un proyecto de Google (o una clave de pago de otro proveedor).
+- Invitados con clave temporal de Gemini; usuarios registrados con clave cifrada. La IA incluida no genera imágenes.
+- Sin personas reales identificables ni datos del alumnado. Hace falta activar la facturación en un proyecto de Google.
 
 ## Integración con EduTicTac Commons
 

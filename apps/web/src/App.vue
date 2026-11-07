@@ -18,20 +18,20 @@ const route = useRoute()
 const menuOpen = ref(false)
 function closeOnLink(event: MouseEvent) { if ((event.target as HTMLElement).closest('a')) menuOpen.value = false }
 const error = ref('')
-onMounted(async () => { try { await auth.ensureLoaded() } catch { error.value = t('error') } })
+onMounted(async () => { await router.isReady(); if (route.meta.public) return; try { await auth.ensureLoaded() } catch { error.value = t('error') } })
 async function logout() { menuOpen.value = false; await auth.logout(); router.push('/projects') }
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" :class="{ 'home-shell': route.meta.home }">
     <a class="sr-only" href="#contenido">{{ t('skipToContent') }}</a>
     <header class="topbar">
-      <RouterLink to="/projects" class="brand" @click="menuOpen = false">
+      <RouterLink to="/" class="brand" @click="menuOpen = false">
         <span class="brand-mark"><AppIcon name="sparkles" :size="20" /></span><span>EduCrea</span>
       </RouterLink>
       <div class="topbar-end">
       <nav id="menu-principal" :class="{ open: menuOpen }" :aria-label="t('mainMenu')" @click="closeOnLink">
-        <RouterLink v-if="auth.user" to="/projects"><AppIcon name="folder" :size="18" />{{ t('projects') }}</RouterLink>
+        <RouterLink v-if="auth.user || route.meta.home" to="/projects"><AppIcon name="folder" :size="18" />{{ t('projects') }}</RouterLink>
         <RouterLink v-if="auth.user?.is_admin" to="/admin/beta">{{ t('adminBeta') }}</RouterLink>
         <RouterLink v-if="auth.user" to="/ai/providers"><AppIcon name="key" :size="18" />{{ t('myProviders') }}</RouterLink>
         <RouterLink v-if="!auth.user || auth.user.is_guest" :to="{ path: '/login', query: { next: route.fullPath } }">{{ t('openRegister') }}</RouterLink>
@@ -43,8 +43,8 @@ async function logout() { menuOpen.value = false; await auth.logout(); router.pu
         :aria-label="menuOpen ? t('closeMenu') : t('openMenu')" @click="menuOpen = !menuOpen"><AppIcon :name="menuOpen ? 'x' : 'menu'" :size="22" /></button>
       </div>
     </header>
-    <p v-if="auth.user?.is_guest" class="hint">{{ t('openWorkspaceNotice') }}</p>
-    <main id="contenido" :class="{ wide: route.meta.wide }" tabindex="-1"><p v-if="error" role="alert">{{ error }}</p><RouterView v-if="auth.ready" :key="route.path" /></main>
-    <footer>EduCrea · {{ t('footerNote') }} · {{ t('iconsCredit') }}</footer>
+    <p v-if="auth.user?.is_guest && !route.meta.home" class="hint">{{ t('openWorkspaceNotice') }}</p>
+    <main id="contenido" :class="{ wide: route.meta.wide, 'home-main': route.meta.home }" tabindex="-1"><p v-if="error" role="alert">{{ error }}</p><RouterView v-if="auth.ready || route.meta.public" :key="route.path" /></main>
+    <footer v-if="!route.meta.home">EduCrea · {{ t('footerNote') }} · {{ t('iconsCredit') }}</footer>
   </div>
 </template>

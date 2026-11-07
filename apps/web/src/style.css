@@ -269,3 +269,8 @@ p[role=alert] { color: var(--c-danger); background: var(--c-danger-50); border: 
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 @media print { .topbar, footer, .tabbar, .viewer-head { display: none; } }
+
+/* Public cover layout. */
+main.home-main { width: 100%; margin: 0; }
+.home-shell { background: #faf9f5; }
+.home-shell > .topbar { background: #faf9f5f5; border-bottom-color: #e3e7e1; }

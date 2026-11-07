@@ -2,18 +2,20 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
-import LoginView from './views/LoginView.vue'
-import ProjectsView from './views/ProjectsView.vue'
-import EduPromptView from './views/EduPromptView.vue'
-import ProjectView from './views/ProjectView.vue'
-import AiProvidersView from './views/AiProvidersView.vue'
-import BetaAdminView from './views/BetaAdminView.vue'
-import BetaRequestView from './views/BetaRequestView.vue'
+import HomeView from './views/HomeView.vue'
 import { useAuthStore } from './stores/auth'
 import './style.css'
 
+const LoginView = () => import('./views/LoginView.vue')
+const ProjectsView = () => import('./views/ProjectsView.vue')
+const EduPromptView = () => import('./views/EduPromptView.vue')
+const ProjectView = () => import('./views/ProjectView.vue')
+const AiProvidersView = () => import('./views/AiProvidersView.vue')
+const BetaAdminView = () => import('./views/BetaAdminView.vue')
+const BetaRequestView = () => import('./views/BetaRequestView.vue')
+
 const router = createRouter({ history: createWebHistory(), routes: [
-  { path: '/', redirect: '/projects' },
+  { path: '/', component: HomeView, meta: { public: true, home: true } },
   { path: '/explore', redirect: '/projects' },
   { path: '/login', component: LoginView },
   { path: '/projects', component: ProjectsView },
@@ -26,7 +28,7 @@ const router = createRouter({ history: createWebHistory(), routes: [
 
 const pinia = createPinia()
 // Anonymous visitors get a temporary session; wait for it before any view checks auth.user.
-router.beforeEach(async () => { try { await useAuthStore(pinia).ensureLoaded() } catch { /* App.vue shows the error */ } })
+router.beforeEach(async (to) => { if (to.meta.public) return; try { await useAuthStore(pinia).ensureLoaded() } catch { /* App.vue shows the error */ } })
 
 createApp(App).use(pinia).use(router).mount('#app')
 

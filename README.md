@@ -2,6 +2,19 @@
 
 Plataforma libre en desarrollo para crear actividades educativas con ayuda de IA. **Estado: Fase 5**. Se puede explorar sin registro mediante un borrador temporal que ofrece los modos docente y avanzado. Para conservarlo como proyecto hay que crear una cuenta o entrar en una existente. Las cuentas permiten gestionar proyectos propios y revisar propuestas de proveedores autorizados antes de aplicarlas. Aún no hay vista previa ejecutable.
 
+## Portada y acceso a la herramienta
+
+La ruta `/` presenta EduCrea con ejemplos, una actividad de demostración interactiva,
+los formatos disponibles, tres pasos de uso y preguntas frecuentes. Está disponible en
+castellano, valenciano e inglés y se puede leer sin abrir una sesión de invitado ni depender
+de la API. Los botones «Empieza a crear» abren `/projects?nuevo=1`; «Mis proyectos» conserva
+el acceso al espacio de trabajo. El logotipo vuelve a la portada. La entrada `/eduprompt`
+sigue recibiendo encargos de EduTicTac Prompt.
+
+La demostración es local y no llama a proveedores de IA. La portada explica el uso de claves
+propias y el acceso restringido a la IA incluida, sin enlazar el formulario privado de beta.
+El editor y las otras vistas se cargan al abrirlas para aligerar la entrada pública.
+
 ## Arquitectura
 
 - `apps/web`: Vue 3, TypeScript, Vite, Pinia, Vue Router y Monaco; interfaz en castellano, valenciano e inglés.

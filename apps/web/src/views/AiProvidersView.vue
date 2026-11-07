@@ -6,6 +6,8 @@ import IncludedAiQuota from '../components/IncludedAiQuota.vue'
 import ProviderGuide from '../components/ProviderGuide.vue'
 import { providerGuides, suggestedProvider } from '../services/providerGuide'
 import { t } from '../i18n'
+import { imageModels } from '../services/images'
+import { videoModels } from '../services/videos'
 import { useAuthStore } from '../stores/auth'
 import { budgetStatus, confirmProviderModel, providersStatus, revokeProviderKey, saveProviderKey, updateBudget,
   type BudgetStatus, type ProviderName, type ProviderStatuses } from '../services/ai'
@@ -21,6 +23,9 @@ const providerLoadState = ref<'loading' | 'ready' | 'error'>('loading')
 const providerLoadError = ref('')
 const providerSelected = ref(false)
 const budget = ref<BudgetStatus | null>(null)
+// Paid image and video models also spend the monthly budget, even when no paid text model is enabled.
+const mediaPaid = ref(false)
+const hasPaid = computed(() => !!status.value?.paid_models.length || (provider.value === 'gemini' && mediaPaid.value))
 const budgetError = ref('')
 const monthlyDollars = ref('0')
 const key = ref('')
@@ -37,6 +42,8 @@ onMounted(async () => {
   if (!auth.user) { router.replace('/login'); return }
   void loadProviders()
   void loadBudget()
+  void Promise.all([imageModels().catch(() => null), videoModels().catch(() => null)])
+    .then(([images, videos]) => { mediaPaid.value = !!images?.models.length || !!videos?.models.length })
 })
 async function loadProviders() {
   providerLoadState.value = 'loading'; providerLoadError.value = ''
@@ -98,14 +105,14 @@ async function saveBudget() {
     <label>{{ t('providerLabel') }}<select v-model="provider" @change="providerSelected = true">
       <option v-for="name in names" :key="name" :value="name">{{ name }}</option>
     </select></label>
-    <label v-if="status?.paid_models.length && !providerGuides[provider].paid">{{ t('modelMode') }}
+    <label v-if="hasPaid && !providerGuides[provider].paid">{{ t('modelMode') }}
       <select v-model="setupMode"><option value="free">{{ t('freeMode') }}</option><option value="paid">{{ t('paidMode') }}</option></select>
     </label>
     <p v-if="providerLoadState === 'error'" role="alert">{{ t('guideLoadFailed') }}: {{ providerLoadError }}
       <button type="button" class="secondary" @click="loadProviders">{{ t('guideRetry') }}</button></p>
     <ProviderGuide :provider="provider" :mode="setupMode" :status-state="providerLoadState"
       :ephemeral="!!auth.user?.is_guest" :configured="status?.configured ?? false" :confirmed-free="!!status?.confirmed_free_models.length"
-      :has-free-models="!!status?.verified_free_models.length" :has-paid-models="!!status?.paid_models.length"
+      :has-free-models="!!status?.verified_free_models.length" :has-paid-models="hasPaid"
       :paid-ready="!!budget?.monthly_limit_microusd">
       <template #key>
         <p v-if="provider === 'ollama'">{{ t('ollamaManaged') }}</p>
@@ -136,7 +143,7 @@ async function saveBudget() {
             {{ t('perMillionTokens') }}</li></ul>
         </template>
         <p v-if="setupMode === 'paid' && budgetError" role="alert">{{ budgetError }}</p>
-        <form v-if="setupMode === 'paid' && budget && status?.paid_models.length" @submit.prevent="saveBudget">
+        <form v-if="setupMode === 'paid' && budget && hasPaid" @submit.prevent="saveBudget">
           <h3>{{ t('monthlyBudget') }}</h3>
           <p>{{ t('budgetIntro') }}</p>
           <label>{{ t('budgetUsd') }}<input v-model="monthlyDollars" type="number" min="0" step="0.01"

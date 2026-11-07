@@ -57,13 +57,15 @@ const tabs = computed(() => [
 const tools = computed(() => [
   { id: 'sources' as const, icon: 'library', label: t('sources') },
   { id: 'images' as const, icon: 'image', label: t('projectImages') },
-  { id: 'video' as const, icon: 'monitor', label: t('projectVideos') },
+  // Video only fits interactive web activities (index.html): not printable worksheets, documents or infographics.
+  ...(hasActivity.value ? [{ id: 'video' as const, icon: 'monitor', label: t('projectVideos') }] : []),
   { id: 'dua' as const, icon: 'layers', label: t('duaTitle') },
   { id: 'history' as const, icon: 'history', label: t('history') },
   ...(mode.value === 'advanced' ? [{ id: 'capabilities' as const, icon: 'panel-right', label: t('capabilities') }] : []),
   { id: 'settings' as const, icon: 'settings', label: t('projectSettings') },
 ])
 watch(wide, value => { if (value && tab.value === 'preview') tab.value = 'work' })
+watch(hasActivity, value => { if (!value && tool.value === 'video') tool.value = 'sources' })
 watch(mode, () => { if (tool.value === 'capabilities') tool.value = 'sources' })
 
 function hasUnsavedChanges() { return detailsDirty.value || (workspace.value?.hasUnsavedChanges() ?? false) }

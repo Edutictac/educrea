@@ -76,13 +76,13 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .
 .brand { display: inline-flex; align-items: center; gap: .6rem; font-size: 1.15rem; font-weight: 800; color: var(--c-ink); text-decoration: none; letter-spacing: -.02em; }
 .brand-mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #1a86ad, #0b4359); box-shadow: var(--shadow-sm); }
 .brand small { font-weight: 600; color: var(--c-muted); font-size: .8rem; margin-left: .1rem; }
-.topbar nav { display: flex; gap: .25rem; align-items: center; }
+#menu-principal { display: flex; gap: .25rem; align-items: center; }
 .topbar-end { display: flex; align-items: center; gap: .5rem; margin-left: auto; }
 edutictac-account.site-account:empty { display: none; }
 .account-fallback edutictac-account { display: none; }
-.topbar nav a { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .75rem; border-radius: var(--radius-sm); color: var(--c-ink-2); text-decoration: none; font-weight: 600; }
-.topbar nav a:hover { background: var(--c-brand-50); color: var(--c-brand-700); }
-.topbar nav a.router-link-active { background: var(--c-brand-50); color: var(--c-brand-700); }
+#menu-principal a { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .75rem; border-radius: var(--radius-sm); color: var(--c-ink-2); text-decoration: none; font-weight: 600; }
+#menu-principal a:hover { background: var(--c-brand-50); color: var(--c-brand-700); }
+#menu-principal a.router-link-active { background: var(--c-brand-50); color: var(--c-brand-700); }
 .menu-toggle { display: none; }
 main { width: min(100% - 2rem, 1120px); margin: 1.6rem auto; flex: 1; }
 main.wide { width: min(100% - 2rem, 1680px); margin-top: 1rem; }
@@ -256,9 +256,9 @@ p[role=alert] { color: var(--c-danger); background: var(--c-danger-50); border: 
   .file-explorer { margin-bottom: 1rem; }
   .monaco-host { height: 360px; }
   .menu-toggle { display: inline-flex; }
-  .topbar nav { display: none; position: absolute; top: var(--header-h); left: 0; right: 0; flex-direction: column; align-items: stretch; padding: .6rem; background: var(--c-surface); border-bottom: 1px solid var(--c-line); box-shadow: var(--shadow-lg); }
-  .topbar nav.open { display: flex; }
-  .topbar nav a, .topbar nav button, .topbar nav select { width: 100%; justify-content: flex-start; min-height: 46px; }
+  #menu-principal { display: none; position: absolute; top: var(--header-h); left: 0; right: 0; flex-direction: column; align-items: stretch; padding: .6rem; background: var(--c-surface); border-bottom: 1px solid var(--c-line); box-shadow: var(--shadow-lg); }
+  #menu-principal.open { display: flex; }
+  #menu-principal a, #menu-principal button, #menu-principal select { width: 100%; justify-content: flex-start; min-height: 46px; }
   .brand small { display: none; }
   .project-bar h1 { flex-basis: 100%; order: -1; white-space: normal; }
   .viewer-stage { padding: .4rem; }

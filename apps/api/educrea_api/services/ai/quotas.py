@@ -37,7 +37,7 @@ def reserve(db: Session, user_id: UUID, provider: str, model: str,
         raise HTTPException(401, "Sesión no válida")
     now = datetime.now(timezone.utc)
     today = datetime.combine(now.date(), time.min, tzinfo=timezone.utc)
-    usage = list(db.scalars(select(AiUsage).where(AiUsage.created_at >= today)))
+    usage = list(db.scalars(select(AiUsage).where(AiUsage.mode != "included", AiUsage.created_at >= today)))
     mine = [item for item in usage if item.user_id == user_id]
     if any(item.status == "reserved" for item in mine):
         raise HTTPException(429, "Ya tienes una generación en curso")
@@ -56,7 +56,7 @@ def reserve(db: Session, user_id: UUID, provider: str, model: str,
             raise HTTPException(500, "Precio no disponible")
         budget = db.get(AiBudget, user_id)
         month = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
-        month_usage = list(db.scalars(select(AiUsage).where(AiUsage.user_id == user_id,
+        month_usage = list(db.scalars(select(AiUsage).where(AiUsage.mode != "included", AiUsage.user_id == user_id,
                                                             AiUsage.created_at >= month)))
         spent = sum(item.actual_cost_microusd if item.actual_cost_microusd is not None
                     else item.reserved_cost_microusd for item in month_usage)
@@ -95,7 +95,7 @@ def reconcile(db: Session, reservation_id: UUID, usage: dict | None = None, fail
 def summary(db: Session, user_id: UUID) -> dict:
     settings = get_settings()
     today = datetime.combine(datetime.now(timezone.utc).date(), time.min, tzinfo=timezone.utc)
-    usage = list(db.scalars(select(AiUsage).where(AiUsage.created_at >= today)))
+    usage = list(db.scalars(select(AiUsage).where(AiUsage.mode != "included", AiUsage.created_at >= today)))
     mine = [item for item in usage if item.user_id == user_id]
     personal = [item for item in mine if item.provider not in SHARED_PROVIDERS]
     shared = [item for item in usage if item.provider in SHARED_PROVIDERS]
@@ -114,7 +114,7 @@ def budget_summary(db: Session, user_id: UUID) -> dict:
     now = datetime.now(timezone.utc)
     month = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
     budget = db.get(AiBudget, user_id)
-    usage = list(db.scalars(select(AiUsage).where(AiUsage.user_id == user_id, AiUsage.created_at >= month)))
+    usage = list(db.scalars(select(AiUsage).where(AiUsage.mode != "included", AiUsage.user_id == user_id, AiUsage.created_at >= month)))
     return {"monthly_limit_microusd": budget.monthly_limit_microusd if budget else 0,
             "spent_or_reserved_microusd": sum(item.actual_cost_microusd if item.actual_cost_microusd is not None
                                                else item.reserved_cost_microusd for item in usage),

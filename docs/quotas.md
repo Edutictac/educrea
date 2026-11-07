@@ -13,3 +13,9 @@ Al terminar, el uso comunicado por el proveedor sustituye la reserva. Si la peti
 La alternancia tras un HTTP 429 solo ocurre si el docente marca la autorización explícita y ya dispone de otro proveedor gratuito configurado y confirmado. Se crea una reserva nueva para el segundo intento. En streaming, la alternancia solo se hace antes de recibir texto de la primera respuesta. El orden es Gemini, OpenRouter, Groq y Ollama, excluyendo el proveedor fallido. Nunca se alterna a un modelo de pago.
 
 La Fase 5 añade un presupuesto monetario mensual por usuario y reservas de coste para modelos de pago BYOK; consulta [paid-models.md](paid-models.md). Los límites por centro y la facturación institucional siguen pendientes. La generación de imágenes de la Fase 6 necesitará límites por imagen, resolución y concurrencia propios.
+
+## IA EduCrea incluida
+
+La modalidad institucional autorizada convive con BYOK en el mismo motor, adaptadores y registro de uso.
+Su router sustituible por EduPrompt Core, claves institucionales, cuota mensual única, reservas y presupuestos
+se documentan en [included-ai.md](included-ai.md).

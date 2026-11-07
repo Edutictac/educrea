@@ -10,6 +10,7 @@ from ....config import get_settings
 from .compatible import CompatibleProvider
 from .anthropic import AnthropicProvider
 from .gemini import GeminiProvider, free_models as gemini_free_models
+from ..temporary_credentials import credential as temporary_credential
 from ..credentials import decrypt_key, personal_credential
 
 MODEL_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")
@@ -38,10 +39,11 @@ def status(db: Session, user_id: UUID, provider: str) -> dict:
 
     credential = personal_credential(db, user_id, provider) if provider != "ollama" else None
     models = free_models(provider)
-    return {"configured": credential is not None if provider != "ollama" else bool(models),
+    temporary = temporary_credential(db, user_id, provider)
+    return {"configured": bool(temporary) or credential is not None if provider != "ollama" else bool(models),
             "verified_free_models": models,
             "confirmed_free_models": [model for model in models if provider == "ollama" or
-                                      (credential and model in credential.free_confirmations)],
+                                      (credential and model in credential.free_confirmations) or (temporary and model in temporary['confirmed'])],
             "paid_models": [{"model": model, "input_rate_microusd": price.input_rate,
                              "output_rate_microusd": price.output_rate}
                             for model, price in catalog().get(provider, {}).items()]}
@@ -52,6 +54,11 @@ def authorize(db: Session, user_id: UUID, provider: str, model: str) -> str:
         raise HTTPException(403, "Modelo no autorizado en modo gratuito")
     if provider == "ollama":
         return ""
+    temporary = temporary_credential(db, user_id, provider)
+    if temporary:
+        if model not in temporary['confirmed']:
+            raise HTTPException(403, "Confirma la gratuidad del modelo para esta sesión")
+        return temporary['key'].get_secret_value()
     credential = personal_credential(db, user_id, provider)
     if credential is None:
         raise HTTPException(409, f"Configura tu clave de {provider} antes de generar")
@@ -64,6 +71,9 @@ def authorize_paid(db: Session, user_id: UUID, provider: str, model: str) -> str
     from ..pricing import price_for
 
     price_for(provider, model)
+    temporary = temporary_credential(db, user_id, provider)
+    if temporary:
+        return temporary['key'].get_secret_value()
     credential = personal_credential(db, user_id, provider)
     if credential is None:
         raise HTTPException(409, f"Configura tu clave de {provider} antes de generar")

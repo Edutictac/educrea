@@ -7,6 +7,7 @@ import ProjectsView from './views/ProjectsView.vue'
 import ProjectView from './views/ProjectView.vue'
 import AiProvidersView from './views/AiProvidersView.vue'
 import BetaAdminView from './views/BetaAdminView.vue'
+import { useAuthStore } from './stores/auth'
 import './style.css'
 
 const router = createRouter({ history: createWebHistory(), routes: [
@@ -19,5 +20,9 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/ai/providers', component: AiProvidersView },
 ] })
 
-createApp(App).use(createPinia()).use(router).mount('#app')
+const pinia = createPinia()
+// Anonymous visitors get a temporary session; wait for it before any view checks auth.user.
+router.beforeEach(async () => { try { await useAuthStore(pinia).ensureLoaded() } catch { /* App.vue shows the error */ } })
+
+createApp(App).use(pinia).use(router).mount('#app')
 

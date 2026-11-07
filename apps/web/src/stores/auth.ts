@@ -24,6 +24,13 @@ export const useAuthStore = defineStore('auth', () => {
     } finally { ready.value = true }
   }
 
+  // One shared load: route guards and App.vue both await it, so views never see user === null during startup.
+  let loading: Promise<void> | null = null
+  function ensureLoaded(): Promise<void> {
+    if (!loading) loading = load().catch(error => { loading = null; throw error })
+    return loading
+  }
+
   async function authenticate(kind: 'login' | 'register', email: string, password: string) {
     const response = await fetch(`/api/auth/${kind}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(user.value?.is_guest ? { 'X-CSRF-Token': csrf.value } : {}) },
       credentials: 'same-origin', body: JSON.stringify({ email, password }) })
@@ -40,6 +47,6 @@ export const useAuthStore = defineStore('auth', () => {
     await load()
   }
 
-  return { user, csrf, ready, load, authenticate, logout }
+  return { user, csrf, ready, load, ensureLoaded, authenticate, logout }
 })
 

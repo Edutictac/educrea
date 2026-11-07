@@ -17,7 +17,7 @@ const route = useRoute()
 const menuOpen = ref(false)
 function closeOnLink(event: MouseEvent) { if ((event.target as HTMLElement).closest('a')) menuOpen.value = false }
 const error = ref('')
-onMounted(async () => { try { await auth.load() } catch { error.value = t('error') } })
+onMounted(async () => { try { await auth.ensureLoaded() } catch { error.value = t('error') } })
 async function logout() { menuOpen.value = false; await auth.logout(); router.push('/projects') }
 </script>
 

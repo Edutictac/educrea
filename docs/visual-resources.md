@@ -4,7 +4,7 @@
 
 ## Criterio de creación
 
-Para esquemas, procesos, comparaciones e infografías, EduStudio propondrá primero un recurso **HTML/SVG editable**. La interfaz permitirá al docente corregir texto, formas y orden antes de aprobarlo. La propuesta eliminará adornos que no ayuden al objetivo de aprendizaje. Esto sigue el principio de coherencia del aprendizaje multimedia sin convertirlo en una prohibición de ilustrar: escenas, personajes u otros elementos figurativos pueden ser esenciales en Infantil y Primaria.
+Para esquemas, procesos, comparaciones e infografías, EduCrea propondrá primero un recurso **HTML/SVG editable**. La interfaz permitirá al docente corregir texto, formas y orden antes de aprobarlo. La propuesta eliminará adornos que no ayuden al objetivo de aprendizaje. Esto sigue el principio de coherencia del aprendizaje multimedia sin convertirlo en una prohibición de ilustrar: escenas, personajes u otros elementos figurativos pueden ser esenciales en Infantil y Primaria.
 
 La alternativa «Ilustración generada» estará siempre disponible por elección del docente. Antes de solicitarla se mostrará el proveedor, la gratuidad verificada o el coste estimado, la cuota aplicable y las condiciones de tratamiento. Ningún cambio a un modelo de pago será automático. El resultado se revisará y tendrá texto alternativo editable antes de incorporarse al proyecto.
 

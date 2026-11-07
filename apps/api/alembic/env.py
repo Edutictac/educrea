@@ -1,9 +1,9 @@
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from edustudio_api.config import get_settings
-from edustudio_api.db import Base
-from edustudio_api.models import AiCredential, AiProposal, Project, ProjectFile, SessionToken, User  # noqa: F401
+from educrea_api.config import get_settings
+from educrea_api.db import Base
+from educrea_api.models import AiCredential, AiProposal, Project, ProjectFile, SessionToken, User  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_settings().database_url)

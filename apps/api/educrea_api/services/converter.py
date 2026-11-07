@@ -60,7 +60,7 @@ def convert(source: str, title: str, fmt: str, assets: list | None = None) -> by
     if not _slots.acquire(blocking=False):
         raise HTTPException(429, "Hay demasiadas conversiones en curso. Inténtalo de nuevo en unos segundos")
     try:
-        with tempfile.TemporaryDirectory(prefix="edustudio-convert-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="educrea-convert-") as tmp:
             workdir = Path(tmp)
             (workdir / "input.md").write_text(source, encoding="utf-8")
             (workdir / "filter.lua").write_text(lua_filter([asset.path for asset in assets or []]), encoding="utf-8")

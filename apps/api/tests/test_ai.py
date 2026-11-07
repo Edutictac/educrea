@@ -8,18 +8,18 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
-from edustudio_api.config import Settings
-from edustudio_api.models import AiCredential
-from edustudio_api.main import app
-from edustudio_api.services.ai import engine as ai_engine
-from edustudio_api.services.ai import credentials
-from edustudio_api.services.ai.providers.base import ProviderChunk, ProviderError, ProviderResult
-from edustudio_api.services.ai.providers.gemini import GeminiProvider, get_gemini_provider
-from edustudio_api.services.ai.providers.compatible import CompatibleProvider
-from edustudio_api.services.ai.providers import registry
-from edustudio_api.services.ai import quotas
-from edustudio_api.services.ai import pricing
-from edustudio_api.services.ai.providers.anthropic import AnthropicProvider
+from educrea_api.config import Settings
+from educrea_api.models import AiCredential
+from educrea_api.main import app
+from educrea_api.services.ai import engine as ai_engine
+from educrea_api.services.ai import credentials
+from educrea_api.services.ai.providers.base import ProviderChunk, ProviderError, ProviderResult
+from educrea_api.services.ai.providers.gemini import GeminiProvider, get_gemini_provider
+from educrea_api.services.ai.providers.compatible import CompatibleProvider
+from educrea_api.services.ai.providers import registry
+from educrea_api.services.ai import quotas
+from educrea_api.services.ai import pricing
+from educrea_api.services.ai.providers.anthropic import AnthropicProvider
 from test_auth_projects import register
 
 
@@ -513,7 +513,7 @@ def test_limits_apply_by_resource_not_globally(client: TestClient, monkeypatch):
     from datetime import datetime, timezone
 
     from conftest import engine as test_engine
-    from edustudio_api.models import AiUsage, User
+    from educrea_api.models import AiUsage, User
     from sqlalchemy import select
     from sqlalchemy.orm import Session
 
@@ -552,8 +552,8 @@ def test_limits_apply_by_resource_not_globally(client: TestClient, monkeypatch):
 
 
 def test_automatic_context_picks_files_within_budget(client: TestClient):
-    from edustudio_api.models import ProjectFile
-    from edustudio_api.services.ai import engine as e
+    from educrea_api.models import ProjectFile
+    from educrea_api.services.ai import engine as e
     from datetime import datetime, timedelta, timezone
 
     now = datetime.now(timezone.utc)
@@ -757,7 +757,7 @@ def test_situation_from_brief_generates_markdown_and_requires_all_sections(clien
 
 
 def test_section_check_accepts_translated_heading_variants():
-    from edustudio_api.services.ai import engine as e
+    from educrea_api.services.ai import engine as e
 
     valencian = """## Dades de la situació
 ## Context i justificació

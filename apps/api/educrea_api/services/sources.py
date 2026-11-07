@@ -81,7 +81,7 @@ def extract(filename: str, data: bytes) -> list[tuple[int | None, str]]:
     needed = "pdftotext" if ext == ".pdf" else "pandoc"
     if not (shutil.which(needed) and shutil.which("bwrap")):
         raise HTTPException(503, "El conversor de documentos no está disponible en este servidor")
-    with tempfile.TemporaryDirectory(prefix="edustudio-source-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="educrea-source-") as tmp:
         workdir = Path(tmp)
         (workdir / f"input{ext}").write_bytes(data)
         if ext == ".pdf":
@@ -119,7 +119,7 @@ def ocr_pdf(data: bytes) -> list[tuple[int | None, str]]:
     if not _ocr_slots.acquire(blocking=False):
         raise HTTPException(429, "Ya se está leyendo otro documento escaneado. Inténtalo de nuevo en unos minutos")
     try:
-        with tempfile.TemporaryDirectory(prefix="edustudio-ocr-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="educrea-ocr-") as tmp:
             workdir = Path(tmp)
             (workdir / "input.pdf").write_bytes(data)
             _run(workdir, ["pdftoppm", "-r", "200", "-gray", "-png", "-l", str(OCR_MAX_PAGES), "input.pdf", "page"], 180)

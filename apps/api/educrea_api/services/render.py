@@ -55,7 +55,7 @@ def render_png(entry: str, files: dict[str, str], width: int, height: int, asset
     if not _slots.acquire(blocking=False):
         raise HTTPException(429, "Hay demasiados renderizados en curso. Inténtalo de nuevo en unos segundos")
     try:
-        with tempfile.TemporaryDirectory(prefix="edustudio-render-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="educrea-render-") as tmp:
             workdir = Path(tmp)
             (workdir / "page.html").write_text(embed(static_document(entry, files), assets or []), encoding="utf-8")
             command = ["chromium", "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",

@@ -1,7 +1,7 @@
 """Fetch a public document by URL for ingestion as a reference source.
 
 Protections against SSRF (the server must never be used to reach the internal network):
-- https (and http only if EDUSTUDIO_ALLOW_INSECURE_URLS=true), standard ports, no credentials in the URL;
+- https (and http only if EDUCREA_ALLOW_INSECURE_URLS=true), standard ports, no credentials in the URL;
 - every host name is resolved and *every* address must be public (no loopback, private, link-local, reserved);
 - redirects are followed manually (max 3) and each hop is validated again;
 - content type must be HTML, plain text, Markdown or PDF; size and time are capped.
@@ -24,7 +24,7 @@ ALLOWED_TYPES = {
     "text/html": ".html", "application/xhtml+xml": ".html", "text/plain": ".txt", "text/markdown": ".md",
     "application/pdf": ".pdf",
 }
-USER_AGENT = "EduStudio/0.1 (reference source ingestion)"
+USER_AGENT = "EduCrea/0.1 (reference source ingestion)"
 TITLE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
 
 

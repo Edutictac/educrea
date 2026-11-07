@@ -85,5 +85,5 @@ def package(slug: str, title: str, files: list[tuple[str, str]], assets: list, s
         if uses_lucide(files):
             archive.writestr(LUCIDE_NOTICE_PATH, LUCIDE_LICENSE.read_bytes())
             paths.append(LUCIDE_NOTICE_PATH)
-        archive.writestr("imsmanifest.xml", manifest(f"edustudio-{slug}", title, paths))
+        archive.writestr("imsmanifest.xml", manifest(f"educrea-{slug}", title, paths))
     return buffer.getvalue()

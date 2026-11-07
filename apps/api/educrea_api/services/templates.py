@@ -1,7 +1,7 @@
 """Guided templates (phase 7).
 
 Interactive templates are a fixed, accessible engine (index.html, style.css, comun.js, script.js) plus a data file
-(datos.js: ``window.EDUSTUDIO_DATA = {...};``). The engine is written and reviewed once; the AI only fills datos.js,
+(datos.js: ``window.EDUCREA_DATA = {...};``). The engine is written and reviewed once; the AI only fills datos.js,
 which the backend validates against the template schema before the proposal can apply itself. Engines build the page
 with textContent only, never innerHTML, and work with keyboard and screen readers (no drag and drop).
 
@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 DATA_PATH = "datos.js"
 ENGINE_FILES = ("index.html", "style.css", "comun.js", "script.js")
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "data" / "templates"
-DATA_PATTERN = re.compile(r"^\s*window\.EDUSTUDIO_DATA\s*=\s*(\{.*\})\s*;?\s*$", re.S)
+DATA_PATTERN = re.compile(r"^\s*window\.EDUCREA_DATA\s*=\s*(\{.*\})\s*;?\s*$", re.S)
 IMAGE_PATH = r"^(imagenes/[A-Za-z0-9._-]+)?$"
 
 
@@ -251,13 +251,13 @@ def get(template_id: str) -> Template:
 
 
 def data_js(data: dict) -> str:
-    return "window.EDUSTUDIO_DATA = " + json.dumps(data, ensure_ascii=False, indent=2) + ";\n"
+    return "window.EDUCREA_DATA = " + json.dumps(data, ensure_ascii=False, indent=2) + ";\n"
 
 
 def parse_data(content: str) -> dict:
     match = DATA_PATTERN.match(content)
     if not match:
-        raise ValueError("datos.js debe tener la forma window.EDUSTUDIO_DATA = {...};")
+        raise ValueError("datos.js debe tener la forma window.EDUCREA_DATA = {...};")
     try:
         value = json.loads(match.group(1))
     except ValueError as exc:
@@ -314,7 +314,7 @@ def instruction(template_id: str, brief: dict, base: str) -> str:
     if template.kind == "interactiva":
         return (f"{base}\n\nEste proyecto usa la plantilla «{template.names['es']}». NO modifiques index.html, style.css, "
                 f"comun.js ni script.js: son el motor accesible de la plantilla. Modifica SOLO {DATA_PATH} y devuelve su "
-                "contenido completo con la forma exacta window.EDUSTUDIO_DATA = {...}; donde {...} es JSON válido "
+                "contenido completo con la forma exacta window.EDUCREA_DATA = {...}; donde {...} es JSON válido "
                 "(comillas dobles, sin comentarios ni comas finales). Conserva language, accessibility y labels tal como "
                 f"están; rellena title, instructions (consigna breve para el alumnado) y {template.guide} Escribe todo el "
                 f"texto en {language}, adecuado al nivel educativo, claro y breve. Usa imágenes solo de available_images.")

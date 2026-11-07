@@ -420,7 +420,7 @@ def parse_draft(text: str, provider: str = "gemini") -> DraftProposal:
     detail = _validation_detail(last) if last else ""
     logger.warning("Propuesta rechazada de %s%s", provider, detail)
     raise HTTPException(
-        502, f"{label} devolvió una propuesta no válida{detail}: el JSON está cortado o trae campos que EduStudio "
+        502, f"{label} devolvió una propuesta no válida{detail}: el JSON está cortado o trae campos que EduCrea "
              "no admite. Vuelve a intentarlo; si se repite, usa un modelo con más límite de salida.") from last
 
 

@@ -1,4 +1,4 @@
-# EduStudio AI
+# EduCrea
 
 Plataforma libre en desarrollo para crear actividades educativas con ayuda de IA. **Estado: Fase 5**. Se puede explorar sin registro mediante un borrador temporal que ofrece los modos docente y avanzado. Para conservarlo como proyecto hay que crear una cuenta o entrar en una existente. Las cuentas permiten gestionar proyectos propios y revisar propuestas de proveedores autorizados antes de aplicarlas. Aún no hay vista previa ejecutable.
 
@@ -19,7 +19,7 @@ La API y la web son aplicaciones independientes. Los proyectos se identifican po
 
 ## Desarrollo local
 
-Requisitos: Python 3.12+, Node 22+, PostgreSQL 17. Copia `.env.example` a `apps/api/.env`, cambia la contraseña de ejemplo y crea la base de datos local. Para usar BYOK en desarrollo, configura `EDUSTUDIO_CREDENTIAL_KEYS` con una clave Fernet privada fuera del repositorio. Deja `EDUSTUDIO_GEMINI_FREE_MODELS` vacío hasta verificar los modelos para la cuenta y operación. Desde `apps/api`, ejecuta `python3 -m venv .venv`, `.venv/bin/pip install -e '.[test]'`, `.venv/bin/alembic upgrade head` y `.venv/bin/uvicorn edustudio_api.main:app --reload`. Desde `apps/web`, ejecuta `npm ci` y `npm run dev`. Vite envía `/api` a `localhost:8000`; para otro puerto, define `EDUSTUDIO_DEV_API_URL` al iniciar Vite. Para pruebas: `.venv/bin/pytest`, `npm test` y `npm run build`.
+Requisitos: Python 3.12+, Node 22+, PostgreSQL 17. Copia `.env.example` a `apps/api/.env`, cambia la contraseña de ejemplo y crea la base de datos local. Para usar BYOK en desarrollo, configura `EDUCREA_CREDENTIAL_KEYS` con una clave Fernet privada fuera del repositorio. Deja `EDUCREA_GEMINI_FREE_MODELS` vacío hasta verificar los modelos para la cuenta y operación. Desde `apps/api`, ejecuta `python3 -m venv .venv`, `.venv/bin/pip install -e '.[test]'`, `.venv/bin/alembic upgrade head` y `.venv/bin/uvicorn educrea_api.main:app --reload`. Desde `apps/web`, ejecuta `npm ci` y `npm run dev`. Vite envía `/api` a `localhost:8000`; para otro puerto, define `EDUCREA_DEV_API_URL` al iniciar Vite. Para pruebas: `.venv/bin/pytest`, `npm test` y `npm run build`.
 
 ## Despliegue
 

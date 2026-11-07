@@ -8,10 +8,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from edustudio_api.main import app
-from edustudio_api.services import templates as service
-from edustudio_api.services.ai.providers.gemini import get_gemini_provider
-from edustudio_api.services.converter import _sandbox
+from educrea_api.main import app
+from educrea_api.services import templates as service
+from educrea_api.services.ai.providers.gemini import get_gemini_provider
+from educrea_api.services.converter import _sandbox
 from test_ai import StubGemini, setup_user
 
 INTERACTIVE = [t.id for t in service.TEMPLATES.values() if t.kind == "interactiva"]
@@ -38,7 +38,7 @@ def test_validation_explains_the_problems():
     bad = service.data_js({"title": "X", "questions": [{"text": "¿?", "options": ["a", "b"], "answer": 5}]})
     assert any("answer" in problem for problem in service.validate_data("cuestionario", bad))
     assert service.validate_data("cuestionario", "const x = 1") != []
-    assert service.validate_data("cuestionario", "window.EDUSTUDIO_DATA = {title: 'x'};")[0].startswith("el objeto")
+    assert service.validate_data("cuestionario", "window.EDUCREA_DATA = {title: 'x'};")[0].startswith("el objeto")
     image = service.data_js({"title": "X", "cards": [{"front": "a", "back": "b", "image": "imagenes/a.png"}]})
     assert any("alt" in problem for problem in service.validate_data("tarjetas", image))
     remote = service.data_js({"title": "X", "cards": [{"front": "a", "back": "b", "image": "https://x.org/a.png", "alt": "a"}]})
@@ -75,7 +75,7 @@ def test_apply_template_only_on_empty_projects_and_first_version_fills_only_data
 
     # Engine changed or invalid data: never applied automatically, problems are explained.
     broken = {"summary": "Mal", "changes": [{"path": "script.js", "content": "alert(1)"},
-                                             {"path": "datos.js", "content": "window.EDUSTUDIO_DATA = {\"title\": \"\"};"}]}
+                                             {"path": "datos.js", "content": "window.EDUCREA_DATA = {\"title\": \"\"};"}]}
     app.dependency_overrides[get_gemini_provider] = lambda: StubGemini(json.dumps(broken))
     pending = client.post(f"{base}/ai/from-brief", headers=headers).json()
     assert pending["status"] == "pending"
@@ -179,7 +179,7 @@ def test_dua_on_a_template_project_adapts_the_data_and_validates_it(client: Test
     body = client.post(f"{base}/ai/dua", headers=headers, json={"path": "datos.js", "auto_apply": True}).json()
     assert body["status"] == "applied" and body["grounding"]["template_problems"] == []
     assert "plantilla interactiva" in captured["prompt"]
-    broken = {**draft, "changes": [{"path": "datos.js", "content": "window.EDUSTUDIO_DATA = {\"title\": \"A\", \"cards\": []};"}]}
+    broken = {**draft, "changes": [{"path": "datos.js", "content": "window.EDUCREA_DATA = {\"title\": \"A\", \"cards\": []};"}]}
     app.dependency_overrides[get_gemini_provider] = lambda: StubGemini(json.dumps(broken))
     pending = client.post(f"{base}/ai/dua", headers=headers, json={"path": "datos.js", "auto_apply": True}).json()
     assert pending["status"] == "pending" and pending["grounding"]["template_problems"]
@@ -247,7 +247,7 @@ def test_scorm_package_for_aules(client: TestClient):
 
 @pytest.mark.skipif(not (BROWSER and shutil.which("bwrap")), reason="chromium/bwrap not installed")
 def test_scorm_bridge_reports_best_score_to_the_lms():
-    from edustudio_api.services import scorm
+    from educrea_api.services import scorm
 
     files = service.initial_files("cuestionario", {"title": "Prova", "language": "va"})
     fake_lms = """<script>window.calls = []; window.API = {

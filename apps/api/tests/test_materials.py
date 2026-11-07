@@ -77,7 +77,7 @@ def test_docx_and_pdf_export_run_in_sandbox(client: TestClient):
 
 
 def test_static_document_strips_scripts_handlers_and_external_resources():
-    from edustudio_api.services.render import static_document
+    from educrea_api.services.render import static_document
 
     page = ('<html><head><link rel="stylesheet" href="s.css"><link rel="stylesheet" href="https://evil.test/a.css">'
             '<script>fetch("https://evil.test")</script></head><body onload="x()"><svg onclick="y()"><text>Hola</text></svg>'

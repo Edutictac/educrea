@@ -20,7 +20,7 @@ async function logout() { menuOpen.value = false; await auth.logout(); router.pu
     <a class="sr-only" href="#contenido">{{ t('skipToContent') }}</a>
     <header class="topbar">
       <RouterLink :to="auth.user ? '/projects' : '/explore'" class="brand" @click="menuOpen = false">
-        <span class="brand-mark"><AppIcon name="sparkles" :size="20" /></span><span>EduStudio</span><small>AI</small>
+        <span class="brand-mark"><AppIcon name="sparkles" :size="20" /></span><span>EduCrea</span>
       </RouterLink>
       <button type="button" class="ghost icon-only menu-toggle" :aria-expanded="menuOpen" aria-controls="menu-principal"
         :aria-label="menuOpen ? t('closeMenu') : t('openMenu')" @click="menuOpen = !menuOpen"><AppIcon :name="menuOpen ? 'x' : 'menu'" :size="22" /></button>
@@ -34,6 +34,6 @@ async function logout() { menuOpen.value = false; await auth.logout(); router.pu
       </nav>
     </header>
     <main id="contenido" :class="{ wide: route.meta.wide }" tabindex="-1"><p v-if="error" role="alert">{{ error }}</p><RouterView v-if="auth.ready" :key="route.path" /></main>
-    <footer>EduStudio AI · {{ t('footerNote') }} · {{ t('iconsCredit') }}</footer>
+    <footer>EduCrea · {{ t('footerNote') }} · {{ t('iconsCredit') }}</footer>
   </div>
 </template>

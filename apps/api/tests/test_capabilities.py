@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from edustudio_api.config import get_settings
+from educrea_api.config import get_settings
 from test_auth_projects import register
 
 FIXTURES = str(Path(__file__).parent / "fixtures")
@@ -71,8 +71,8 @@ def test_mcp_allowlist_schema_untrusted_and_approval(client: TestClient, mcp_con
 
 
 def test_agent_consults_read_only_capabilities_and_never_runs_mutating_ones(client: TestClient, mcp_config):
-    from edustudio_api.main import app
-    from edustudio_api.services.ai.providers.gemini import get_gemini_provider
+    from educrea_api.main import app
+    from educrea_api.services.ai.providers.gemini import get_gemini_provider
     from test_ai import StubGemini, setup_user
 
     headers, project_id = setup_user(client)
@@ -111,8 +111,8 @@ def test_agent_consults_read_only_capabilities_and_never_runs_mutating_ones(clie
 
 
 def test_no_consultation_when_everything_fits_and_no_mcp(client: TestClient):
-    from edustudio_api.main import app
-    from edustudio_api.services.ai.providers.gemini import get_gemini_provider
+    from educrea_api.main import app
+    from educrea_api.services.ai.providers.gemini import get_gemini_provider
     from test_ai import StubGemini, setup_user
 
     headers, project_id = setup_user(client)

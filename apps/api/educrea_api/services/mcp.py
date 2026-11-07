@@ -5,7 +5,7 @@ paths the administrator lists), sends initialize + one request, closes stdin and
 limits on time and output. The model never reaches the server: the backend mediates every call, validates
 arguments against the tool's JSON Schema, and treats the reply as untrusted data.
 
-EDUSTUDIO_MCP_SERVERS_JSON example:
+EDUCREA_MCP_SERVERS_JSON example:
 {"notes": {"command": ["python3", "/opt/mcp/notes.py"], "ro_paths": ["/opt/mcp"], "timeout": 10,
            "tools": {"solfege": {"mutates": false}}}}
 """
@@ -54,7 +54,7 @@ def _exchange(config: dict, requests: list[dict]) -> dict[int, dict]:
     messages = [
         {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {
             "protocolVersion": PROTOCOL_VERSION, "capabilities": {},
-            "clientInfo": {"name": "edustudio", "version": "0.1.0"}}},
+            "clientInfo": {"name": "educrea", "version": "0.1.0"}}},
         {"jsonrpc": "2.0", "method": "notifications/initialized"},
         *requests,
     ]
@@ -62,7 +62,7 @@ def _exchange(config: dict, requests: list[dict]) -> dict[int, dict]:
     if not _slots.acquire(blocking=False):
         raise HTTPException(429, "Hay demasiadas llamadas MCP en curso")
     try:
-        with tempfile.TemporaryDirectory(prefix="edustudio-mcp-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="educrea-mcp-") as tmp:
             command = _sandbox(Path(tmp), config["command"], tuple(config.get("ro_paths", [])))
             process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                        stderr=subprocess.DEVNULL)

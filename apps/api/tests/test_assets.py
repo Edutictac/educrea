@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from edustudio_api.main import app
-from edustudio_api.services.ai.providers.gemini import get_gemini_provider
+from educrea_api.main import app
+from educrea_api.services.ai.providers.gemini import get_gemini_provider
 from test_ai import StubGemini, setup_user
 from test_auth_projects import register
 
@@ -97,7 +97,7 @@ def test_docx_and_pdf_include_library_images_only(client: TestClient):
 
 def test_embed_replaces_only_library_references():
     from types import SimpleNamespace
-    from edustudio_api.services.assets import embed
+    from educrea_api.services.assets import embed
 
     asset = SimpleNamespace(path="imagenes/sol.jpg", media_type="image/jpeg", data=JPG)
     html = ('<img src="imagenes/sol.jpg"><img src=\'./imagenes/sol.jpg\'><div style="background:url(imagenes/sol.jpg)">'

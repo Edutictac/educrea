@@ -21,20 +21,20 @@ Comprobado el 2026-11-06: el nivel gratuito de Gemini no ofrece cuota para ning�
 
 ## Integración con EduTicTac Commons
 
-Decisión del 2026-11-03: **de momento solo el nivel 1 (SSO)**; el resto queda aquí como hoja de ruta, de menor a mayor acoplamiento. El núcleo de EduStudio no depende de Commons y cada nivel funciona sin los siguientes.
+Decisión del 2026-11-03: **de momento solo el nivel 1 (SSO)**; el resto queda aquí como hoja de ruta, de menor a mayor acoplamiento. El núcleo de EduCrea no depende de Commons y cada nivel funciona sin los siguientes.
 
 1. **Identidad única — en curso (fase 8):** misma cuenta que en el resto de EduTicTac mediante Authentik (`id.edutictac.es`), sin perder proyectos. Estado en la fase 8 y en [deployment.md](deployment.md). Ampliable después con el widget de cuenta común (retorno a edutictac.es, idioma y tema compartidos) y cierre de sesión único.
-2. **Enlace desde el portal — pendiente:** EduStudio aparece como una app más en edutictac.es, con el mismo pie y navegación comunes, sin compartir datos.
+2. **Enlace desde el portal — pendiente:** EduCrea aparece como una app más en edutictac.es, con el mismo pie y navegación comunes, sin compartir datos.
 3. **Publicar actividades en Commons — pendiente:** exportar una actividad terminada (ZIP/HTML con licencia y atribución de iconos) a la biblioteca de recursos o Rebost, con revisión del docente. Requiere definir el formato de recurso y los permisos.
 4. **Servicios compartidos — pendiente, posterior:** cuotas y presupuestos por centro con la entidad «centro» de Commons, y el servicio alojado de pago (fase 9).
 
 ## Servicio alojado de pago: propuesta de negocio
 
-- Mantener dos caminos: instalación libre con claves propias (BYOK) y servicio gestionado de EduStudio. Una cuenta de pago no será necesaria para crear o exportar materiales con funciones locales.
+- Mantener dos caminos: instalación libre con claves propias (BYOK) y servicio gestionado de EduCrea. Una cuenta de pago no será necesaria para crear o exportar materiales con funciones locales.
 - Contratar una cuenta de OpenRouter para el servicio gestionado solo tras comprobar por escrito sus condiciones de uso, facturación y posible reventa o provisión a terceros. Si la intermediación no está permitida, negociar un acuerdo comercial o usar claves propias del usuario.
 - Ofrecer créditos prepagados o un plan con saldo mensual definido. Mostrar antes de cada generación el modelo, proveedor, precio estimado y límite máximo de salida. Cobrar una tarifa publicada que cubra el coste del proveedor, procesamiento de pagos, impuestos, soporte e infraestructura, más un margen. No prometer un porcentaje fijo antes de conocer esos costes.
 - Reservar un importe conservador antes de llamar al proveedor, limitar salida y concurrencia, reconciliar el uso real y bloquear nuevas operaciones al agotar el saldo. No activar modelos más caros ni recargar créditos automáticamente sin autorización expresa.
-- Mantener contabilidad separada por usuario e institución, recibos y política de devoluciones. Usar un procesador de pagos con página de cobro alojada; EduStudio no almacenará datos de tarjeta. Revisar IVA, facturación y protección de consumidores según los países atendidos.
+- Mantener contabilidad separada por usuario e institución, recibos y política de devoluciones. Usar un procesador de pagos con página de cobro alojada; EduCrea no almacenará datos de tarjeta. Revisar IVA, facturación y protección de consumidores según los países atendidos.
 - Distinguir las claves BYOK de la credencial institucional de OpenRouter; el usuario debe ver qué proveedor procesa la solicitud. No enviar datos personales del alumnado innecesariamente y revisar los acuerdos de tratamiento de datos antes de vender el servicio a centros.
 - Validar el modelo comercial con un piloto pequeño después de completar cuotas, presupuestos y auditoría de costes de las Fases 4 y 5. Los precios de los modelos y su disponibilidad pueden cambiar.
 

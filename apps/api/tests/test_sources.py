@@ -5,10 +5,10 @@ import subprocess
 import pytest
 from fastapi.testclient import TestClient
 
-from edustudio_api.main import app
-from edustudio_api.services import sources as service
-from edustudio_api.services.ai.providers import registry
-from edustudio_api.services.ai.providers.gemini import get_gemini_provider
+from educrea_api.main import app
+from educrea_api.services import sources as service
+from educrea_api.services.ai.providers import registry
+from educrea_api.services.ai.providers.gemini import get_gemini_provider
 from test_ai import StubGemini, setup_user
 
 CURRICULUM = """# Currículo de Educación Primaria
@@ -181,7 +181,7 @@ def test_first_version_is_created_from_the_teachers_material(client: TestClient)
                          params={"filename": "apuntes.md", "title": "Mis apuntes"}, content=material.encode())
     assert source.status_code == 201, source.text
     captured = {}
-    data = ("window.EDUSTUDIO_DATA = " + json.dumps({"title": "El ciclo del agua", "questions": [
+    data = ("window.EDUCREA_DATA = " + json.dumps({"title": "El ciclo del agua", "questions": [
         {"text": "¿Qué forma el vapor al enfriarse?", "options": ["Gotas", "Piedras"], "answer": 0}]}) + ";")
     draft = {"summary": "Cuestionario", "changes": [{"path": "datos.js", "content": data}],
              "citations": [{"chunk": "F2", "quote": "El vapor se enfría en el cielo y se convierte en gotas"}]}

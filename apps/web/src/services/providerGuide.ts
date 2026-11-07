@@ -15,7 +15,7 @@ export const providerGuides: Record<ProviderName, ProviderGuide> = {
 
 export type StepState = 'done' | 'current' | 'todo'
 
-// Creating the key happens on the provider's site; EduStudio can verify steps 2 and 3.
+// Creating the key happens on the provider's site; EduCrea can verify steps 2 and 3.
 export function stepStates(configured: boolean, ready: boolean, managed = false): [StepState, StepState, StepState] {
   if (!configured) return managed ? ['current', 'todo', 'todo'] : ['done', 'current', 'todo']
   return ready ? ['done', 'done', 'done'] : ['done', 'done', 'current']

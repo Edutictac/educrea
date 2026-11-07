@@ -4,7 +4,7 @@ import { ref, watch } from 'vue'
 import type { ProviderName } from './ai'
 
 export interface AiChoice { provider: ProviderName | ''; model: string }
-const KEY = 'edustudio.aiChoice'
+const KEY = 'educrea.aiChoice'
 
 function load(): AiChoice {
   try {

@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql+psycopg://edustudio:edustudio@localhost:5432/edustudio"
+    database_url: str = "postgresql+psycopg://educrea:educrea@localhost:5432/educrea"
     cookie_secure: bool = True
     session_days: int = 7
     credential_keys: SecretStr | None = None
@@ -34,19 +34,19 @@ class Settings(BaseSettings):
     ai_daily_installation_requests: int = 200
     ai_daily_user_tokens: int = 400000
     ai_daily_installation_tokens: int = 4000000
-    model_config = SettingsConfigDict(env_prefix="EDUSTUDIO_", env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="EDUCREA_", env_file=".env", extra="ignore")
 
 
 @lru_cache
 def get_settings() -> Settings:
     overrides: dict[str, str] = {}
-    database_url_file = os.environ.get("EDUSTUDIO_DATABASE_URL_FILE")
+    database_url_file = os.environ.get("EDUCREA_DATABASE_URL_FILE")
     if database_url_file:
         overrides["database_url"] = Path(database_url_file).read_text().strip()
-    credential_keys_file = os.environ.get("EDUSTUDIO_CREDENTIAL_KEYS_FILE")
+    credential_keys_file = os.environ.get("EDUCREA_CREDENTIAL_KEYS_FILE")
     if credential_keys_file:
         overrides["credential_keys"] = Path(credential_keys_file).read_text().strip()
-    oidc_secret_file = os.environ.get("EDUSTUDIO_OIDC_CLIENT_SECRET_FILE")
+    oidc_secret_file = os.environ.get("EDUCREA_OIDC_CLIENT_SECRET_FILE")
     if oidc_secret_file:
         overrides["oidc_client_secret"] = Path(oidc_secret_file).read_text().strip()
     return Settings(**overrides)

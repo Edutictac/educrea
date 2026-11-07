@@ -3,11 +3,11 @@ import re
 
 from fastapi.testclient import TestClient
 
-from edustudio_api.main import app
-from edustudio_api.services.ai import sections as section_service
-from edustudio_api.services.ai.engine import SITUATION_SECTIONS
-from edustudio_api.services.ai.providers.base import ProviderChunk, ProviderError
-from edustudio_api.services.ai.providers.gemini import get_gemini_provider
+from educrea_api.main import app
+from educrea_api.services.ai import sections as section_service
+from educrea_api.services.ai.engine import SITUATION_SECTIONS
+from educrea_api.services.ai.providers.base import ProviderChunk, ProviderError
+from educrea_api.services.ai.providers.gemini import get_gemini_provider
 from test_ai import setup_user, stream_events
 
 

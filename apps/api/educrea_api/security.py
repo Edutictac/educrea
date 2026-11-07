@@ -13,7 +13,7 @@ from .models import SessionToken, User
 from .models.entities import utcnow
 
 hasher = PasswordHasher()
-COOKIE_NAME = "edustudio_session"
+COOKIE_NAME = "educrea_session"
 
 
 def digest(value: str) -> str:

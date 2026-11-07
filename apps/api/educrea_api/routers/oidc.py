@@ -9,7 +9,7 @@ from ..services import oidc
 from .auth import set_cookie
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-FLOW_COOKIE = "edustudio_oidc_flow"
+FLOW_COOKIE = "educrea_oidc_flow"
 
 
 @router.get("/config")

@@ -19,7 +19,7 @@ encabezado `@license lucide-static … ISC`.
   - Al insertar un icono (o crear una infografía con la plantilla) se añade en el `<head>` un comentario HTML con el
     crédito «Iconos: Lucide (ISC; MIT los derivados de Feather), https://lucide.dev» (una sola vez por archivo).
   - El ZIP del proyecto incluye `LICENSES/lucide-LICENSE.txt` (copia literal del `LICENSE`) cuando algún archivo
-    menciona Lucide. La copia empaquetada en la API (`apps/api/edustudio_api/data/`) está protegida por un test que
+    menciona Lucide. La copia empaquetada en la API (`apps/api/educrea_api/data/`) está protegida por un test que
     exige que coincida con `third_party/lucide/LICENSE`.
   - **Los PNG no llevan crédito visible.** Un PNG es una captura de una página; los textos de ISC/MIT hablan de
     «copias del software» y no se pronuncian sobre capturas, así que se interpreta que basta con el aviso en el HTML

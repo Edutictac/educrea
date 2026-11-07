@@ -2,8 +2,8 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from edustudio_api.config import get_settings
-from edustudio_api.services import fetch_url
+from educrea_api.config import get_settings
+from educrea_api.services import fetch_url
 from test_sources import CURRICULUM, project, upload
 
 HTML = f"<html><head><title>Currículum de Primària</title></head><body><h1>Currículum</h1><p>{CURRICULUM}</p></body></html>".encode()

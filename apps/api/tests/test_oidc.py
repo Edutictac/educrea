@@ -9,12 +9,12 @@ from joserfc.jwk import RSAKey
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
-from edustudio_api.config import get_settings
-from edustudio_api.services import oidc
+from educrea_api.config import get_settings
+from educrea_api.services import oidc
 from test_auth_projects import register
 
-ISSUER = "https://id.example.org/application/o/edustudio/"
-CLIENT = "edustudio.example.org"
+ISSUER = "https://id.example.org/application/o/educrea/"
+CLIENT = "educrea.example.org"
 KEY = RSAKey.generate_key(2048, parameters={"kid": "k1"})
 ROGUE = RSAKey.generate_key(2048, parameters={"kid": "k1"})
 signing = {"key": KEY}
@@ -74,7 +74,7 @@ def test_disabled_by_default_and_config(client: TestClient):
 def test_login_flow_creates_user_session_and_is_idempotent(client: TestClient, sso):
     query, response = start(client, "/projects/abc")
     assert query["code_challenge_method"] == ["S256"] and query["client_id"] == [CLIENT]
-    assert "edustudio_oidc_flow" in response.headers["set-cookie"] and "samesite=lax" in response.headers["set-cookie"].lower()
+    assert "educrea_oidc_flow" in response.headers["set-cookie"] and "samesite=lax" in response.headers["set-cookie"].lower()
     claims_for_next.update({"sub": "u1", "email": "Teacher@Example.org", "email_verified": True, "nonce": query["nonce"][0]})
     done = client.get("/api/auth/oidc/callback", params={"code": "ok", "state": query["state"][0]}, follow_redirects=False)
     assert done.status_code == 303 and done.headers["location"] == "/projects/abc"

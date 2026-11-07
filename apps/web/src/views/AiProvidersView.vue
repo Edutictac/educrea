@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import GuestSavePrompt from '../components/GuestSavePrompt.vue'
 import IncludedAiQuota from '../components/IncludedAiQuota.vue'
 import ProviderGuide from '../components/ProviderGuide.vue'
 import { providerGuides, suggestedProvider } from '../services/providerGuide'
@@ -92,6 +93,7 @@ async function saveBudget() {
     <RouterLink to="/projects">← {{ t('back') }}</RouterLink>
     <h1>{{ t('myProviders') }}</h1>
     <IncludedAiQuota />
+    <GuestSavePrompt v-if="auth.user?.is_guest" :key-ready="!!status?.configured" />
     <p>{{ t(auth.user?.is_guest ? 'temporaryKeyIntro' : 'byokIntro') }}</p>
     <label>{{ t('providerLabel') }}<select v-model="provider" @change="providerSelected = true">
       <option v-for="name in names" :key="name" :value="name">{{ name }}</option>

@@ -170,6 +170,7 @@ const messages = {
     openWorkspaceNotice: 'Estás usando EduCrea sin cuenta: tus proyectos se guardan en este navegador por tiempo limitado. Crea una cuenta gratis para conservarlos.',
     openBetaRegister: 'Crea una cuenta gratis para usar la IA incluida y conservar tus proyectos.',
     temporaryKeyIntro: 'Sin cuenta, tu clave solo se usa durante esta visita: no se guarda en el servidor ni en tu navegador y desaparece al recargar la página. Para conservarla, crea una cuenta gratis.',
+    guestSaveTitle: 'Para guardar tu clave, crea una cuenta gratis', guestSaveReady: '¡Tu clave ya funciona! Ahora puedes guardarla creando una cuenta gratis', guestSaveText: 'Con una cuenta tu clave queda cifrada en el servidor, no tienes que pegarla en cada visita y conservas tus proyectos. Te llevamos a EduTicTac para crearla y vuelves a esta pantalla; allí tendrás que pegar la clave una vez más para guardarla (no la guardamos en el navegador mientras no tengas cuenta).', guestSaveButton: 'Crear cuenta y guardar mi clave',
     useTemporaryKey: 'Usar esta clave ahora', temporaryKeyReady: 'Clave lista para esta visita. Si recargas la página tendrás que volver a pegarla; crea una cuenta para guardarla.',
   },
   va: {
@@ -318,6 +319,7 @@ const messages = {
     openWorkspaceNotice: 'Estàs usant EduCrea sense compte: els teus projectes es guarden en este navegador per un temps limitat. Crea un compte gratis per a conservar-los.',
     openBetaRegister: 'Crea un compte gratis per a usar la IA inclosa i conservar els teus projectes.',
     temporaryKeyIntro: 'Sense compte, la teua clau només s’usa durant esta visita: no es guarda al servidor ni al navegador i desapareix en recarregar la pàgina. Per a conservar-la, crea un compte gratis.',
+    guestSaveTitle: 'Per a guardar la teua clau, crea un compte gratis', guestSaveReady: 'La teua clau ja funciona! Ara pots guardar-la creant un compte gratis', guestSaveText: 'Amb un compte la teua clau queda xifrada al servidor, no has d’apegar-la en cada visita i conserves els teus projectes. Et portem a EduTicTac per a crear-lo i tornes a esta pantalla; allí hauràs d’apegar la clau una vegada més per a guardar-la (no la guardem al navegador mentre no tingues compte).', guestSaveButton: 'Crear compte i guardar la meua clau',
     useTemporaryKey: 'Usar esta clau ara', temporaryKeyReady: 'Clau preparada per a esta visita. Si recarregues la pàgina hauràs de tornar a apegar-la; crea un compte per a guardar-la.',
   },
 } as const

@@ -103,7 +103,9 @@ services:
       timeout: 5s
       retries: 3
   web:
-    build: ../apps/web
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     depends_on:
       api: { condition: service_healthy }

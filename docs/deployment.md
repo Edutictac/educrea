@@ -41,6 +41,7 @@ La pantalla de acceso muestra «Entrar con tu cuenta EduTicTac» cuando el SSO e
 - Secretos en `secrets/` del directorio de despliegue (`0600`), con copia en el gestor de contraseñas del administrador: claves de cifrado de credenciales, contraseña y URL de la base de datos y secreto del cliente OIDC.
 - Migración aplicada: `0018_project_videos`. `EDUCREA_LOCAL_AUTH_ENABLED=false`; el acceso es por SSO de Authentik y los visitantes pueden seguir usando el espacio sin cuenta.
 - Comprobado: `/api/health` 200, portada 200, `/api/auth/config` con `oidc_enabled:true`, redirección de login a Authentik y contenedores `db/api/web` saludables.
+- El build de la web usa el **contexto raíz** del repositorio (`context: ..`) para copiar `third_party/lucide/icons`; si se cambia el contexto a `apps/web`, Vite compila sin iconos y la interfaz se queda sin ellos.
 
 ## IA EduCrea institucional (opcional)
 

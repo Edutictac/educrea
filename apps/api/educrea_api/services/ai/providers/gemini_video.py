@@ -61,6 +61,15 @@ def _video_block(value) -> dict | None:
     return None
 
 
+
+def google_reason(response: httpx.Response) -> str:
+    """Google's own explanation of a rejected request (never contains the key), shortened for the teacher."""
+    try:
+        message = response.json().get("error", {}).get("message", "")
+    except ValueError:
+        return ""
+    return message.strip()[:300] if isinstance(message, str) else ""
+
 class GeminiVideoProvider:
     def __init__(self, client: httpx.AsyncClient | None = None, timeout: int = 300) -> None:
         self.client = client
@@ -77,7 +86,7 @@ class GeminiVideoProvider:
         if response.status_code == 404:
             raise ProviderError("Gemini no reconoce ese modelo de vídeo", 502)
         if response.status_code == 400:
-            raise ProviderError("Gemini no ha aceptado la petición de vídeo (revisa el prompt y la duración)", 422)
+            raise ProviderError(f"Gemini no ha aceptado la petición de vídeo ({google_reason(response) or 'revisa el prompt y la duración'})", 422)
         if response.status_code >= 400:
             raise ProviderError("Gemini no pudo generar el vídeo", 502)
 

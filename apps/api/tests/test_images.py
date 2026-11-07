@@ -234,6 +234,7 @@ def test_image_adapter_request_and_errors():
             assert result.data == PNG and result.media_type == "image/png"
             assert seen["key"] == "test-key" and seen["revision"] == "2026-05-20"
             assert seen["body"]["response_format"]["image_size"] == "1K"
+            assert seen["body"]["response_format"]["mime_type"] == "image/jpeg"
             assert seen["body"]["response_format"]["aspect_ratio"] == "4:3"
 
         async def fail(request: httpx.Request) -> httpx.Response:

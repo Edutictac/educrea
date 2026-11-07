@@ -34,7 +34,9 @@ def payload(model: str, prompt: str, aspect_ratio: str = "1:1", size: str = "1K"
         "input": [{"type": "text", "text": prompt}],
         "response_format": {
             "type": "image",
-            "mime_type": "image/png",
+            # The Interactions API only accepts JPEG here (400 with image/png, checked 2026-11-07); the API turns
+            # it into PNG or JPEG for the asset library in services/ai/images.normalize().
+            "mime_type": "image/jpeg",
             "aspect_ratio": aspect_ratio,
             "image_size": size,
         },
@@ -59,6 +61,15 @@ def _image_block(value) -> dict | None:
     return None
 
 
+
+def google_reason(response: httpx.Response) -> str:
+    """Google's own explanation of a rejected request (never contains the key), shortened for the teacher."""
+    try:
+        message = response.json().get("error", {}).get("message", "")
+    except ValueError:
+        return ""
+    return message.strip()[:300] if isinstance(message, str) else ""
+
 class GeminiImageProvider:
     def __init__(self, client: httpx.AsyncClient | None = None, timeout: int = 120) -> None:
         self.client = client
@@ -75,7 +86,7 @@ class GeminiImageProvider:
         if response.status_code == 404:
             raise ProviderError("Gemini no reconoce ese modelo de imagen", 502)
         if response.status_code == 400:
-            raise ProviderError("Gemini no ha aceptado la petición de imagen (revisa el contenido del prompt)", 422)
+            raise ProviderError(f"Gemini no ha aceptado la petición de imagen ({google_reason(response) or 'revisa el contenido del prompt'})", 422)
         if response.status_code >= 400:
             raise ProviderError("Gemini no pudo generar la imagen", 502)
 

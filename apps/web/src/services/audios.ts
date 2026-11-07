@@ -1,3 +1,4 @@
+import { apiError } from '../i18n/apiErrors'
 export interface ProjectAudio {
   id: string; path: string; media_type: string; size: number
   description: string; transcript: string; credit: string
@@ -8,7 +9,7 @@ export const AUDIO_ACCEPT = '.mp3,.wav,.ogg,.opus,audio/mpeg,audio/wav,audio/ogg
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({})) as { detail?: unknown }
-    throw new Error(typeof data.detail === 'string' ? data.detail : `Error ${response.status}`)
+    throw apiError(typeof data.detail === 'string' ? data.detail : `Error ${response.status}`)
   }
   return response
 }

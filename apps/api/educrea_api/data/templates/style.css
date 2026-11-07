@@ -45,3 +45,24 @@ body.contraste .respuesta-hueco { border-width: 3px; }
 
 audio { display: block; width: 100%; margin: .6rem 0; }
 .transcripcion { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Word puzzles keep a readable cell size and scroll on small screens. */
+.tablero-scroll { max-width: 100%; overflow: auto; margin: 1rem 0; padding: .3rem; }
+.sopa-tablero, .crucigrama-tablero { border-collapse: collapse; margin: 0 auto; }
+.sopa-tablero th { padding: .15rem; font-size: .75em; font-weight: 500; }
+.sopa-tablero td { padding: 0; border: 1px solid var(--borde); }
+.sopa-tablero button { display: block; width: 2.5em; height: 2.5em; min-width: 2.5em; padding: 0; border: 0; border-radius: 0; font-weight: 700; color: var(--texto); }
+.sopa-tablero button[aria-pressed=true] { outline: 3px dashed var(--marca); outline-offset: -4px; }
+.sopa-tablero button.encontrada { background: var(--suave); text-decoration: underline; text-decoration-thickness: 3px; color: var(--bien); }
+.coordenadas { display: flex; gap: .6rem; flex-wrap: wrap; align-items: end; }
+.coordenadas fieldset { display: flex; gap: .6rem; flex-wrap: wrap; }
+.coordenadas label { display: flex; gap: .3rem; flex-direction: column; }
+.coordenadas input { font: inherit; width: 5em; max-width: 100%; padding: .35rem; }
+.crucigrama-tablero td { position: relative; width: 2.3em; min-width: 2.3em; height: 2.5em; text-align: center; }
+.crucigrama-tablero .casilla { border: 2px solid var(--borde); background: var(--fondo); color: var(--texto); }
+.crucigrama-tablero .negra { background: var(--texto); }
+.crucigrama-tablero small { position: absolute; top: 0; left: .15em; font-size: .55em; line-height: 1; }
+.crucigrama-tablero .letra { font-weight: 700; }
+.crucigrama-tablero .conflicto { color: var(--mal); outline: 2px dashed var(--mal); outline-offset: -4px; }
+.pistas-crucigrama label { display: block; margin-bottom: .5rem; }
+@media print { .sopa-tablero button { display: block; } .coordenadas { display: none; } .tablero-scroll { overflow: visible; } }

@@ -1,3 +1,4 @@
+import { apiError } from '../i18n/apiErrors'
 export interface Capability { name: string; description: string; input_schema: Record<string, unknown>; mutates: boolean; source: string }
 export interface AuditRow { capability: string; status: 'ok' | 'error' | 'denied'; detail: string; input_bytes: number;
   output_bytes: number; duration_ms: number; created_at: string }
@@ -5,7 +6,7 @@ export interface AuditRow { capability: string; status: 'ok' | 'error' | 'denied
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({})) as { detail?: string }
-    throw new Error(data.detail ?? `Error ${response.status}`)
+    throw apiError(data.detail ?? `Error ${response.status}`)
   }
   return response
 }

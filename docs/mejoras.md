@@ -29,7 +29,7 @@ Lista acordada con el usuario el 2026-11-06 para ir implementando poco a poco. M
 - [x] (2026-11-07) **Completar huecos:** banco de palabras o escritura libre, respuestas alternativas, explicaciones y puntuación SCORM; castellano y valenciano. Implementación local; pendiente de despliegue.
 - [x] (2026-11-07) **Verdadero o falso:** afirmaciones con explicación obligatoria, reintento y puntuación SCORM; castellano y valenciano. Implementación local; pendiente de despliegue.
 - [x] (2026-11-07) **Escuchar y responder:** biblioteca de audios MP3/WAV/Ogg, transcripción o descripción musical revisada, preguntas de comprensión, alternativa textual y puntuación SCORM. Implementación local; requiere migración `0019_project_audios` y despliegue.
-- [ ] Más plantillas: sopa de letras o crucigrama.
+- [x] (2026-11-07) **Sopa de letras y crucigrama:** vocabulario y pistas, colocación automática de todas las palabras, selección por letras/coordenadas o respuesta junto a la pista, ayudas accesibles, reintento y puntuación SCORM. Castellano, valenciano e inglés. Implementación local; sin migración nueva, pendiente de despliegue.
 - [ ] Corrección de trabajos del alumnado con rúbrica (fase nueva; decidir antes la protección de datos: anonimizar, proveedores sin entrenamiento, la nota final siempre del docente).
 - [ ] Biblioteca compartida entre docentes (nivel 2 de Commons): publicar una plantilla rellenada para que otros la dupliquen.
 - [ ] Prototipo de monetización con Stripe en modo de pruebas, cuando estén revisados los bloqueantes legales de [monetizacion.md](monetizacion.md).

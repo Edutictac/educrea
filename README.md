@@ -4,7 +4,7 @@ Plataforma libre en desarrollo para crear actividades educativas con ayuda de IA
 
 ## Arquitectura
 
-- `apps/web`: Vue 3, TypeScript, Vite, Pinia, Vue Router y Monaco; interfaz en castellano y valenciano.
+- `apps/web`: Vue 3, TypeScript, Vite, Pinia, Vue Router y Monaco; interfaz en castellano, valenciano e inglés.
 - `apps/api`: FastAPI, SQLAlchemy, Alembic y PostgreSQL; sesiones locales, proyectos y archivos versionados.
 - `infra`: Docker Compose, PostgreSQL interno, Nginx para la web y Caddy para HTTPS.
 - `docs`: decisiones, seguridad y fases pendientes.

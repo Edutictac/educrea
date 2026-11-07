@@ -18,19 +18,19 @@ INTERACTIVE = [t.id for t in service.TEMPLATES.values() if t.kind == "interactiv
 BROWSER = shutil.which("chromium") or shutil.which("chromium-browser")
 
 
-def test_catalog_has_eleven_bilingual_templates(client: TestClient):
+def test_catalog_has_thirteen_trilingual_templates(client: TestClient):
     headers, _ = setup_user(client)
     items = client.get("/api/templates").json()
-    assert len(items) == 11 and all(item["names"]["es"] and item["names"]["va"] for item in items)
+    assert len(items) == 13 and all(item["names"]["es"] and item["names"]["va"] and item["names"]["en"] for item in items)
 
 
 @pytest.mark.parametrize("template_id", INTERACTIVE)
-@pytest.mark.parametrize("language", ["es", "va"])
+@pytest.mark.parametrize("language", ["es", "va", "en"])
 def test_samples_are_valid_for_their_schema(template_id, language):
     files = service.initial_files(template_id, {"title": "Prueba", "language": language})
     assert set(files) == {"index.html", "style.css", "comun.js", "script.js", "datos.js"}
     assert service.validate_data(template_id, files["datos.js"]) == []
-    assert ('lang="ca"' if language == "va" else 'lang="es"') in files["index.html"]
+    assert ('lang="ca"' if language == "va" else f'lang="{language}"') in files["index.html"]
     assert "innerHTML" not in files["script.js"] + files["comun.js"]
 
 
@@ -224,6 +224,17 @@ def test_ficha_template_creates_markdown_with_sections(client: TestClient):
     files = {f["path"]: f for f in client.get(f"{base}/files").json()}
     content = client.get(f"{base}/files/{files['ficha.md']['id']}").json()["content"]
     assert content.startswith("# Fraccions") and "## Recorda" in content and "## Per a acabar: autoavaluació" in content
+
+
+def test_ficha_template_in_english(client: TestClient):
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    applied = client.post(f"{base}/template", headers=headers, json={
+        "template": "ficha", "brief": {"title": "Fractions", "language": "en"}})
+    assert applied.status_code == 201
+    files = {f["path"]: f for f in client.get(f"{base}/files").json()}
+    content = client.get(f"{base}/files/{files['ficha.md']['id']}").json()["content"]
+    assert content.startswith("# Fractions") and "## Objective" in content and "## To finish: self-assessment" in content
 
 
 def inline(files: dict[str, str]) -> str:

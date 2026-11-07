@@ -1,3 +1,4 @@
+import json
 import re
 from uuid import UUID
 
@@ -22,6 +23,15 @@ def markdown_for_owner(db: Session, project_id: UUID, file_id: UUID, user: User)
     return file
 
 
+def project_language(db: Session, project_id: UUID) -> str:
+    file = db.scalar(select(ProjectFile).where(ProjectFile.project_id == project_id, ProjectFile.path == "activity.json"))
+    try:
+        value = json.loads(file.content).get("language") if file else None
+    except ValueError:
+        value = None
+    return {"va": "ca", "en": "en", "es": "es"}.get(value, "es")
+
+
 def download_name(value: str, extension: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "-", value).strip("-.")[:80] + extension
 
@@ -44,7 +54,7 @@ def render_file(project_id: UUID, file_id: UUID, user: User = Depends(current_us
 def export_file_html(project_id: UUID, file_id: UUID, user: User = Depends(current_user),
                      db: Session = Depends(get_db)) -> Response:
     file = markdown_for_owner(db, project_id, file_id, user)
-    return attachment(materials.export_html(file.path, file.content, assets=assets.assets_for(db, project_id)), "text/html; charset=utf-8",
+    return attachment(materials.export_html(file.path, file.content, lang=project_language(db, project_id), assets=assets.assets_for(db, project_id)), "text/html; charset=utf-8",
                       download_name(file.path.rsplit(".", 1)[0], ".html"))
 
 
@@ -80,7 +90,7 @@ def export_project_zip(project_id: UUID, user: User = Depends(current_user),
                       download_name(project.slug, ".zip"))
 
 
-SCORED_TEMPLATES = ("cuestionario", "emparejar", "ordenar", "clasificar", "huecos", "verdadero_falso", "escucha")
+SCORED_TEMPLATES = ("cuestionario", "emparejar", "ordenar", "clasificar", "huecos", "verdadero_falso", "escucha", "sopa_letras", "crucigrama")
 
 
 @router.get("/export.scorm.zip")

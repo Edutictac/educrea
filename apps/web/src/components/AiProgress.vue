@@ -2,7 +2,7 @@
 // Visible progress while the AI works. Steps follow real events from the API when they exist (assistant stream);
 // without events (first version, DUA) only an honest «working» step and the elapsed time are shown.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { t } from '../i18n'
+import { intlLocale, t } from '../i18n'
 
 import type { AiStage } from '../services/aiProgress'
 const props = defineProps<{ stage?: AiStage; ai?: string; passages?: number; chars?: number; retry?: boolean; simple?: boolean; label?: string
@@ -26,7 +26,7 @@ function text(step: AiStage): string {
   if (step === 'preparing') return props.passages ? `${t('progressPreparing')} (${props.passages} ${t('fragments')})` : t('progressPreparing')
   if (step === 'consulting') return t('progressConsulting')
   if (step === 'thinking') return props.ai ? `${t('progressThinking')} · ${props.ai}` : t('progressThinking')
-  return props.chars ? `${t('progressWriting')} · ${props.chars.toLocaleString()} ${t('characters')}` : t('progressWriting')
+  return props.chars ? `${t('progressWriting')} · ${props.chars.toLocaleString(intlLocale())} ${t('characters')}` : t('progressWriting')
 }
 // Announce stage changes once (the clock is hidden from screen readers so they are not flooded).
 const announcement = ref('')

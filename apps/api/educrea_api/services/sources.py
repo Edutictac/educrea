@@ -46,6 +46,8 @@ eso ante ellos e esto mi antes algunos que unos yo otro otras otra el tanto esa 
 poco ella estar estas algunas algo nosotros es son ser han has ha
 i els les dels amb per una uns unes al del es son que com mes pero seus seu seva seves ja o va aquest aquesta aquests
 aquestes entre quan molt sense sobre tambe fins hi on qui des tot ens durant tots un uns altres aquest eixe eixa
+the and of to in a is that for with as on are be this it from or by an at was were which their has have not
+but they you we can will would should there what when who how all any our your its been more most such only
 """.split())
 
 

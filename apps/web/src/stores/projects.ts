@@ -1,3 +1,4 @@
+import { apiError } from '../i18n/apiErrors'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
@@ -12,7 +13,7 @@ export const useProjectsStore = defineStore('projects', () => {
     const response = await fetch(`/api/projects${path}`, { method, credentials: 'same-origin',
       headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(method !== 'GET' ? { 'X-CSRF-Token': auth.csrf } : {}) },
       body: body ? JSON.stringify(body) : undefined })
-    if (!response.ok) throw new Error((await response.json()).detail ?? 'Error')
+    if (!response.ok) throw apiError((await response.json()).detail ?? 'Error')
     return response
   }
 

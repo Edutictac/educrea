@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { t } from '../i18n'
+import { intlLocale, t } from '../i18n'
 import { capabilityAudit, invokeCapability, listCapabilities, parseArguments, type AuditRow, type Capability } from '../services/capabilities'
 import { useAuthStore } from '../stores/auth'
 
@@ -62,7 +62,7 @@ onMounted(() => { if (props.embedded && !open.value) void toggle() })
         <table><thead><tr><th>{{ t('capability') }}</th><th>{{ t('capabilityStatus') }}</th><th>ms</th><th>{{ t('capabilityWhen') }}</th></tr></thead>
           <tbody><tr v-for="(row, index) in audit" :key="index"><td>{{ row.capability }}</td>
             <td>{{ row.status }}<span v-if="row.detail"> — {{ row.detail }}</span></td><td>{{ row.duration_ms }}</td>
-            <td>{{ new Date(row.created_at).toLocaleString() }}</td></tr></tbody></table></details>
+            <td>{{ new Date(row.created_at).toLocaleString(intlLocale()) }}</td></tr></tbody></table></details>
     </div>
   </section>
 </template>

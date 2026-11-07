@@ -8,7 +8,7 @@ citation verification as a whole-document generation.
 
 import re
 
-from .engine import (LEVEL_NAMES, SECTION_ALIASES, SITUATION_SECTIONS, SITUATION_SKELETON_VA,
+from .engine import (LEVEL_NAMES, SECTION_ALIASES, SITUATION_SECTIONS, SITUATION_SKELETONS,
                      normalise, sources_instructions)
 
 SECTION_GUIDE = {
@@ -54,7 +54,7 @@ def canonical(heading: str) -> str | None:
 
 def titles(language: str) -> dict[str, str]:
     """Canonical (Spanish) section name -> heading in the document language."""
-    local = SITUATION_SKELETON_VA if language == "va" else SITUATION_SECTIONS
+    local = SITUATION_SKELETONS.get(language, SITUATION_SECTIONS)
     return dict(zip(SITUATION_SECTIONS, local))
 
 
@@ -97,8 +97,8 @@ def brief_details(brief: dict) -> str:
 
 
 def section_prompt(brief: dict, name: str, document: str, passages: list[dict] | None, request: str = "") -> str:
-    language = "va" if brief.get("language") == "va" else "es"
-    lang = "valenciano (catalán)" if language == "va" else "castellano"
+    language = brief.get("language") if brief.get("language") in SITUATION_SKELETONS else "es"
+    lang = {"es": "castellano", "va": "valenciano (catalán)", "en": "inglés"}.get(language, "castellano")
     heading = titles(language)[name]
     context = document if len(document) <= DOCUMENT_CONTEXT_CHARS else document[:DOCUMENT_CONTEXT_CHARS] + "\n[…]"
     return (

@@ -45,7 +45,7 @@ onMounted(async () => {
     <template v-if="options.length || included">
       <label class="sr-only" for="ai-picker">{{ t('aiPicker') }}</label>
       <select id="ai-picker" v-model="value" :title="t('aiPickerHint')">
-        <option v-if="included" value="educrea|included">IA EduCrea</option>
+        <option v-if="included" value="educrea|included">{{ t('includedTitle') }}</option>
         <option value="">{{ t('includedByok') }} · {{ t('aiAutomatic') }}</option>
         <option v-for="item in options" :key="item.value" :value="item.value">{{ item.label }}</option>
       </select>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { apiError } from '../i18n/apiErrors'
 import { onMounted, ref } from 'vue'
-import { t } from '../i18n'
+import { intlLocale, t } from '../i18n'
 import { useAuthStore } from '../stores/auth'
 
 interface PathInfo { path: string; versions: number; deleted: boolean }
@@ -20,7 +21,7 @@ const status = ref('')
 async function api(path: string, method = 'GET') {
   const response = await fetch(`/api/projects/${props.projectId}/history${path}`, {
     method, credentials: 'same-origin', headers: method === 'GET' ? {} : { 'X-CSRF-Token': auth.csrf } })
-  if (!response.ok) throw new Error(((await response.json().catch(() => ({}))) as { detail?: string }).detail ?? `Error ${response.status}`)
+  if (!response.ok) throw apiError(((await response.json().catch(() => ({}))) as { detail?: string }).detail ?? `Error ${response.status}`)
   return response.json()
 }
 function fail(cause: unknown) { error.value = cause instanceof Error ? cause.message : t('error') }
@@ -63,7 +64,7 @@ onMounted(() => { if (props.embedded && !open.value) void toggle() })
         <label>{{ t('historyFile') }}<select :value="selected" @change="choose(($event.target as HTMLSelectElement).value)">
           <option v-for="item in paths" :key="item.path" :value="item.path">{{ item.path }}{{ item.deleted ? ` (${t('deletedFile')})` : '' }}</option></select></label>
         <ul class="history-list"><li v-for="version in versions" :key="version.id">
-          <strong>v{{ version.version }}</strong> · {{ new Date(version.created_at).toLocaleString() }} · {{ sourceLabel(version.source) }} · {{ version.size }} B
+          <strong>v{{ version.version }}</strong> · {{ new Date(version.created_at).toLocaleString(intlLocale()) }} · {{ sourceLabel(version.source) }} · {{ version.size }} B
           <button type="button" class="secondary" @click="view(version)">{{ t('viewVersion') }}</button>
           <button type="button" @click="restore(version)">{{ t('restoreVersion') }}</button></li></ul>
         <template v-if="shown"><h4>v{{ shown.version }}</h4><pre class="history-view">{{ shown.content }}</pre></template>

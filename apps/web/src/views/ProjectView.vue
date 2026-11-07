@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { apiError } from '../i18n/apiErrors'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import TeacherWorkspace from '../components/TeacherWorkspace.vue'
@@ -77,7 +78,7 @@ onMounted(async () => {
   media?.addEventListener('change', onMedia)
   try {
     const response = await fetch(`/api/projects/${id}`)
-    if (!response.ok) throw new Error((await response.json()).detail)
+    if (!response.ok) throw apiError((await response.json()).detail)
     const project = await response.json() as { title: string; description: string }
     title.value = project.title; description.value = project.description
     savedDetails.value = JSON.stringify([title.value, description.value]); loaded.value = true

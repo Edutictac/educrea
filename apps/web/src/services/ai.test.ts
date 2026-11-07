@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { describe, expect, it, vi } from 'vitest'
 import { estimatePaid, parseSseBlock, streamProposal } from './ai'
 
@@ -42,7 +43,7 @@ describe('streaming de propuestas', () => {
     } })
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(body, { status: 200 })))
     await expect(streamProposal('project-1', 'Crea una actividad', 'gemini', 'gemini-test-free', [], false, 'csrf',
-      new AbortController().signal, () => {})).rejects.toThrow('Respuesta incompleta')
+      new AbortController().signal, () => {})).rejects.toThrow(t('incompleteResponse'))
     vi.unstubAllGlobals()
   })
 

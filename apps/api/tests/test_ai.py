@@ -776,7 +776,17 @@ def test_section_check_accepts_translated_heading_variants():
 ## Avaluació
 ## Atenció a la diversitat (DUA)
 ## Materials i recursos"""
+    english = """## Situation data
+## Context and justification
+## Challenge and final product
+## Specific competences and assessment criteria
+## Basic knowledge
+## Session sequence
+## Assessment
+## Attention to diversity (UDL)
+## Materials and resources"""
     assert e.missing_sections(valencian) == []
+    assert e.missing_sections(english) == []
     assert e.missing_sections("### Saberes básicos\n") == [s for s in e.SITUATION_SECTIONS if s != "Saberes básicos"]
     assert "Saberes básicos" in e.missing_sections("## Evaluación\n")
 

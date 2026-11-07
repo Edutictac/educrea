@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { t } from '../i18n'
+import { intlLocale, t } from '../i18n'
 import { useAuthStore } from '../stores/auth'
 import { betaDashboard, changeBetaAccess, sendBetaInvitation, revokeBetaInvitation, type BetaDashboard } from '../services/betaAdmin'
 
@@ -69,7 +69,7 @@ function stateLabel(state: string) {
           </form>
           <article v-for="item in dashboard.invitations" :key="item.id" class="notice">
             <strong>{{ item.email }}</strong> · {{ stateLabel(item.state) }}
-            <p>{{ t('adminExpires') }}: {{ new Date(item.expires_at).toLocaleString() }}</p>
+            <p>{{ t('adminExpires') }}: {{ new Date(item.expires_at).toLocaleString(intlLocale()) }}</p>
             <button v-if="item.state !== 'revoked'" type="button" class="danger" :disabled="busy" @click="revokeInvitation(item.id)">{{ t('adminRevoke') }}</button>
           </article>
         </section>

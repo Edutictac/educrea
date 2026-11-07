@@ -160,22 +160,30 @@ SITUATION_SECTIONS = (
     "Materiales y recursos",
 )
 SECTION_ALIASES = {
-    "Datos de la situación": ("datos de la situación", "dades de la situació"),
-    "Contexto y justificación": ("contexto y justificación", "context i justificació"),
-    "Reto y producto final": ("reto y producto final", "repte i producte final"),
+    "Datos de la situación": ("datos de la situación", "dades de la situació", "situation data"),
+    "Contexto y justificación": ("contexto y justificación", "context i justificació", "context and justification"),
+    "Reto y producto final": ("reto y producto final", "repte i producte final", "challenge and final product"),
     "Competencias específicas y criterios de evaluación": (
-        "competencias específicas y criterios de evaluación", "competències específiques i criteris d'avaluació"),
-    "Saberes básicos": ("saberes básicos", "sabers bàsics", "saberes bàsics"),
-    "Secuencia de sesiones": ("secuencia de sesiones", "seqüència de sessions"),
-    "Evaluación": ("evaluación", "avaluació"),
-    "Atención a la diversidad (DUA)": ("atención a la diversidad", "atenció a la diversitat"),
-    "Materiales y recursos": ("materiales y recursos", "materials i recursos"),
+        "competencias específicas y criterios de evaluación", "competències específiques i criteris d'avaluació",
+        "specific competences and assessment criteria", "specific competencies and evaluation criteria"),
+    "Saberes básicos": ("saberes básicos", "sabers bàsics", "saberes bàsics", "basic knowledge"),
+    "Secuencia de sesiones": ("secuencia de sesiones", "seqüència de sessions", "session sequence"),
+    "Evaluación": ("evaluación", "avaluació", "assessment", "evaluation"),
+    "Atención a la diversidad (DUA)": ("atención a la diversidad", "atenció a la diversitat",
+                                      "attention to diversity", "attention to diversity (udl)"),
+    "Materiales y recursos": ("materiales y recursos", "materials i recursos", "materials and resources"),
 }
 SITUATION_SKELETON_VA = (
     "Dades de la situació", "Context i justificació", "Repte i producte final",
     "Competències específiques i criteris d'avaluació", "Sabers bàsics", "Seqüència de sessions",
     "Avaluació", "Atenció a la diversitat (DUA)", "Materials i recursos",
 )
+SITUATION_SKELETON_EN = (
+    "Situation data", "Context and justification", "Challenge and final product",
+    "Specific competences and assessment criteria", "Basic knowledge", "Session sequence",
+    "Assessment", "Attention to diversity (UDL)", "Materials and resources",
+)
+SITUATION_SKELETONS = {"es": SITUATION_SECTIONS, "va": SITUATION_SKELETON_VA, "en": SITUATION_SKELETON_EN}
 SITUATION_PATH = "situacion.md"
 HEADING = re.compile(r"^#{1,6}\s+(.+?)\s*$", re.MULTILINE)
 
@@ -202,7 +210,9 @@ def missing_sections(markdown: str) -> list[str]:
 
 def situation_instruction(brief: dict) -> str:
     language = str(brief.get("language") or "es")
-    lang = "valenciano (catalán)" if language == "va" else "castellano"
+    if language not in SITUATION_SKELETONS:
+        language = "es"
+    lang = {"es": "castellano", "va": "valenciano (catalán)", "en": "inglés"}[language]
     wants = []
     accessibility = brief.get("accessibility") if isinstance(brief.get("accessibility"), dict) else {}
     if accessibility.get("large_text"):
@@ -219,7 +229,7 @@ def situation_instruction(brief: dict) -> str:
         f"Instrumentos de evaluación pedidos: {str(brief.get('evaluation') or '').strip() or 'rúbrica y observación'}",
         f"Notas de diversidad y DUA: {str(brief.get('diversity') or '').strip() or 'ninguna indicada'}",
     ]
-    titles = SITUATION_SKELETON_VA if language == "va" else SITUATION_SECTIONS
+    titles = SITUATION_SKELETONS.get(language, SITUATION_SECTIONS)
     skeleton = "\n".join(f"## {title}" for title in titles)
     return (
         f"Diseña una SITUACIÓN DE APRENDIZAJE completa titulada «{str(brief.get('title') or '').strip() or 'sin título'}». "
@@ -258,8 +268,8 @@ def document_rules(path: str, brief: dict | None) -> str:
              "en Markdown limpio (tablas con |), sin HTML ni bloques de código. NO crees index.html, CSS ni JavaScript "
              "salvo que el docente pida expresamente una actividad interactiva. ")
     if path == "situacion.md":
-        headings = ", ".join(f"«{h}»" for h in (SITUATION_SKELETON_VA if (brief or {}).get("language") == "va"
-                                                else SITUATION_SECTIONS))
+        headings = ", ".join(f"«{h}»" for h in SITUATION_SKELETONS.get(
+            (brief or {}).get("language"), SITUATION_SECTIONS))
         rules += (f"Conserva las nueve secciones de nivel 2 en este orden: {headings}. " + LENGTH_RULE)
     return rules
 
@@ -286,7 +296,7 @@ def _instruction_for(brief: dict) -> str:
     if template:
         return template_service.instruction(template, brief, brief_instruction(brief, with_files=False))
     return brief_instruction(brief)
-LANGUAGE_NAMES = {"es": "castellano", "va": "valenciano (catalán)"}
+LANGUAGE_NAMES = {"es": "castellano", "va": "valenciano (catalán)", "en": "inglés"}
 LEVEL_NAMES = {"infantil": "Educación Infantil", "primaria": "Educación Primaria", "secundaria": "Educación Secundaria",
                "otros": "otro nivel"}
 
@@ -294,13 +304,15 @@ LEVEL_NAMES = {"infantil": "Educación Infantil", "primaria": "Educación Primar
 def brief_instruction(brief: dict, with_files: bool = True) -> str:
     """Turns the teacher's activity.json brief into the instruction for the first version."""
     language = str(brief.get("language") or "es")
-    lang = "valenciano" if language == "va" else "castellano"
+    if language not in ("es", "va", "en"):
+        language = "es"
+    lang = {"es": "castellano", "va": "valenciano", "en": "inglés"}[language]
     accessibility = brief.get("accessibility") if isinstance(brief.get("accessibility"), dict) else {}
     wants = [name for key, name in (("large_text", "texto grande"), ("high_contrast", "alto contraste"))
              if accessibility.get(key) is True]
     parts = [
         f"Crea la primera versión completa de la actividad «{str(brief.get('title') or '').strip() or 'sin título'}», "
-        f"lista para usar en el aula. Todo el texto visible debe estar en {lang} y el HTML debe llevar lang=\"{'ca' if language == 'va' else 'es'}\".",
+        f"lista para usar en el aula. Todo el texto visible debe estar en {lang} y el HTML debe llevar lang=\"{'ca' if language == 'va' else language}\".",
         f"Tipo de actividad: {brief.get('activity_type') or 'otra'}. Nivel educativo: "
         f"{LEVEL_NAMES.get(str(brief.get('level')), str(brief.get('level')))}.",
         f"Encargo del docente:\n{str(brief.get('instructions') or '').strip()}",
@@ -364,7 +376,7 @@ DUA_EXTENSIONS = (".html", ".md")
 
 
 def dua_instruction(path: str, needs: str, language: str | None) -> str:
-    lang = {"va": "valenciano (catalán)", "es": "castellano"}.get(language or "", "el mismo idioma del material")
+    lang = {"va": "valenciano (catalán)", "es": "castellano", "en": "inglés"}.get(language or "", "el mismo idioma del material")
     kind = ("documento Markdown" if path.lower().endswith(".md") else
             "datos de una plantilla interactiva (adapta los textos, consignas, opciones, explicaciones e imágenes "
             "dentro del objeto JSON, conservando exactamente su estructura y sin tocar el motor de la plantilla)"

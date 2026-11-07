@@ -1,3 +1,4 @@
+import { apiError } from '../i18n/apiErrors'
 export interface Source { id: string; title: string; filename: string; kind: string; pages: number; chars: number;
   chunk_count: number; created_at: string; url: string | null; fetched_at: string | null }
 export interface Passage { label: string; source: string; page: number | null; heading: string; text: string }
@@ -13,7 +14,7 @@ export interface Grounding { mode: 'sources_only' | 'template'; kind?: 'activida
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({})) as { detail?: string }
-    throw new Error(data.detail ?? `Error ${response.status}`)
+    throw apiError(data.detail ?? `Error ${response.status}`)
   }
   return response
 }

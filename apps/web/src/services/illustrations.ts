@@ -1,3 +1,4 @@
+import { apiError } from '../i18n/apiErrors'
 // Illustrations for a new resource: the free text AI writes the descriptions, then each image is estimated, paid and
 // saved one by one with the ordinary image endpoints. The teacher confirmed the maximum total in the creation form.
 import { uploadAsset } from './assets'
@@ -10,7 +11,7 @@ export interface IllustrationPrompt { alt: string; prompt: string }
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({})) as { detail?: string }
-    throw new Error(data.detail ?? `Error ${response.status}`)
+    throw apiError(data.detail ?? `Error ${response.status}`)
   }
   return response
 }

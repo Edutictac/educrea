@@ -1,3 +1,4 @@
+import { apiError } from '../i18n/apiErrors'
 // Image library of a project (PNG/JPEG uploaded by the teacher). Activities and documents reference images with a
 // relative path such as imagenes/trompeta.png; the preview embeds them as data: URIs, so nothing is fetched.
 export interface Asset { id: string; path: string; media_type: string; size: number; alt: string; credit: string }
@@ -8,7 +9,7 @@ const REFERENCE = /((?:src\s*=\s*["']|url\(\s*["']?|\]\(|"image"\s*:\s*"))\s*(?:
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({})) as { detail?: string }
-    throw new Error(data.detail ?? `Error ${response.status}`)
+    throw apiError(data.detail ?? `Error ${response.status}`)
   }
   return response
 }

@@ -2,14 +2,14 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { includedStatus, type IncludedStatus } from '../services/ai'
 import { useAuthStore } from '../stores/auth'
-import { t } from '../i18n'
+import { intlLocale, t } from '../i18n'
 
 const auth = useAuthStore()
 const status = ref<IncludedStatus | null>(null)
 const percent = computed(() => status.value?.monthly_credits_limit
   ? Math.min(100, Math.round(status.value.monthly_credits_used * 100 / status.value.monthly_credits_limit)) : 100)
 const renewal = computed(() => status.value ? new Date(status.value.renews_at).toLocaleDateString(
-  undefined, { day: 'numeric', month: 'long', timeZone: 'UTC' }) : '')
+  intlLocale(), { day: 'numeric', month: 'long', timeZone: 'UTC' }) : '')
 async function refresh() {
   const userId = auth.user?.id
   const result = await includedStatus().catch(() => null)

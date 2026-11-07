@@ -1,3 +1,4 @@
+import { apiError } from '../i18n/apiErrors'
 export interface BetaRequest { user_id: string; email: string; teaching_context: string; intended_use: string; requested_at: string }
 export interface BetaGuest { user_id: string; email: string; access_status: 'invited' | 'revoked' }
 export interface BetaInvitation { id: string; email: string; state: string; expires_at: string; sent_at: string | null }
@@ -9,7 +10,7 @@ async function request<T>(path: string, method = 'GET', csrf?: string, body?: ob
     'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
   }, ...(body ? { body: JSON.stringify(body) } : {}) })
   const data = await response.json()
-  if (!response.ok) throw new Error(data.detail ?? `Error ${response.status}`)
+  if (!response.ok) throw apiError(data.detail ?? `Error ${response.status}`)
   return data as T
 }
 export const betaDashboard = () => request<BetaDashboard>('')

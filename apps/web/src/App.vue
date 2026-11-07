@@ -35,7 +35,7 @@ async function logout() { menuOpen.value = false; await auth.logout(); router.pu
         <RouterLink v-if="auth.user?.is_admin" to="/admin/beta">{{ t('adminBeta') }}</RouterLink>
         <RouterLink v-if="auth.user" to="/ai/providers"><AppIcon name="key" :size="18" />{{ t('myProviders') }}</RouterLink>
         <RouterLink v-if="!auth.user || auth.user.is_guest" :to="{ path: '/login', query: { next: route.fullPath } }">{{ t('openRegister') }}</RouterLink>
-        <select v-model="locale" :aria-label="t('language')"><option value="es">Castellano</option><option value="va">Valencià</option></select>
+        <select v-model="locale" :aria-label="t('language')"><option value="es">{{ t('languageSpanish') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select>
         <button v-if="auth.user && !auth.user.is_guest" type="button" class="text-button" @click="logout"><AppIcon name="log-out" :size="18" />{{ t('logout') }}</button>
       </nav>
     </header>

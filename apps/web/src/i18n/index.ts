@@ -1,15 +1,17 @@
 import { ref, watch } from 'vue'
+import { en } from './en'
 
-export type Locale = 'es' | 'va'
+export type Locale = 'es' | 'va' | 'en'
 const STORAGE_KEY = 'educrea.locale'
 
 // Saved choice first; otherwise the first browser language we support (Catalan/Valencian -> 'va').
 export function detectLocale(languages: readonly string[], saved: string | null): Locale {
-  if (saved === 'es' || saved === 'va') return saved
+  if (saved === 'es' || saved === 'va' || saved === 'en') return saved
   for (const language of languages) {
     const base = language.toLowerCase().split('-')[0]
     if (base === 'ca') return 'va'
     if (base === 'es') return 'es'
+    if (base === 'en') return 'en'
   }
   return 'es'
 }
@@ -19,12 +21,40 @@ function storedLocale(): string | null {
 }
 
 export const locale = ref<Locale>(detectLocale(typeof navigator === 'undefined' ? [] : navigator.languages ?? [], storedLocale()))
-watch(locale, value => {
-  try { localStorage.setItem(STORAGE_KEY, value) } catch { /* private mode */ }
-  if (typeof document !== 'undefined') document.documentElement.lang = value === 'va' ? 'ca' : 'es'
+watch(locale, (value, previous) => {
+  if (previous !== undefined) {
+    try { localStorage.setItem(STORAGE_KEY, value) } catch { /* private mode */ }
+  }
+  if (typeof document !== 'undefined') document.documentElement.lang = value === 'va' ? 'ca' : value
 }, { immediate: true })
-const messages = {
+export const messages = {
   es: {
+    languageSpanish: "Castellano",
+    languageValencian: "Valenciano",
+    languageEnglish: "Inglés",
+    ollamaServer: "Ollama (servidor)",
+    workspaceOpenError: "No se ha podido abrir el espacio de trabajo",
+    invalidTemporaryKey: "Clave temporal no válida",
+    missingTemporaryKey: "Introduce tu clave temporal antes de confirmar el modelo",
+    streamUnavailable: "Streaming no disponible",
+    incompleteResponse: "Respuesta incompleta",
+    guestActivityTitle: "Mi actividad",
+    guestActivityInstructions: "Describe aquí la actividad para tu clase.",
+    guestStartHere: "Empieza a crear aquí.",
+    guestInteractions: "Añade interacciones aquí.",
+    guestImporting: "Importación en curso",
+    guestDraftDescription: "Borrador creado como invitado",
+    infographicIdeaAlt: "Bombilla: una idea",
+    infographicExampleAlt: "Nota musical: un ejemplo",
+    infographicCheckAlt: "Marca de verificación: lo que hay que recordar",
+    infographicStep1: "Primer paso",
+    infographicStep2: "Segundo paso",
+    infographicStep3: "Tercer paso",
+    infographicText1: "Explica la idea principal con una frase corta.",
+    infographicText2: "Añade un ejemplo que el alumnado reconozca.",
+    infographicText3: "Cierra con lo que se debe recordar.",
+    infographicMore: "Más información",
+    infographicMoreText: "Contenido que se revela al pulsar.",
     title: 'EduCrea', projects: 'Mis proyectos', login: 'Entrar', register: 'Crear cuenta',
     email: 'Correo electrónico', password: 'Contraseña', create: 'Crear proyecto', description: 'Descripción',
     projectTitle: 'Título del proyecto', logout: 'Salir', empty: 'Todavía no tienes proyectos.',
@@ -125,7 +155,7 @@ const messages = {
     materialUnsupported: 'La IA no ha podido justificar todo con citas de tu material. Revisa el resultado antes de aplicarlo.', basedOnMaterial: 'Creado a partir de tu material',
     guideLoadFailed: 'No se pudo cargar el estado de los proveedores', guideRetry: 'Reintentar', guideStep3Loading: '3. Cargando modelos disponibles…', guideStep3LoadFailed: '3. Comprueba los modelos cuando se recupere la conexión', guideStep1Managed: '1. Solicita Ollama al administrador del servidor', guideStep2Managed: '2. Comprueba que el servidor tiene modelos disponibles', guideStep3Managed: '3. Usa un modelo desde tu proyecto', guideStep3PaidUnavailable: '3. Espera a que se habilite un modelo de pago', guideStep3PaidUnavailableHint: 'Todavía no hay modelos de pago habilitados para este proveedor en EduCrea.', guideStep3Unavailable: '3. Espera a que se habilite un modelo gratuito', guideStep3UnavailableHint: 'Todavía no hay modelos gratuitos habilitados para este proveedor en EduCrea. Puedes guardar tu clave ahora; cuando haya uno disponible, podrás confirmar que es gratuito para tu cuenta.',
     proposalSalvaged: 'La IA se cortó o devolvió un formato roto, pero se ha rescatado el documento. Revísalo (sobre todo el final) y pulsa «Aprobar y aplicar» si te sirve.',
-    scormTitle: 'Para Aules o Moodle (SCORM)', scormIntro: 'Paquete SCORM 1.2: el alumnado hace la actividad dentro de Aules y la nota va directa al libro de calificaciones (cuestionario, emparejar, ordenar, clasificar, completar huecos, verdadero o falso y escuchar y responder: la mejor puntuación sobre 100; tarjetas, lectura y otras actividades: completada o no).', scormDownload: 'Descargar paquete SCORM',
+    scormTitle: 'Para Aules o Moodle (SCORM)', scormIntro: 'Paquete SCORM 1.2: el alumnado hace la actividad dentro de Aules y la nota va directa al libro de calificaciones (cuestionario, emparejar, ordenar, clasificar, completar huecos, verdadero o falso, escuchar y responder, sopa de letras y crucigrama: la mejor puntuación sobre 100; tarjetas, lectura y otras actividades: completada o no).', scormDownload: 'Descargar paquete SCORM',
     scormHowTo: 'Cómo subirlo a Aules', scormStep1: 'En tu curso de Aules, activa la edición y pulsa «Añade una actividad o un recurso» › «Paquete SCORM».', scormStep2: 'Escribe un nombre y arrastra el ZIP descargado a «Paquete».', scormStep3: 'En «Calificación», deja «Calificación más alta» y nota máxima 100 (o la que uses en el curso).', scormStep4: 'Guarda y prueba la actividad como alumno con «Cambiar rol» antes de compartirla.',
     duplicateProject: 'Duplicar', duplicateHint: 'La copia incluye los archivos, las imágenes y el material de partida, pero no el historial ni las propuestas de la IA. Útil para reutilizar una actividad con otro grupo.',
     tryAutomatic: 'Puedes elegir otra IA o «IA automática» en el selector de arriba, que cambia sola si una está saturada.',
@@ -195,6 +225,32 @@ const messages = {
     useTemporaryKey: 'Usar esta clave ahora', temporaryKeyReady: 'Clave lista para esta visita. Si recargas la página tendrás que volver a pegarla; crea una cuenta para guardarla.',
   },
   va: {
+    languageSpanish: "Castellà",
+    languageValencian: "Valencià",
+    languageEnglish: "Anglés",
+    ollamaServer: "Ollama (servidor)",
+    workspaceOpenError: "No s’ha pogut obrir l’espai de treball",
+    invalidTemporaryKey: "Clau temporal no vàlida",
+    missingTemporaryKey: "Introdueix la clau temporal abans de confirmar el model",
+    streamUnavailable: "Transmissió no disponible",
+    incompleteResponse: "Resposta incompleta",
+    guestActivityTitle: "La meua activitat",
+    guestActivityInstructions: "Descriu ací l’activitat per a la teua classe.",
+    guestStartHere: "Comença a crear ací.",
+    guestInteractions: "Afig interaccions ací.",
+    guestImporting: "Importació en curs",
+    guestDraftDescription: "Esborrany creat com a invitat",
+    infographicIdeaAlt: "Bombeta: una idea",
+    infographicExampleAlt: "Nota musical: un exemple",
+    infographicCheckAlt: "Marca de verificació: què cal recordar",
+    infographicStep1: "Primer pas",
+    infographicStep2: "Segon pas",
+    infographicStep3: "Tercer pas",
+    infographicText1: "Explica la idea principal amb una frase curta.",
+    infographicText2: "Afig un exemple que l’alumnat reconega.",
+    infographicText3: "Acaba amb el que cal recordar.",
+    infographicMore: "Més informació",
+    infographicMoreText: "Contingut que es mostra en prémer.",
     title: 'EduCrea', projects: 'Els meus projectes', login: 'Entrar', register: 'Crear compte',
     email: 'Correu electrònic', password: 'Contrasenya', create: 'Crear projecte', description: 'Descripció',
     projectTitle: 'Títol del projecte', logout: 'Eixir', empty: 'Encara no tens projectes.',
@@ -295,7 +351,7 @@ const messages = {
     materialUnsupported: 'La IA no ha pogut justificar-ho tot amb cites del teu material. Revisa el resultat abans d’aplicar-lo.', basedOnMaterial: 'Creat a partir del teu material',
     guideLoadFailed: 'No s’ha pogut carregar l’estat dels proveïdors', guideRetry: 'Torna-ho a provar', guideStep3Loading: '3. Carregant models disponibles…', guideStep3LoadFailed: '3. Comprova els models quan es recupere la connexió', guideStep1Managed: '1. Demana Ollama a l’administrador del servidor', guideStep2Managed: '2. Comprova que el servidor té models disponibles', guideStep3Managed: '3. Usa un model des del teu projecte', guideStep3PaidUnavailable: '3. Espera que s’habilite un model de pagament', guideStep3PaidUnavailableHint: 'Encara no hi ha models de pagament habilitats per a este proveïdor en EduCrea.', guideStep3Unavailable: '3. Espera que s’habilite un model gratuït', guideStep3UnavailableHint: 'Encara no hi ha models gratuïts habilitats per a este proveïdor en EduCrea. Pots guardar la clau ara; quan n’hi haja un disponible, podràs confirmar que és gratuït per al teu compte.',
     proposalSalvaged: 'La IA s’ha tallat o ha tornat un format trencat, però s’ha rescatat el document. Revisa’l (sobretot el final) i prem «Aprovar i aplicar» si et servix.',
-    scormTitle: 'Per a Aules o Moodle (SCORM)', scormIntro: 'Paquet SCORM 1.2: l’alumnat fa l’activitat dins d’Aules i la nota va directa al llibre de qualificacions (qüestionari, aparellar, ordenar, classificar, omplir buits, vertader o fals i escoltar i respondre: la millor puntuació sobre 100; targetes, lectura i altres activitats: completada o no).', scormDownload: 'Descarregar paquet SCORM',
+    scormTitle: 'Per a Aules o Moodle (SCORM)', scormIntro: 'Paquet SCORM 1.2: l’alumnat fa l’activitat dins d’Aules i la nota va directa al llibre de qualificacions (qüestionari, aparellar, ordenar, classificar, omplir buits, vertader o fals, escoltar i respondre, sopa de lletres i mots encreuats: la millor puntuació sobre 100; targetes, lectura i altres activitats: completada o no).', scormDownload: 'Descarregar paquet SCORM',
     scormHowTo: 'Com pujar-lo a Aules', scormStep1: 'En el teu curs d’Aules, activa l’edició i prem «Afegeix una activitat o un recurs» › «Paquet SCORM».', scormStep2: 'Escriu un nom i arrossega el ZIP descarregat a «Paquet».', scormStep3: 'En «Qualificació», deixa «Qualificació més alta» i nota màxima 100 (o la que uses en el curs).', scormStep4: 'Guarda i prova l’activitat com a alumne amb «Canvia el rol» abans de compartir-la.',
     duplicateProject: 'Duplicar', duplicateHint: 'La còpia inclou els fitxers, les imatges i el material de partida, però no l’historial ni les propostes de la IA. Útil per a reutilitzar una activitat amb un altre grup.',
     tryAutomatic: 'Pots triar una altra IA o «IA automàtica» en el selector de dalt, que canvia sola si una està saturada.',
@@ -362,9 +418,11 @@ const messages = {
     openBetaRegister: 'Crea un compte gratis per a usar la IA inclosa i conservar els teus projectes.', betaRequestGuest: 'Sol·licitar accés a la beta', betaRequestGuestHint: 'Necessites un compte EduTicTac gratuït: entra o crea\'l i, en tornar, ompli la sol·licitud. Els teus projectes es conserven.',
     temporaryKeyIntro: 'Sense compte, la teua clau només s’usa durant esta visita: no es guarda al servidor ni al navegador i desapareix en recarregar la pàgina. Per a conservar-la, crea un compte gratis.',
     guestSaveTitle: 'Per a guardar la teua clau, crea un compte gratis', guestSaveReady: 'La teua clau ja funciona! Ara pots guardar-la creant un compte gratis', guestSaveText: 'Amb un compte la teua clau queda xifrada al servidor, no has d’apegar-la en cada visita i conserves els teus projectes. Et portem a EduTicTac per a crear-lo i tornes a esta pantalla; allí hauràs d’apegar la clau una vegada més per a guardar-la (no la guardem al navegador mentre no tingues compte).', guestSaveButton: 'Crear compte i guardar la meua clau',
-    useTemporaryKey: 'Usar esta clau ara', temporaryKeyReady: 'Clau preparada per a esta visita. Si recarregues la pàgina hauràs de tornar a apegar-la; crea un compte per a guardar-la.',
+    useTemporaryKey: 'Usar esta clau ara',     temporaryKeyReady: 'Clau preparada per a esta visita. Si recarregues la pàgina hauràs de tornar a apegar-la; crea un compte per a guardar-la.',
   },
+  en,
 } as const
 
-export function t(key: keyof typeof messages.es): string { return messages[locale.value][key] }
+export function t(key: keyof typeof messages.es, language: Locale = locale.value): string { return messages[language][key] }
 
+export const intlLocale = () => locale.value === 'va' ? 'ca' : locale.value

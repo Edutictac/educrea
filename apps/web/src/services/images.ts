@@ -1,3 +1,4 @@
+import { apiError } from '../i18n/apiErrors'
 // BYOK image generation with Gemini Nano Banana. The image is returned for review and is only saved to the
 // project when the teacher accepts the preview through the normal asset library.
 import { temporaryKeyHeaders } from './temporaryKeys'
@@ -48,7 +49,7 @@ export interface GeneratedImage {
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({})) as { detail?: string }
-    throw new Error(data.detail ?? `Error ${response.status}`)
+    throw apiError(data.detail ?? `Error ${response.status}`)
   }
   return response
 }

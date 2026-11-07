@@ -15,7 +15,7 @@ import { createIllustrations, illustrationPrompts, type IllustrationStyle } from
 // Guided creation (phase 7): 1) what to create, 2) a few details, then the project opens in teacher mode with the
 // template files ready and the AI fills the content from the brief.
 type Choice = { id: string; kind: 'plantilla' | 'situacion' | 'libre'; name: string; description: string; icon: string }
-const ICONS: Record<string, string> = { escucha: 'music', verdadero_falso: 'circle-help', huecos: 'file-text', cuestionario: 'circle-help', emparejar: 'puzzle', ordenar: 'list-ordered', tarjetas: 'layers', clasificar: 'shapes', lectura: 'book-open', infografia: 'palette', ficha: 'file-text', situacion: 'graduation-cap', libre: 'file-plus' }
+const ICONS: Record<string, string> = { sopa_letras: 'puzzle', crucigrama: 'puzzle', escucha: 'music', verdadero_falso: 'circle-help', huecos: 'file-text', cuestionario: 'circle-help', emparejar: 'puzzle', ordenar: 'list-ordered', tarjetas: 'layers', clasificar: 'shapes', lectura: 'book-open', infografia: 'palette', ficha: 'file-text', situacion: 'graduation-cap', libre: 'file-plus' }
 const auth = useAuthStore()
 const projects = useProjectsStore()
 const files = useFilesStore()
@@ -23,7 +23,7 @@ const router = useRouter()
 const templates = ref<TemplateInfo[]>([])
 const choice = ref<Choice | null>(null)
 const title = ref('')
-const language = ref<'es' | 'va'>(locale.value)
+const language = ref<'es' | 'va' | 'en'>(locale.value === 'va' ? 'va' : locale.value === 'en' ? 'en' : 'es')
 const level = ref('primaria')
 const instructions = ref('')
 const gapMode = ref<'bank' | 'text'>('bank')
@@ -98,8 +98,9 @@ async function create() {
     if (choice.value.kind === 'plantilla') {
       await applyTemplate(project.id, choice.value.id, brief, auth.csrf)
       if (choice.value.id === 'infografia') {
-        const html = infographicTemplate(brief.title)
-        await files.create(project.id, INFOGRAPHIC_PATH, language.value === 'va' ? html.replace('<html lang="es">', '<html lang="ca">') : html)
+        const html = infographicTemplate(brief.title, brief.language)
+        const htmlLang = language.value === 'va' ? 'ca' : language.value
+        await files.create(project.id, INFOGRAPHIC_PATH, html.replace('<html lang="es">', `<html lang="${htmlLang}">`))
       }
     } else if (choice.value.kind === 'situacion') {
       await files.create(project.id, 'activity.json', JSON.stringify({ kind: 'situacion', ...brief, sessions: 4 }, null, 2) + '\n')
@@ -155,7 +156,7 @@ async function create() {
         <h3 ref="detailsHeading" class="full" tabindex="-1">{{ choice.name }}</h3>
         <label class="full">{{ t('activityTitle') }}<input v-model="title" required maxlength="160" :placeholder="t('titlePlaceholder')" /></label>
         <template v-if="choice.kind !== 'libre'">
-          <label>{{ t('language') }}<select v-model="language"><option value="es">Castellano</option><option value="va">Valencià</option></select></label>
+          <label>{{ t('language') }}<select v-model="language"><option value="es">{{ t('languageSpanish') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select></label>
           <label>{{ t('educationLevel') }}<select v-model="level"><option value="infantil">{{ t('earlyYears') }}</option>
             <option value="primaria">{{ t('primary') }}</option><option value="secundaria">{{ t('secondary') }}</option>
             <option value="otros">{{ t('other') }}</option></select></label>

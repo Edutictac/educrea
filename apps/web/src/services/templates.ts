@@ -1,13 +1,16 @@
+import { apiError } from '../i18n/apiErrors'
 // Starter infographic: plain HTML + inline SVG, editable by hand or with the AI assistant.
 // Icons are the vendored Lucide set (inline SVG, license notice included). No external fonts, icons or scripts, so it previews and exports to PNG unchanged.
 import { LUCIDE_NOTICE, iconSvg } from './icons'
+import { locale, t, type Locale } from '../i18n'
 
 export const INFOGRAPHIC_PATH = 'infografia.html'
 
-export function infographicTemplate(title: string): string {
+export function infographicTemplate(title: string, language: Locale = locale.value): string {
+  const tr = (key: Parameters<typeof t>[0]) => t(key, language)
   const safe = title.replace(/[<>&"]/g, '')
   return `<!doctype html>
-<html lang="es">
+<html lang="${language === 'va' ? 'ca' : language}">
 <head>
 ${LUCIDE_NOTICE}
 <meta charset="utf-8">
@@ -28,19 +31,19 @@ ${LUCIDE_NOTICE}
   <h1>${safe}</h1>
   <div class="steps">
     <section class="step">
-      ${iconSvg('lightbulb', 'Bombilla: una idea', 64)}
-      <h2>Primer paso</h2><p>Explica la idea principal con una frase corta.</p>
+      ${iconSvg('lightbulb', tr('infographicIdeaAlt'), 64)}
+      <h2>${tr('infographicStep1')}</h2><p>${tr('infographicText1')}</p>
     </section>
     <section class="step">
-      ${iconSvg('music', 'Nota musical: un ejemplo', 64)}
-      <h2>Segundo paso</h2><p>Añade un ejemplo que el alumnado reconozca.</p>
+      ${iconSvg('music', tr('infographicExampleAlt'), 64)}
+      <h2>${tr('infographicStep2')}</h2><p>${tr('infographicText2')}</p>
     </section>
     <section class="step">
-      ${iconSvg('check', 'Marca de verificación: lo que hay que recordar', 64)}
-      <h2>Tercer paso</h2><p>Cierra con lo que se debe recordar.</p>
+      ${iconSvg('check', tr('infographicCheckAlt'), 64)}
+      <h2>${tr('infographicStep3')}</h2><p>${tr('infographicText3')}</p>
     </section>
   </div>
-  <details><summary>Más información</summary><p>Contenido que se revela al pulsar.</p></details>
+  <details><summary>${tr('infographicMore')}</summary><p>${tr('infographicMoreText')}</p></details>
 </main>
 </body>
 </html>
@@ -48,13 +51,13 @@ ${LUCIDE_NOTICE}
 }
 
 // Guided templates served by the API (phase 7).
-export interface TemplateInfo { id: string; kind: 'interactiva' | 'infografia' | 'ficha'; names: Record<'es' | 'va', string>; descriptions: Record<'es' | 'va', string> }
-export interface TemplateBrief { gap_mode?: 'bank' | 'text'; title: string; language: 'es' | 'va'; level: string; instructions: string; accessibility: { large_text: boolean; high_contrast: boolean } }
+export interface TemplateInfo { id: string; kind: 'interactiva' | 'infografia' | 'ficha'; names: Record<'es' | 'va' | 'en', string>; descriptions: Record<'es' | 'va' | 'en', string> }
+export interface TemplateBrief { gap_mode?: 'bank' | 'text'; title: string; language: 'es' | 'va' | 'en'; level: string; instructions: string; accessibility: { large_text: boolean; high_contrast: boolean } }
 
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({})) as { detail?: string }
-    throw new Error(data.detail ?? `Error ${response.status}`)
+    throw apiError(data.detail ?? `Error ${response.status}`)
   }
   return response
 }

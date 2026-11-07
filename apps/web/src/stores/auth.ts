@@ -1,3 +1,5 @@
+import { apiError } from '../i18n/apiErrors'
+import { t } from '../i18n'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { setTemporaryIdentity } from '../services/temporaryKeys'
@@ -19,7 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       let response = await fetch('/api/auth/me', { credentials: 'same-origin' })
       if (response.status === 401) response = await fetch('/api/auth/guest', { method: 'POST', credentials: 'same-origin' })
-      if (!response.ok) throw new Error('No se ha podido abrir el espacio de trabajo')
+      if (!response.ok) throw new Error(t('workspaceOpenError'))
       apply(await response.json() as { user: User; csrf_token: string })
     } finally { ready.value = true }
   }
@@ -34,7 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function authenticate(kind: 'login' | 'register', email: string, password: string) {
     const response = await fetch(`/api/auth/${kind}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(user.value?.is_guest ? { 'X-CSRF-Token': csrf.value } : {}) },
       credentials: 'same-origin', body: JSON.stringify({ email, password }) })
-    if (!response.ok) throw new Error((await response.json()).detail ?? 'Error')
+    if (!response.ok) throw apiError((await response.json()).detail ?? 'Error')
     const data = await response.json() as { user: User; csrf_token: string }
     apply(data)
   }

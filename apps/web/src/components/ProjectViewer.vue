@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { apiError } from '../i18n/apiErrors'
 // Persistent viewer: on desktop it sits on the right of the workspace; on small screens it is the «Vista previa» tab.
 // Activities run in an isolated iframe (sandbox="allow-scripts", no same-origin, CSP without network);
 // Markdown documents are rendered by the API and shown in an iframe with an empty sandbox (no scripts).
 import { computed, onMounted, ref, watch } from 'vue'
 import AppIcon from './AppIcon.vue'
 import DiffView from './DiffView.vue'
-import { t } from '../i18n'
+import { intlLocale, t } from '../i18n'
 import { assetImages } from '../services/assets'
 import { audioResources } from '../services/audios'
 import { listVersions, versionContent } from '../services/history'
@@ -63,7 +64,7 @@ async function render() {
   if (!item) { doc.value = ''; kind.value = ''; return }
   if (/\.md$/i.test(item.path)) {
     const response = await fetch(`/api/projects/${props.projectId}/files/${item.id}/render`, { credentials: 'same-origin' })
-    if (!response.ok) throw new Error(((await response.json().catch(() => ({}))) as { detail?: string }).detail ?? t('error'))
+    if (!response.ok) throw apiError(((await response.json().catch(() => ({}))) as { detail?: string }).detail ?? t('error'))
     const data = await response.json() as { html: string }
     doc.value = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:"><style>${DOCUMENT_STYLE}</style>${data.html}`
     kind.value = 'document'
@@ -137,6 +138,6 @@ onMounted(() => void refresh())
       <iframe v-else-if="kind === 'document'" class="viewer-frame" :class="device" sandbox="" :srcdoc="doc" :title="`${t('viewer')}: ${selected}`"></iframe>
       <div v-else class="empty-state"><AppIcon name="layout-template" :size="48" /><p><strong>{{ t('viewerEmpty') }}</strong></p><p>{{ t('viewerEmptyHint') }}</p></div>
     </div>
-    <p v-if="kind && !diffMode" class="viewer-foot">{{ kind === 'activity' ? t('previewNote') : t('viewerDocumentNote') }}<span v-if="updatedAt"> · {{ t('viewerUpdated') }} {{ updatedAt.toLocaleTimeString() }}</span></p>
+    <p v-if="kind && !diffMode" class="viewer-foot">{{ kind === 'activity' ? t('previewNote') : t('viewerDocumentNote') }}<span v-if="updatedAt"> · {{ t('viewerUpdated') }} {{ updatedAt.toLocaleTimeString(intlLocale()) }}</span></p>
   </section>
 </template>

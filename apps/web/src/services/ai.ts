@@ -1,3 +1,6 @@
+import { apiMessage } from '../i18n/apiErrors'
+import { apiError } from '../i18n/apiErrors'
+import { t } from '../i18n'
 import { temporaryKeyHeaders, usesTemporaryKeys, rememberTemporaryKey, forgetTemporaryKey, confirmTemporaryModel, unconfirmTemporaryModel } from './temporaryKeys'
 import type { Grounding } from './sources'
 export interface PaidModel { model: string; input_rate_microusd: number; output_rate_microusd: number }
@@ -23,7 +26,7 @@ export class AiError extends Error {
   code?: string
   provider?: string
   constructor(message: string, code?: string, provider?: string) {
-    super(message)
+    super(apiMessage(message))
     this.name = 'AiError'
     this.code = code
     this.provider = provider
@@ -33,7 +36,7 @@ export class AiError extends Error {
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({})) as { detail?: string }
-    throw new Error(data.detail ?? `Error ${response.status}`)
+    throw apiError(data.detail ?? `Error ${response.status}`)
   }
   return response
 }
@@ -162,7 +165,7 @@ export async function streamProposal(projectId: string, instruction: string, pro
 
 // Reads the server-sent events of a generation and returns the final proposal.
 async function readEvents(response: Response, onEvent: (event: AiStreamEvent) => void): Promise<void> {
-  if (!response.body) throw new Error('Streaming no disponible')
+  if (!response.body) throw new Error(t('streamUnavailable'))
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
@@ -185,7 +188,7 @@ async function readEvents(response: Response, onEvent: (event: AiStreamEvent) =>
       }
     }
   } finally { reader.releaseLock(); if (typeof window !== 'undefined') window.dispatchEvent(new Event('educrea-ai-usage')) }
-  if (!completed) throw new Error('Respuesta incompleta')
+  if (!completed) throw new Error(t('incompleteResponse'))
 }
 
 // Teacher shortcuts with real progress: first version from the brief and DUA adaptation.
@@ -195,7 +198,7 @@ export async function streamTeacherAction(projectId: string, action: 'from-brief
     method: 'POST', signal, headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, ...temporaryKeyHeaders() }, body: JSON.stringify(body) }))
   let proposal: Proposal | null = null
   await readEvents(response, event => { if (event.event === 'proposal') proposal = event.data; onEvent(event) })
-  if (!proposal) throw new Error('Respuesta incompleta')
+  if (!proposal) throw new Error(t('incompleteResponse'))
   return proposal
 }
 

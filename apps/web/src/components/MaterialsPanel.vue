@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { apiError } from '../i18n/apiErrors'
 import { computed, onMounted, ref, watch } from 'vue'
 import { t } from '../i18n'
 import { useFilesStore, type FileSummary } from '../stores/files'
@@ -26,7 +27,7 @@ async function read(item: FileSummary) {
   error.value = ''
   try {
     const response = await fetch(`/api/projects/${props.projectId}/files/${item.id}/render`, { credentials: 'same-origin' })
-    if (!response.ok) throw new Error(((await response.json().catch(() => ({}))) as { detail?: string }).detail ?? t('error'))
+    if (!response.ok) throw apiError(((await response.json().catch(() => ({}))) as { detail?: string }).detail ?? t('error'))
     const data = await response.json() as { html: string }
     shown.value = { path: item.path, html: `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:"><style>img{max-width:100%;height:auto}body{font-family:system-ui,sans-serif;line-height:1.6;margin:1rem}h1,h2{color:#126382}table{border-collapse:collapse;width:100%}th,td{border:1px solid #888;padding:.3rem .5rem;vertical-align:top}pre{background:#f3f3f3;padding:.6rem;overflow:auto}blockquote{border-left:4px solid #bbb;margin-left:0;padding-left:1rem;color:#444}</style>${data.html}` }
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }

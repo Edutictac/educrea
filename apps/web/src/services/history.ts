@@ -1,3 +1,4 @@
+import { apiError } from '../i18n/apiErrors'
 // Read-only access to the per-file version history; restoring still goes through HistoryPanel.
 
 export interface VersionSummary {
@@ -14,7 +15,7 @@ export interface VersionContent extends VersionSummary { content: string }
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({})) as { detail?: string }
-    throw new Error(data.detail ?? `Error ${response.status}`)
+    throw apiError(data.detail ?? `Error ${response.status}`)
   }
   return response
 }

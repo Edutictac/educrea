@@ -60,7 +60,7 @@ async function saveDraft() {
           <option value="cuestionario">{{ t('quiz') }}</option><option value="juego">{{ t('game') }}</option>
           <option value="simulacion">{{ t('simulation') }}</option><option value="otra">{{ t('other') }}</option>
         </select></label>
-        <label>{{ t('language') }}<select v-model="activity.language"><option value="es">Castellano</option><option value="va">Valencià</option></select></label>
+        <label>{{ t('language') }}<select v-model="activity.language"><option value="es">{{ t('languageSpanish') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select></label>
         <label>{{ t('educationLevel') }}<select v-model="activity.level"><option value="infantil">{{ t('earlyYears') }}</option>
           <option value="primaria">{{ t('primary') }}</option><option value="secundaria">{{ t('secondary') }}</option></select></label>
         <label class="full">{{ t('instructions') }}<textarea v-model="activity.instructions" maxlength="10000" rows="6" /></label>

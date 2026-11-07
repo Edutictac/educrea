@@ -13,7 +13,7 @@ export function useAiProgress() {
   function reset() { progress.value = { stage: 'preparing', ai: '', passages: 0, chars: 0, retry: false } }
   function track(event: AiStreamEvent) {
     if (event.event === 'status') {
-      const ai = event.data.provider === 'educrea' ? 'IA EduCrea' : `${PROVIDER_NAMES[event.data.provider as ProviderName] ?? event.data.provider ?? ''} · ${event.data.model ?? ''}`
+      const ai = event.data.provider === 'educrea' ? t('includedTitle') : `${PROVIDER_NAMES[event.data.provider as ProviderName] ?? event.data.provider ?? ''} · ${event.data.model ?? ''}`
       progress.value = { ...progress.value, ai, stage: event.data.stage === 'consulting' ? 'consulting' : 'thinking', chars: 0,
         passages: event.data.passages ?? progress.value.passages, retry: event.data.retry ?? progress.value.retry,
         section: event.data.index && event.data.total ? { index: event.data.index, total: event.data.total,

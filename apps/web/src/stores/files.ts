@@ -1,3 +1,4 @@
+import { apiError } from '../i18n/apiErrors'
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
@@ -18,7 +19,7 @@ export const useFilesStore = defineStore('files', () => {
     })
     if (!response.ok) {
       const detail = await response.json().catch(() => ({})) as { detail?: string }
-      throw new Error(detail.detail ?? `Error ${response.status}`)
+      throw apiError(detail.detail ?? `Error ${response.status}`)
     }
     return response
   }

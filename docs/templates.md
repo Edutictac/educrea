@@ -1,9 +1,11 @@
 # Plantillas guiadas (Fase 7)
 
-EduCrea ofrece once plantillas, en castellano y valenciano, que se eligen al crear un proyecto («¿Qué quieres crear?»). Además se puede crear una situación de aprendizaje o un proyecto en blanco.
+EduCrea ofrece varias plantillas, en castellano, valenciano e inglés, que se eligen al crear un proyecto («¿Qué quieres crear?»). Además se puede crear una situación de aprendizaje o un proyecto en blanco.
 
 | Plantilla | Tipo | Archivos | Qué rellena la IA |
 |---|---|---|---|
+| Sopa de letras | interactiva | motor + `datos.js` | `words` con vocabulario y pistas; el motor coloca todas las palabras |
+| Crucigrama | interactiva | motor + `datos.js` | `words` con respuestas y pistas; el motor calcula los cruces |
 | Escuchar y responder | interactiva | motor + `datos.js` + audio local | `audio`, `transcript` y `questions` a partir del texto revisado |
 | Verdadero o falso | interactiva | motor + `datos.js` | `statements` con afirmación, booleano y explicación obligatoria |
 | Completar huecos | interactiva | motor + `datos.js` | `items` con frase, respuestas válidas y explicación; banco o escritura libre |
@@ -21,7 +23,7 @@ EduCrea ofrece once plantillas, en castellano y valenciano, que se eligen al cre
 - **Motor fijo + datos.** Cada plantilla interactiva tiene un motor revisado (`index.html`, `style.css`, `comun.js`, `script.js`, en `apps/api/educrea_api/data/templates/`) y un archivo de datos `datos.js` con la forma `window.EDUCREA_DATA = {...};`. La IA solo rellena `datos.js`: la salida es pequeña, no puede romper la accesibilidad del motor y se comprueba con un esquema.
 - **Validación.** `services/templates.py` define un esquema por plantilla: longitudes, índices de respuesta que existen, `right` distintos, grupos existentes, imágenes solo de `imagenes/` y con texto alternativo. Una propuesta que toca el motor o cuyos datos no pasan el esquema **nunca se aplica sola**: queda pendiente y el docente ve la lista de problemas.
 - **Accesibilidad.** Los motores construyen la página con `textContent` y nodos DOM, sin HTML en cadenas. Funcionan con teclado y lector de pantalla: no hay arrastrar y soltar (se usan desplegables y botones Subir/Bajar), el foco es visible, los resultados se anuncian en regiones `aria-live`, las tarjetas usan `aria-pressed` y la lectura por partes, `<details>`. Las opciones del encargo «texto grande» y «alto contraste» se aplican con las clases `grande` y `contraste`. Se respeta `prefers-reduced-motion` y hay estilos de impresión.
-- **Idiomas.** Los textos de la interfaz de la actividad (`labels`) y los ejemplos iniciales van en castellano o valenciano según el encargo, y `lang` es `es` o `ca`.
+- **Idiomas.** Los textos de la interfaz de la actividad (`labels`) y los ejemplos iniciales van en castellano, valenciano o inglés según el encargo, y `lang` es `es`, `ca` o `en`.
 - **Sin red.** Sin CDN, fuentes ni recursos externos: la actividad funciona en la vista previa aislada y descomprimida desde el ZIP. Las imágenes de la biblioteca se incrustan también cuando se citan en `datos.js` (`"image": "imagenes/…"`).
 - **Limitación conocida.** La exportación PNG elimina los scripts, así que solo es útil para la infografía y no para las plantillas interactivas.
 
@@ -39,7 +41,7 @@ API: `GET /api/templates` y `POST /api/projects/{id}/template` (`{template, brie
 
 `GET /api/projects/{id}/export.scorm.zip` genera un paquete **SCORM 1.2** con la misma actividad sin conexión del ZIP, más `scorm.js` (puente con la API del LMS) e `imsmanifest.xml`, que declara todos los archivos. No incluye el encargo (`activity.json`).
 
-- Los motores avisan del resultado con `EDU.report(aciertos, total)` (cuestionario, emparejar, ordenar, clasificar, completar huecos, verdadero o falso y escuchar y responder) y `EDU.complete()` (tarjetas, al girarlas todas; lectura, al llegar al final). Fuera de un LMS no hacen nada.
+- Los motores avisan del resultado con `EDU.report(aciertos, total)` (cuestionario, emparejar, ordenar, clasificar, completar huecos, verdadero o falso, escuchar y responder, sopa de letras y crucigrama) y `EDU.complete()` (tarjetas, al girarlas todas; lectura, al llegar al final). Fuera de un LMS no hacen nada.
 - `scorm.js` busca la API en las ventanas padre, inicia el intento (`incomplete`), envía la **mejor puntuación de la sesión** sobre 100 (`cmi.core.score.raw`, con `lesson_status = completed`) y cierra el intento al salir.
 - Las actividades HTML sin plantilla con puntuación se marcan como completadas al abrirse.
 - En Aules: «Añade una actividad o un recurso» › «Paquete SCORM» › subir el ZIP › en «Calificación», «Calificación más alta». La interfaz incluye estos pasos.
@@ -103,3 +105,38 @@ La transcripción está en un desplegable accesible. Las preguntas tienen correc
 reintento y puntuación SCORM. Al modificar la biblioteca, hay que regenerar o revisar la actividad
 para actualizar sus preguntas y la copia de la transcripción. La reproducción depende de los
 códecs admitidos por el navegador; el alumnado conserva la alternativa textual.
+
+## Sopa de letras y crucigrama (2026-11-07)
+
+Las plantillas `sopa_letras` y `crucigrama` usan `words`: de 2 a 12 objetos con `word`
+(palabra o expresión breve) y `clue` (pista/definición, obligatoria). La IA propone vocabulario,
+no posiciones. El motor fijo monta el tablero en el navegador, sin red ni bibliotecas externas.
+Los dos motores comparten `pasatiempos.js`, que se concatena dentro de `script.js` al crear o
+actualizar la plantilla; los proyectos conservan los cinco archivos habituales.
+
+Se admiten entre 2 y 14 letras por respuesta al omitir tildes, espacios, guiones, apóstrofos
+y puntos. Se conservan `Ñ` y `Ç`; `l·l` ocupa dos casillas. Se rechazan duplicados tras esta
+normalización y símbolos ajenos al alfabeto admitido. Las palabras y pistas visibles conservan
+la escritura original. El tablero, la ayuda y los ejemplos están en castellano, valenciano e inglés.
+
+- **Sopa de letras:** horizontal, vertical y diagonal en ambos sentidos. Se seleccionan la primera
+y la última letra con dos pulsaciones, sin arrastrar. Las flechas mueven el foco; Intro/Espacio
+seleccionan y Escape cancela el inicio. Solo una casilla entra en el recorrido con Tab. Hay un
+formulario equivalente de coordenadas inicio/final (fila y columna), con límites y pasos enteros.
+La lista incluye vocabulario y pistas; cada hallazgo se marca con texto y subrayado. Se acepta
+cualquier aparición recta de la palabra, aunque no sea la colocación inicial del motor. Encontrar
+la misma palabra otra vez no suma. Si la colocación aleatoria no encuentra sitio, se rehace el
+tablero con una fila por palabra: nunca se pierde vocabulario.
+- **Crucigrama:** prueba distintas palabras iniciales, prioriza las largas y busca cruces compatibles, evitando letras
+contradictorias, solapamientos paralelos y contactos que unan respuestas sin una casilla vacía.
+Cada respuesta se escribe en un campo con su pista, número, orientación y longitud. El tablero
+numerado muestra las letras introducidas; un `?` señala contradicciones en un cruce. Los campos
+etiquetados proporcionan la alternativa al tablero visual, que no se repite al lector de pantalla.
+Si no hay un cruce válido, se crea un grupo separado y se muestra un aviso; todas las palabras
+siguen disponibles. La guía pide vocabulario que comparta letras para favorecer los cruces.
+
+Ambas actividades anuncian el resultado, permiten reintentar, funcionan sin conexión y envían
+la puntuación al SCORM. El puente conserva la mejor puntuación de la sesión. Los tableros mantienen
+casillas legibles con desplazamiento en pantallas pequeñas y estilos de impresión. La impresión
+se realiza desde el HTML abierto en el navegador; no se genera un PDF de la actividad interactiva.
+No hay dependencias nuevas ni migraciones. Pendiente desplegar y validar con profesorado/Aules real.

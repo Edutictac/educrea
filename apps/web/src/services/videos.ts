@@ -1,3 +1,4 @@
+import { apiError } from '../i18n/apiErrors'
 // BYOK short-video generation with Gemini Omni Flash. The clip is previewed before it is saved to the
 // project video library; unlike images it is not embedded into PDF/DOCX exports.
 import { temporaryKeyHeaders } from './temporaryKeys'
@@ -63,7 +64,7 @@ export const MAX_VIDEO_BYTES = 30 * 1024 * 1024
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({})) as { detail?: string }
-    throw new Error(data.detail ?? `Error ${response.status}`)
+    throw apiError(data.detail ?? `Error ${response.status}`)
   }
   return response
 }

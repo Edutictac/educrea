@@ -1,6 +1,7 @@
 // The AI chosen in the project selector, shared by «Generar la primera versión», DUA and the assistant.
 // Kept per viewer in localStorage (a convenience): empty provider/model means «Automática».
 import { ref, watch } from 'vue'
+import { t } from '../i18n'
 import type { ProviderName } from './ai'
 
 export interface AiChoice { provider: ProviderName | 'educrea' | ''; model: string }
@@ -66,8 +67,8 @@ watch(aiChoice, value => {
 }, { deep: true, flush: 'sync' })
 
 export const PROVIDER_NAMES: Record<ProviderName | 'educrea', string> = {
-  educrea: 'IA EduCrea', gemini: 'Gemini (Google)', mistral: 'Mistral', groq: 'Groq', openrouter: 'OpenRouter',
-  ollama: 'Ollama (servidor)', openai: 'OpenAI', anthropic: 'Anthropic (Claude)', deepseek: 'DeepSeek',
+  get educrea() { return t('includedTitle') }, gemini: 'Gemini (Google)', mistral: 'Mistral', groq: 'Groq', openrouter: 'OpenRouter',
+  get ollama() { return t('ollamaServer') }, openai: 'OpenAI', anthropic: 'Anthropic (Claude)', deepseek: 'DeepSeek',
 }
 
 // Explicit institutional selection or personal-key selection; BYOK automatic stays separate.

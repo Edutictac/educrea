@@ -138,7 +138,7 @@ async function generate() {
         if (streaming.value) failedOutput.value = streaming.value
         streaming.value = ''
       }
-      if (event.event === 'status') actualProvider.value = event.data.provider === 'educrea' ? 'IA EduCrea' : `${event.data.provider ?? provider.value} / ${event.data.model ?? model.value}`
+      if (event.event === 'status') actualProvider.value = event.data.provider === 'educrea' ? t('includedTitle') : `${event.data.provider ?? provider.value} / ${event.data.model ?? model.value}`
       if (event.event === 'token') streaming.value = (streaming.value + event.data.text).slice(-12000)
       if (event.event === 'proposal') {
         failedOutput.value = ''
@@ -239,7 +239,7 @@ function stateLabel(value: Proposal['status']) {
       <p v-if="automatic" class="hint full">{{ t('aiUsing') }}: <strong>{{ mode === 'included' ? t('includedTitle') : model ? `${PROVIDER_NAMES[provider]} · ${model}` : t('aiNone') }}</strong> · {{ t('aiChangeInHeader') }}</p>
       <template v-else>
       <label>{{ t('modelMode') }}<select v-model="mode" @change="changeMode">
-        <option v-if="includedAvailable" value="included">IA EduCrea</option><option value="free">{{ t('freeMode') }}</option><option value="paid">{{ t('paidMode') }}</option>
+        <option v-if="includedAvailable" value="included">{{ t('includedTitle') }}</option><option value="free">{{ t('freeMode') }}</option><option value="paid">{{ t('paidMode') }}</option>
       </select></label>
       <label v-if="mode !== 'included'">{{ t('providerLabel') }}<select v-model="provider" :disabled="!availableProviders.length" @change="changeProvider">
         <option v-for="name in availableProviders" :key="name" :value="name">{{ name }}</option>
@@ -298,7 +298,7 @@ function stateLabel(value: Proposal['status']) {
       <label>{{ t('selectProposal') }}<select v-model="selectedId"><option v-for="item in proposals" :key="item.id" :value="item.id">
         {{ item.summary }} · {{ stateLabel(item.status) }}</option></select></label>
       <div v-if="selected" class="proposal-review">
-        <p><strong>{{ selected.summary }}</strong> · {{ stateLabel(selected.status) }} · <span v-if="selected.provider === 'educrea'">IA EduCrea</span><span v-else>{{ selected.provider }} / {{ selected.model }}</span></p>
+        <p><strong>{{ selected.summary }}</strong> · {{ stateLabel(selected.status) }} · <span v-if="selected.provider === 'educrea'">{{ t('includedTitle') }}</span><span v-else>{{ selected.provider }} / {{ selected.model }}</span></p>
         <div v-if="selected.grounding?.template_problems?.length" class="notice"><strong>{{ t('proposalNeedsReview') }}</strong>
           <p>{{ t('templateProblems') }}</p><ul><li v-for="(item, index) in selected.grounding.template_problems" :key="index">{{ item }}</li></ul></div>
         <div v-if="selected.grounding?.kind === 'dua'" class="notice" :class="{ ok: selected.grounding.supported }">

@@ -163,6 +163,19 @@ def confirm_provider_model(provider_name: str, model: str, data: FreeConfirmatio
     db.commit()
 
 
+@router.delete("/ai/providers/{provider_name}/free-models/{model:path}/confirm", status_code=204)
+def disable_provider_model(provider_name: str, model: str, user: User = Depends(require_csrf),
+                           db: Session = Depends(get_db)) -> None:
+    """Stop using a confirmed free model (e.g. the key now has billing): «IA automática» skips it from now on."""
+    if user.is_guest:
+        raise HTTPException(403, "Sin cuenta la confirmación es temporal: se desactiva en tu navegador.")
+    credential = personal_credential(db, user.id, provider_name)
+    if credential is None or model not in credential.free_confirmations:
+        return  # idempotent: already disabled
+    credential.free_confirmations = {k: v for k, v in credential.free_confirmations.items() if k != model}
+    db.commit()
+
+
 @router.delete("/ai/providers/{provider_name}/key", status_code=204)
 def revoke_provider_key(provider_name: str, user: User = Depends(require_csrf),
                         db: Session = Depends(get_db)) -> None:

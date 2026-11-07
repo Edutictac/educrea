@@ -258,6 +258,12 @@ def test_additional_providers_require_key_and_confirmation(client: TestClient, m
     quota = client.get("/api/ai/quota").json()
     assert quota["requests_used"] == 1
     assert quota["tokens_used_or_reserved"] == 50
+    # The teacher can stop using a confirmed model (e.g. the key now has billing): it is no longer offered or used.
+    confirm = "/api/ai/providers/openrouter/free-models/test%2Fmodel:free/confirm"
+    assert client.delete(confirm, headers=headers).status_code == 204
+    assert client.get("/api/ai/providers").json()["openrouter"]["confirmed_free_models"] == []
+    assert client.post(route, headers=headers, json=request).status_code == 403
+    assert client.delete(confirm, headers=headers).status_code == 204  # idempotent
     assert client.delete("/api/ai/providers/openrouter/key", headers=headers).status_code == 204
     assert client.get("/api/ai/providers").json()["openrouter"]["configured"] is False
 

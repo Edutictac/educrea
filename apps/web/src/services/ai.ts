@@ -1,4 +1,4 @@
-import { temporaryKeyHeaders, usesTemporaryKeys, rememberTemporaryKey, forgetTemporaryKey, confirmTemporaryModel } from './temporaryKeys'
+import { temporaryKeyHeaders, usesTemporaryKeys, rememberTemporaryKey, forgetTemporaryKey, confirmTemporaryModel, unconfirmTemporaryModel } from './temporaryKeys'
 import type { Grounding } from './sources'
 export interface PaidModel { model: string; input_rate_microusd: number; output_rate_microusd: number }
 export interface GeminiStatus { configured: boolean; verified_free_models: string[];
@@ -87,6 +87,14 @@ export async function confirmProviderModel(provider: ProviderName, model: string
   await checked(await fetch(`/api/ai/providers/${provider}/free-models/${encodeURIComponent(model)}/confirm`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, ...temporaryKeyHeaders() },
     body: JSON.stringify({ acknowledged: true }),
+  }))
+}
+
+// Stops using a confirmed free model (for example, because the key now has billing).
+export async function disableProviderModel(provider: ProviderName, model: string, csrf: string): Promise<void> {
+  if (usesTemporaryKeys()) { unconfirmTemporaryModel(provider, model); return }
+  await checked(await fetch(`/api/ai/providers/${provider}/free-models/${encodeURIComponent(model)}/confirm`, {
+    method: 'DELETE', headers: { 'X-CSRF-Token': csrf },
   }))
 }
 

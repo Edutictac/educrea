@@ -20,6 +20,11 @@ export function confirmTemporaryModel(provider: ProviderName, model: string) {
   if (!item) throw new Error('Introduce tu clave temporal antes de confirmar el modelo')
   if (!item.confirmed.includes(model)) item.confirmed.push(model)
 }
+export function unconfirmTemporaryModel(provider: ProviderName, model: string) {
+  const item = keys.get(provider)
+  if (item) item.confirmed = item.confirmed.filter(value => value !== model)
+}
+
 export function temporaryKeyHeaders(): Record<string, string> {
   return guest && keys.size ? { 'X-Educrea-Temporary-Keys': JSON.stringify(Object.fromEntries(keys)) } : {}
 }

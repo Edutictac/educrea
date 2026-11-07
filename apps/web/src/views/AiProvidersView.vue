@@ -9,7 +9,7 @@ import { t } from '../i18n'
 import { imageModels, type ImageModel } from '../services/images'
 import { videoModels, type VideoModel } from '../services/videos'
 import { useAuthStore } from '../stores/auth'
-import { budgetStatus, confirmProviderModel, providersStatus, revokeProviderKey, saveProviderKey, updateBudget,
+import { budgetStatus, confirmProviderModel, disableProviderModel, providersStatus, revokeProviderKey, saveProviderKey, updateBudget,
   type BudgetStatus, type ProviderName, type ProviderStatuses } from '../services/ai'
 
 const auth = useAuthStore()
@@ -88,6 +88,12 @@ async function confirmModel(model: string) {
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
   finally { busy.value = false }
 }
+async function disableModel(model: string) {
+  busy.value = true; error.value = ''; message.value = ''
+  try { await disableProviderModel(provider.value, model, auth.csrf); await refresh(); message.value = t('modelDisabled') }
+  catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
+  finally { busy.value = false }
+}
 async function saveBudget() {
   busy.value = true; error.value = ''; message.value = ''
   try {
@@ -133,17 +139,21 @@ async function saveBudget() {
         <template v-if="status && setupMode === 'free' && status.configured && status.verified_free_models.length">
           <h3>{{ t('verifiedModels') }}</h3>
           <p v-if="provider !== 'ollama'">{{ t('freeVerificationNote') }}</p>
+          <p v-if="provider !== 'ollama'" class="notice">{{ t('freeBillingWarning') }}</p>
           <label v-if="provider !== 'ollama'" class="check"><input v-model="checkedFree" type="checkbox" />{{ t('freeAcknowledgement') }}</label>
           <ul><li v-for="model in status.verified_free_models" :key="model">{{ model }} ·
             {{ status.confirmed_free_models.includes(model) ? t('modelConfirmed') : t('modelUnconfirmed') }}
             <button v-if="provider !== 'ollama' && !status.confirmed_free_models.includes(model)" type="button" class="secondary"
-              :disabled="!checkedFree || busy" @click="confirmModel(model)">{{ t('confirmFree') }}</button></li></ul>
+              :disabled="!checkedFree || busy" @click="confirmModel(model)">{{ t('confirmFree') }}</button>
+            <button v-if="provider !== 'ollama' && status.confirmed_free_models.includes(model)" type="button" class="secondary"
+              :disabled="busy" @click="disableModel(model)">{{ t('disableModel') }}</button></li></ul>
         </template>
         <template v-if="status && setupMode === 'paid' && status.paid_models.length">
           <h3>{{ t('paidTextModels') }}</h3>
           <ul><li v-for="item in status.paid_models" :key="item.model">{{ item.model }} ·
             ${{ (item.input_rate_microusd / 1000000).toFixed(4) }} / ${{ (item.output_rate_microusd / 1000000).toFixed(4) }}
-            {{ t('perMillionTokens') }}</li></ul>
+            {{ t('perMillionTokens') }}
+            <span v-if="status.verified_free_models.includes(item.model)" class="hint"> · {{ t('alsoFreeModel') }}</span></li></ul>
         </template>
         <template v-if="setupMode === 'paid' && mediaPaid">
           <template v-if="paidImages.length">

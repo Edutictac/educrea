@@ -79,5 +79,5 @@ Decisión del 2026-11-03: **de momento solo el nivel 1 (SSO)**; el resto queda a
 
 Los módulos de materiales e imágenes deberán estar disponibles antes de la beta educativa. El cursor con IA seguirá como prototipo posterior. La Fase 5 todavía solo admite HTML, CSS, JavaScript y JSON; añadir Markdown, conversores o imágenes requiere autorización para iniciar la Fase 6.
 
-No avanzar de fase sin confirmación del usuario. La licencia objetivo AGPL-3.0 necesita auditoría antes de fijarse.
+No avanzar de fase sin confirmación del usuario. El proyecto se distribuye bajo AGPL-3.0-or-later (ver `LICENSE`); mantener la auditoría de compatibilidad de dependencias en [third-party-licenses.md](third-party-licenses.md).
 

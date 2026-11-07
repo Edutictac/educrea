@@ -27,5 +27,7 @@ Lee [deployment.md](docs/deployment.md). No hay despliegue público autorizado e
 
 ## Licencia
 
-Objetivo AGPL-3.0. La licencia definitiva queda pendiente de auditoría de dependencias y artefactos distribuidos; no se ha añadido aún un archivo `LICENSE`.
+EduCrea se distribuye bajo la **GNU Affero General Public License v3.0 o posterior** (AGPL-3.0-or-later). El texto completo está en [`LICENSE`](LICENSE).
+
+Es software libre con copyleft fuerte: quien modifique el programa y lo ofrezca como servicio en red debe publicar el código fuente de sus modificaciones. El uso comercial está permitido, incluida la venta del servicio. Las dependencias de terceros y su compatibilidad se detallan en [`docs/third-party-licenses.md`](docs/third-party-licenses.md).
 

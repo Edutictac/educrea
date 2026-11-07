@@ -28,12 +28,16 @@ class Settings(BaseSettings):
     video_request_timeout_seconds: int = Field(default=300, ge=30, le=600)
     # Included institutional AI. No personal credentials or implicit paid-model activation.
     free_ai_enabled: bool = False
+    # Preferred institutional provider for every task; falls back to the task role when it is not configured.
+    free_ai_primary_provider: str = "gemini"
     free_ai_monthly_credits: int = Field(default=10000, ge=0)
     free_ai_credits_per_usd: int = Field(default=100000, gt=0)
     free_ai_min_credits_per_request: int = Field(default=1, ge=0)
     free_ai_minute_request_limit: int = Field(default=15, gt=0)
     free_ai_hourly_request_limit: int = Field(default=30, gt=0)
     free_ai_daily_request_limit: int = Field(default=100, gt=0)
+    # Installation-wide request cap shared by all users (0 disables it). Protects a single shared free-tier key.
+    free_ai_global_daily_request_limit: int = Field(default=0, ge=0)
     free_ai_max_concurrent_requests: int = Field(default=1, gt=0)
     free_ai_max_input_tokens: int = Field(default=32768, gt=0)
     free_ai_max_context_tokens: int = Field(default=30000, gt=0)
@@ -55,6 +59,12 @@ class Settings(BaseSettings):
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_input_cost_per_million: str = "0"
     deepseek_output_cost_per_million: str = "0"
+    # Institutional Gemini for the beta: free tier only, so rates must stay at zero and limits are request-based.
+    gemini_enabled: bool = True
+    gemini_api_key: SecretStr | None = None
+    gemini_model: str = ""
+    gemini_input_cost_per_million: str = "0"
+    gemini_output_cost_per_million: str = "0"
     # Invitation delivery, exclusively from backend. Disabled until configured.
     public_base_url: str = ""
     smtp_host: str = ""
@@ -98,7 +108,7 @@ def get_settings() -> Settings:
     oidc_secret_file = os.environ.get("EDUCREA_OIDC_CLIENT_SECRET_FILE")
     if oidc_secret_file:
         overrides["oidc_client_secret"] = Path(oidc_secret_file).read_text().strip()
-    for name in ("qwen_api_key", "deepseek_api_key", "smtp_password"):
+    for name in ("gemini_api_key", "qwen_api_key", "deepseek_api_key", "smtp_password"):
         path = os.environ.get(f"EDUCREA_{name.upper()}_FILE")
         if path:
             overrides[name] = Path(path).read_text().strip()

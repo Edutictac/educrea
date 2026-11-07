@@ -1,0 +1,12 @@
+# Optional: institutional Gemini (free tier) for IA EduCrea. Use it together with the base file:
+#   docker compose -f compose.yaml -f compose.gemini.yaml up -d
+# (or set COMPOSE_FILE=compose.yaml:compose.gemini.yaml in infra/.env).
+# The key is read from secrets/gemini_api_key (0600) and only mounted into the API. See docs/included-ai.md.
+services:
+  api:
+    environment:
+      EDUCREA_GEMINI_API_KEY_FILE: /run/secrets/gemini_api_key
+    secrets: [gemini_api_key]
+secrets:
+  gemini_api_key:
+    file: ../secrets/gemini_api_key

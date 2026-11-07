@@ -19,3 +19,8 @@ La Fase 5 añade un presupuesto monetario mensual por usuario y reservas de cost
 La modalidad institucional autorizada convive con BYOK en el mismo motor, adaptadores y registro de uso.
 Su router sustituible por EduPrompt Core, claves institucionales, cuota mensual única, reservas y presupuestos
 se documentan en [included-ai.md](included-ai.md).
+
+Acepta Gemini (nivel gratuito), Qwen y DeepSeek. Con Gemini a coste cero el presupuesto en dólares no aplica y el
+gasto se acota por peticiones: límite por usuario (`FREE_AI_DAILY_REQUEST_LIMIT`, además de minuto/hora y
+concurrencia) y **tope diario de instalación** (`FREE_AI_GLOBAL_DAILY_REQUEST_LIMIT`, contando `request_id` distintos
+en 24 h), imprescindible cuando todos los usuarios comparten una única clave gratuita.

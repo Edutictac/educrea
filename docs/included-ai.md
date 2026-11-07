@@ -54,14 +54,19 @@ la opción institucional solo se ofrece a cuentas autorizadas y las elecciones B
   por un adaptador de **EduPrompt Core**; hay una prueba que sustituye el clasificador sin cambiar el gateway.
 - `services/ai/included.py`: configuración institucional, ejecución con los adaptadores existentes, reservas,
   límites, reconciliación y métricas. Recibe la decisión del router; no clasifica instrucciones ni llama a otro LLM.
+  Acepta tres proveedores institucionales: **Gemini (nivel gratuito)**, Qwen y DeepSeek. `FREE_AI_PRIMARY_PROVIDER`
+  (por defecto `gemini`) elige el proveedor de todas las tareas cuando está configurado; si no lo está, se usa el rol
+  del router (Qwen/DeepSeek). Así una clave gratuita de Gemini puede dar servicio a toda la beta sin tocar BYOK.
 - `routers/ai.py`: integra `mode: included`, `provider: educrea` y el modelo público vacío en los mismos endpoints
   de propuestas, streaming, primera versión, DUA y redacción por secciones. Los atajos sin elección explícita usan
   IA EduCrea cuando está habilitada y la cuenta tiene invitación. Una elección explícita de BYOK siempre se respeta.
 - `AiUsage`: el registro existente distingue `mode=included` de `free/paid` BYOK. Migración reversible
   `0013_included_ai`. No se duplica el sistema de proveedores ni se crea un saldo distinto por modelo.
 
-El router selecciona Qwen para rúbricas, cuestionarios, traducciones, planificación, materiales, texto y JSON;
-DeepSeek para HTML/CSS/JavaScript, aplicaciones, juegos, Three.js, programación, reparación y debugging.
+Sin proveedor primario configurado, el router selecciona Qwen para rúbricas, cuestionarios, traducciones,
+planificación, materiales, texto y JSON; DeepSeek para HTML/CSS/JavaScript, aplicaciones, juegos, Three.js,
+programación, reparación y debugging. Si `FREE_AI_PRIMARY_PROVIDER` apunta a un proveedor disponible, ese
+proveedor atiende primero cualquier tarea; el rol solo se usa como alternativa.
 Las operaciones explícitas prevalecen sobre el proyecto. Sin clasificación, usa Qwen. El tipo de documento,
 la extensión del archivo DUA y la plantilla aportan contexto cuando no hay una operación explícita. Las plantillas
 interactivas con motor fijo generan datos y usan Qwen; la infografía HTML usa DeepSeek. No se buscan palabras
@@ -78,35 +83,61 @@ Todas las variables llevan el prefijo `EDUCREA_` (lista completa en `.env.exampl
 | Variables | Uso |
 |---|---|
 | `FREE_AI_ENABLED` | Interruptor general; `false` por defecto |
-| `QWEN_ENABLED`, `DEEPSEEK_ENABLED` | Interruptores exclusivamente institucionales |
-| `QWEN_API_KEY`, `DEEPSEEK_API_KEY` | Claves del backend, nunca `AiCredential` |
-| `QWEN_MODEL`, `DEEPSEEK_MODEL` | Identificadores verificados en cada cuenta |
+| `FREE_AI_PRIMARY_PROVIDER` | Proveedor preferido para todas las tareas (`gemini` por defecto); vacío = rol del router |
+| `GEMINI_ENABLED`, `QWEN_ENABLED`, `DEEPSEEK_ENABLED` | Interruptores exclusivamente institucionales |
+| `GEMINI_API_KEY`, `QWEN_API_KEY`, `DEEPSEEK_API_KEY` | Claves del backend, nunca `AiCredential` |
+| `GEMINI_MODEL`, `QWEN_MODEL`, `DEEPSEEK_MODEL` | Identificadores verificados en cada cuenta |
 | `QWEN_BASE_URL`, `DEEPSEEK_BASE_URL` | Base compatible con Chat Completions; solo HTTPS sin credenciales ni query |
+| `GEMINI_INPUT_COST_PER_MILLION`, `GEMINI_OUTPUT_COST_PER_MILLION` | Deben ser `0`: solo se admite Gemini gratuito institucional |
 | `QWEN_INPUT_COST_PER_MILLION`, `QWEN_OUTPUT_COST_PER_MILLION` | Tarifas de Qwen en USD por millón |
 | `DEEPSEEK_INPUT_COST_PER_MILLION`, `DEEPSEEK_OUTPUT_COST_PER_MILLION` | Tarifas de DeepSeek en USD por millón |
 | `FREE_AI_MONTHLY_CREDITS` | Bolsa mensual única por usuario; 10000 por defecto |
 | `FREE_AI_CREDITS_PER_USD`, `FREE_AI_MIN_CREDITS_PER_REQUEST` | Conversión; 100000 y 1 por defecto |
 | `FREE_AI_MINUTE_REQUEST_LIMIT`, `FREE_AI_HOURLY_REQUEST_LIMIT`, `FREE_AI_DAILY_REQUEST_LIMIT` | Límites comunes: 15/min, 30/h y 100/día por defecto |
+| `FREE_AI_GLOBAL_DAILY_REQUEST_LIMIT` | Tope de peticiones de toda la instalación en 24 h; `0` lo desactiva |
 | `FREE_AI_MAX_CONCURRENT_REQUESTS` | Concurrencia común por usuario, 1 por defecto |
 | `FREE_AI_MAX_INPUT_TOKENS`, `FREE_AI_MAX_CONTEXT_TOKENS`, `FREE_AI_MAX_OUTPUT_TOKENS` | Límites de entrada, contexto y salida |
 | `FREE_AI_GLOBAL_DAILY_BUDGET_USD`, `FREE_AI_GLOBAL_MONTHLY_BUDGET_USD` | Presupuestos institucionales compartidos; cero desactiva nuevas generaciones |
 | `FREE_AI_REQUEST_TIMEOUT_SECONDS`, `FREE_AI_RESERVATION_TTL_SECONDS` | Tiempo total por intento y recuperación de trabajadores muertos; 120 y 900 s |
 | `FREE_AI_DEEPSEEK_FALLBACK_TO_QWEN` | Un fallback técnico opcional, desactivado por defecto |
 
-Por defecto no hay modelos, claves ni tarifas habilitados. Las tarifas deben ser positivas y verificadas, usando
-el precio de entrada sin descuentos por caché y el precio de salida aplicable. Los cambios de variables requieren
-reiniciar la API. La API de Qwen utiliza por defecto la base internacional de DashScope; debe verificarse la región,
+Por defecto no hay modelos ni claves habilitados. Las tarifas de Qwen y DeepSeek deben ser positivas y verificadas,
+usando el precio de entrada sin descuentos por caché y el precio de salida aplicable. Gemini institucional se
+limita al nivel gratuito: cualquier tarifa distinta de cero desactiva la ruta (el Gemini de pago queda en BYOK).
+Los cambios de variables requieren reiniciar la API. La API de Qwen utiliza por defecto la base internacional de DashScope; debe verificarse la región,
 cuenta, modelo, condiciones de tratamiento y facturación antes de activarla. Se desactiva explícitamente el
 razonamiento adicional en ambas APIs (`enable_thinking=false` y `thinking.type=disabled`).
 
-En Docker, las claves van en `secrets/qwen_api_key` y `secrets/deepseek_api_key` (`0600`) y **solo se montan si usas
-`infra/compose.yaml` junto con `infra/compose.included.yaml`** (`docker compose -f compose.yaml -f compose.included.yaml up -d`,
-o `COMPOSE_FILE=compose.yaml:compose.included.yaml` en `infra/.env`). Sin ese archivo adicional el Compose arranca sin ellos
-y la IA EduCrea queda «no disponible»; con él, ambos archivos deben existir y pueden estar vacíos
-si la modalidad está desactivada. Compose los monta exclusivamente en la API. El entrypoint lee ambos antes de
-bajar privilegios. Fuera de Docker se admiten las variables directas o `EDUCREA_QWEN_API_KEY_FILE` y
+En Docker, las claves van en `secrets/qwen_api_key`, `secrets/deepseek_api_key` y `secrets/gemini_api_key` (`0600`) y
+**solo se montan si usas los archivos adicionales**: `infra/compose.included.yaml` (Qwen/DeepSeek) y/o
+`infra/compose.gemini.yaml` (Gemini), junto con `infra/compose.yaml`
+(`docker compose -f compose.yaml -f compose.gemini.yaml up -d`, o `COMPOSE_FILE=compose.yaml:compose.gemini.yaml`
+en `infra/.env`). Sin esos archivos adicionales el Compose arranca sin claves y la IA EduCrea queda «no disponible»;
+con ellos, los archivos de secreto declarados deben existir y pueden estar vacíos si la modalidad está desactivada.
+Compose las monta exclusivamente en la API. El entrypoint las lee antes de bajar privilegios. Fuera de Docker se
+admiten las variables directas o `EDUCREA_GEMINI_API_KEY_FILE`, `EDUCREA_QWEN_API_KEY_FILE` y
 `EDUCREA_DEEPSEEK_API_KEY_FILE`. No imprimir valores ni validar Compose mostrando variables reales de secretos.
 No se cambian ni se migran las claves personales existentes.
+
+## Gemini gratuito para la beta
+
+Modalidad pensada para dar IA a los betatesters con una sola clave gratuita. Recomendaciones operativas:
+
+- Usar una clave de un **proyecto dedicado** de Google AI Studio/Cloud, no la clave personal, para poder rotarla
+  sin afectar al uso propio y separar cuotas y errores 429.
+- Es **solo nivel gratuito**: las tarifas de Gemini deben ser `0`; con tarifas positivas la ruta se desactiva y
+  ese caso queda cubierto por BYOK. El consumo en dólares no entra en los presupuestos globales; el gasto se acota
+  con peticiones.
+- Límites orientativos por usuario y día UTC: `FREE_AI_DAILY_REQUEST_LIMIT=20`,
+  `FREE_AI_MINUTE_REQUEST_LIMIT=3`, `FREE_AI_HOURLY_REQUEST_LIMIT=10`, concurrencia `1`.
+- `FREE_AI_GLOBAL_DAILY_REQUEST_LIMIT` protege la cuota diaria del modelo compartido. Ajústalo por debajo del RPD
+  real de la cuenta: unos 200–300 para `gemini-3.5-flash-lite` (~1000 RPD) y 100–150 para modelos de ~250 RPD.
+- Google puede usar el contenido del nivel gratuito para mejorar sus productos: **no enviar datos del alumnado**.
+- Si Gemini devuelve 429/503 no hay fallback automático a Qwen/DeepSeek salvo el fallback técnico DeepSeek→Qwen ya
+  existente; el docente puede seguir con su propia API. Configura además límites y alertas en la consola de Google.
+
+La cuota mensual de créditos sigue existiendo: con coste cero cada petición útil consume el mínimo
+(`FREE_AI_MIN_CREDITS_PER_REQUEST`), de modo que el límite diario por usuario es el que normalmente se alcanza antes.
 
 ## Cálculo y bolsa mensual
 
@@ -155,9 +186,9 @@ para contar como una petición en los límites temporales. Regenerar por petici�
 
 ## Interfaz y observabilidad
 
-La elección predeterminada para una cuenta nueva invitada es **IA EduCrea**; para el resto es BYOK. No se muestra una elección Qwen/DeepSeek,
-ni el modelo interno, tokens, USD o estimaciones institucionales, incluso en las respuestas JSON/SSE de estado y
-propuestas. El panel mensual muestra porcentaje utilizado, porcentaje restante y renovación; al agotarse o pausarse
+La elección predeterminada para una cuenta nueva invitada es **IA EduCrea**; para el resto es BYOK. No se muestra
+la elección de proveedor institucional (Gemini/Qwen/DeepSeek), ni el modelo interno, tokens, USD o estimaciones
+institucionales, incluso en las respuestas JSON/SSE de estado y propuestas. El panel mensual muestra porcentaje utilizado, porcentaje restante y renovación; al agotarse o pausarse
 se ofrece continuar con API propia. BYOK conserva sus selectores y sus estimaciones.
 
 La zona [Administración de la beta](beta-admin.md) muestra métricas exclusivamente a administradores.

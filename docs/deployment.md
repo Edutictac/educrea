@@ -44,19 +44,20 @@ La pantalla de acceso muestra «Entrar con tu cuenta EduTicTac» cuando el SSO e
 
 ## IA EduCrea institucional (opcional)
 
-Los secretos de esta modalidad son **opcionales**: el Compose base (`infra/compose.yaml`) arranca sin
-`secrets/qwen_api_key` ni `secrets/deepseek_api_key`, y entonces la IA EduCrea figura como «no disponible» y todo el
-mundo usa su propia clave. Para activarla, crea ambos archivos con permisos `0600` y añade el archivo adicional:
+Los secretos de esta modalidad son **opcionales**: el Compose base (`infra/compose.yaml`) arranca sin las claves
+institucionales, y entonces la IA EduCrea figura como «no disponible» y todo el mundo usa su propia clave. Para la
+beta con Gemini gratuito, crea `secrets/gemini_api_key` (`0600`) y añade su archivo adicional:
 
 ```sh
 cd infra
-docker compose -f compose.yaml -f compose.included.yaml up -d
+docker compose -f compose.yaml -f compose.gemini.yaml up -d
 ```
 
-Para no repetir `-f`, puedes poner `COMPOSE_FILE=compose.yaml:compose.included.yaml` en `infra/.env`. Si activas el
-archivo adicional y falta algún secreto, `docker compose up` se detiene con el error
-`bind source path does not exist: …/secrets/qwen_api_key`: es lo esperado, hay que crear el archivo.
-Aplica la migración `0013_included_ai` y configura modelos, tarifas y presupuestos antes de activar
+Para Qwen/DeepSeek, crea `secrets/qwen_api_key` y `secrets/deepseek_api_key` y usa
+`compose.included.yaml`. Puedes combinar ambos archivos adicionales. Para no repetir `-f`, pon
+`COMPOSE_FILE=compose.yaml:compose.gemini.yaml` en `infra/.env`. Si activas un archivo adicional y falta su secreto,
+`docker compose up` se detiene con `bind source path does not exist: …/secrets/gemini_api_key`: es lo esperado, hay
+que crear el archivo. Aplica las migraciones hasta `head` y configura modelo y límites antes de activar
 `EDUCREA_FREE_AI_ENABLED`. Revisa [included-ai.md](included-ai.md) para configuración, verificación y rollback.
 
 ## Invitaciones y lista de espera

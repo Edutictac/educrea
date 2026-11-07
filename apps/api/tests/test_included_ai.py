@@ -453,6 +453,67 @@ def test_teacher_shortcuts_and_section_stream_share_same_service(client, setting
     assert client.get('/api/ai/included').json()['monthly_credits_used'] == 80
 
 
+def test_gemini_institutional_free_route_and_adapter(settings):
+    from educrea_api.services.ai.providers.gemini import GeminiProvider
+    settings.gemini_api_key = SecretStr('institutional-gemini-test')
+    settings.gemini_model = 'gemini-3.5-flash-lite'
+    plan = included.route('gemini')
+    assert plan.free and plan.price.input_rate == 0 and plan.price.output_rate == 0
+    assert plan.key not in repr(plan)
+    assert isinstance(included.adapter(plan), GeminiProvider)
+    settings.gemini_input_cost_per_million = '1'
+    with pytest.raises(HTTPException) as error:
+        included.route('gemini')
+    assert error.value.status_code == 503
+
+
+def test_gemini_primary_provider_serves_every_task(client, settings, monkeypatch):
+    settings.gemini_api_key = SecretStr('institutional-gemini-test')
+    settings.gemini_model = 'gemini-3.5-flash-lite'
+    headers, project, _ = account(client)
+    seen = []
+    def adapter(plan):
+        seen.append(plan.provider)
+        return Stub()
+    monkeypatch.setattr(included, 'adapter', adapter)
+    response = client.post(f'/api/projects/{project}/ai/proposals', headers=headers, json=request_body('code'))
+    assert response.status_code == 201, response.text
+    assert seen == ['gemini']
+    assert 'gemini' not in response.text.lower()
+    assert 'institutional-' not in response.text
+
+
+def test_free_route_ignores_usd_budgets_and_charges_minimum(client, settings):
+    _, _, user_id = account(client)
+    settings.qwen_enabled = False
+    settings.deepseek_enabled = False
+    settings.gemini_api_key = SecretStr('institutional-gemini-test')
+    settings.gemini_model = 'gemini-3.5-flash-lite'
+    settings.free_ai_global_daily_budget_usd = '0'
+    settings.free_ai_global_monthly_budget_usd = '0'
+    with Session(engine) as db:
+        identifier = included.reserve(db, user_id, included.route('gemini'), 'JSON')
+        included.reconcile(db, identifier, {'input_tokens': 10, 'output_tokens': 5}, useful=True)
+        status = included.summary(db, user_id)
+        assert status['available'] is True
+        assert status['monthly_credits_used'] == 1
+
+
+def test_global_daily_request_limit_blocks_shared_key(client, settings):
+    _, _, user_id = account(client)
+    settings.free_ai_global_daily_request_limit = 1
+    with Session(engine) as db:
+        other = User(email='global-cap@example.org', password_hash='unused')
+        db.add(other)
+        db.commit()
+        other_id = other.id
+        access.set_access(db, other_id, authorized=True)
+        included.reserve(db, user_id, included.route('qwen'), 'JSON')
+        with pytest.raises(HTTPException) as error:
+            included.reserve(db, other_id, included.route('qwen'), 'JSON')
+        assert error.value.status_code == 429
+
+
 def test_institutional_adapter_limits_and_secret_repr(settings):
     for name in ('qwen', 'deepseek'):
         plan = included.route(name)

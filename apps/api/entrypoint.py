@@ -10,7 +10,7 @@ os.environ["EDUCREA_CREDENTIAL_KEYS"] = Path(keys_file).read_text().strip()
 oidc_file = os.environ.pop("EDUCREA_OIDC_CLIENT_SECRET_FILE", "")
 if oidc_file:
     os.environ["EDUCREA_OIDC_CLIENT_SECRET"] = Path(oidc_file).read_text().strip()
-for name in ("QWEN", "DEEPSEEK"):
+for name in ("GEMINI", "QWEN", "DEEPSEEK"):
     secret_path = os.environ.pop(f"EDUCREA_{name}_API_KEY_FILE", "")
     if secret_path:
         os.environ[f"EDUCREA_{name}_API_KEY"] = Path(secret_path).read_text().strip()

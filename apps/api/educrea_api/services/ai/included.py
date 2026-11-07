@@ -22,11 +22,15 @@ from .pricing import Price, cost
 from . import access
 from .providers.base import ProviderError
 from .providers.compatible import CompatibleProvider
+from .providers.gemini import GeminiProvider
 
 logger = logging.getLogger(__name__)
+INSTITUTIONAL = ("gemini", "qwen", "deepseek")
 PAUSED = "IA EduCrea no está disponible ahora. Puedes utilizar tu propia API."
 EXHAUSTED = ("No tienes cuota mensual suficiente para esta generación de IA EduCrea. "
              "La cuota se renueva el 1 del próximo mes. Puedes seguir utilizando tu propia API.")
+GLOBAL_LIMIT = ("IA EduCrea ha alcanzado su límite diario de la beta. "
+                "Inténtalo mañana o utiliza tu propia API.")
 
 
 def now_utc():
@@ -60,36 +64,58 @@ class Route:
     endpoint: str
     price: Price
     key: str = field(repr=False)
+    free: bool = False
 
 
 def route(provider):
-    if provider not in {"qwen", "deepseek"}:
+    if provider not in INSTITUTIONAL:
         raise HTTPException(503, PAUSED)
     s = get_settings()
+    if not s.free_ai_enabled or not getattr(s, f"{provider}_enabled"):
+        raise HTTPException(503, PAUSED)
     key = getattr(s, f"{provider}_api_key")
     model = getattr(s, f"{provider}_model")
+    from .providers.registry import MODEL_ID
+    if (not key or not key.get_secret_value().strip() or not model
+            or not MODEL_ID.fullmatch(model)):
+        raise HTTPException(503, PAUSED)
+    price = Price(micro_usd(getattr(s, f"{provider}_input_cost_per_million")),
+                  micro_usd(getattr(s, f"{provider}_output_cost_per_million")))
+    if provider == "gemini":
+        # Institutional Gemini is the free tier: spend is bounded by request limits, so paid rates are refused.
+        if price.input_rate or price.output_rate:
+            raise HTTPException(503, PAUSED)
+        return Route(provider, model, "", price, key.get_secret_value(), free=True)
     base = getattr(s, f"{provider}_base_url").rstrip('/')
     try:
         url = urlsplit(base)
         _ = url.port
     except ValueError:
         raise HTTPException(503, PAUSED) from None
-    from .providers.registry import MODEL_ID
-    price = Price(micro_usd(getattr(s, f"{provider}_input_cost_per_million")),
-                  micro_usd(getattr(s, f"{provider}_output_cost_per_million")))
-    if (not s.free_ai_enabled or not getattr(s, f"{provider}_enabled") or not key
-            or not key.get_secret_value().strip() or not model
-            or not MODEL_ID.fullmatch(model) or url.scheme != "https" or not url.hostname
-            or url.username or url.password or url.query or url.fragment
-            or not price.input_rate or not price.output_rate):
+    if (not price.input_rate or not price.output_rate or url.scheme != "https"
+            or not url.hostname or url.username or url.password or url.query or url.fragment):
         raise HTTPException(503, PAUSED)
     return Route(provider, model, base + "/chat/completions", price, key.get_secret_value())
 
 
 def adapter(plan):
+    if plan.provider == "gemini":
+        return GeminiProvider()
     extra = {"enable_thinking": False} if plan.provider == "qwen" else {"thinking": {"type": "disabled"}}
     return CompatibleProvider(plan.provider, endpoint=plan.endpoint,
                               max_output_tokens=get_settings().free_ai_max_output_tokens, extra_payload=extra)
+
+
+def resolve(selected):
+    """Pick the institutional provider: preferred first, then the task role. No silent cross-role fallback."""
+    preferred = get_settings().free_ai_primary_provider.strip().lower()
+    for name in dict.fromkeys((preferred, selected)):
+        if name in INSTITUTIONAL:
+            try:
+                return route(name)
+            except HTTPException:
+                continue
+    raise HTTPException(503, PAUSED)
 
 
 def lock(db):
@@ -173,11 +199,19 @@ def reserve(db, user_id, plan, prompt, task_type="unknown", request_id=None):
             ids = {i.request_id for i in recent if i.created_at.replace(tzinfo=None) >= cutoff}
             if request_id not in ids and len(ids) >= maximum:
                 raise HTTPException(429, "Has alcanzado el límite temporal de IA EduCrea. Inténtalo más tarde.")
-        for begin, limit in ((now.replace(hour=0, minute=0, second=0, microsecond=0),
-                               micro_usd(s.free_ai_global_daily_budget_usd)),
-                              (start, micro_usd(s.free_ai_global_monthly_budget_usd))):
-            if not limit or sum(map(ledger_cost, totals(db, begin))) + maximum_cost > limit:
-                raise HTTPException(503, PAUSED)
+        if s.free_ai_global_daily_request_limit:
+            # A shared free-tier key has one installation-wide daily request ceiling, not a USD budget.
+            global_ids = set(db.scalars(select(AiUsage.request_id).where(
+                AiUsage.mode == "included", AiUsage.created_at >= now - timedelta(days=1))))
+            if request_id not in global_ids and len(global_ids) >= s.free_ai_global_daily_request_limit:
+                raise HTTPException(429, GLOBAL_LIMIT)
+        if maximum_cost:
+            # Zero-cost free-tier routes are bounded by request limits above, not by USD budgets.
+            for begin, limit in ((now.replace(hour=0, minute=0, second=0, microsecond=0),
+                                   micro_usd(s.free_ai_global_daily_budget_usd)),
+                                  (start, micro_usd(s.free_ai_global_monthly_budget_usd))):
+                if not limit or sum(map(ledger_cost, totals(db, begin))) + maximum_cost > limit:
+                    raise HTTPException(503, PAUSED)
         entry = AiUsage(user_id=user_id, provider=plan.provider, model=plan.model, mode="included",
             request_id=request_id, period_key=key, reserved_credits=maximum_credits,
             credits_per_usd=s.free_ai_credits_per_usd, minimum_credits=s.free_ai_min_credits_per_request,
@@ -242,18 +276,23 @@ def summary(db, user_id):
     authorized = access_status == "invited"
     available = s.free_ai_enabled and authorized
     try:
-        ready = False
-        for name in ("qwen", "deepseek"):
+        routes = []
+        for name in INSTITUTIONAL:
             try:
-                route(name)
-                ready = True
+                routes.append(route(name))
             except HTTPException:
                 pass
-        available = available and ready
-        for begin, limit in ((start, micro_usd(s.free_ai_global_monthly_budget_usd)),
-                            (now_utc().replace(hour=0, minute=0, second=0, microsecond=0),
-                             micro_usd(s.free_ai_global_daily_budget_usd))):
-            available = available and bool(limit) and sum(map(ledger_cost, totals(db, begin))) < limit
+        available = available and bool(routes)
+        if available and s.free_ai_global_daily_request_limit:
+            recent = set(db.scalars(select(AiUsage.request_id).where(
+                AiUsage.mode == "included", AiUsage.created_at >= now_utc() - timedelta(days=1))))
+            available = len(recent) < s.free_ai_global_daily_request_limit
+        if available and not any(item.free for item in routes):
+            # USD budgets only apply when no zero-cost route can serve the request.
+            for begin, limit in ((start, micro_usd(s.free_ai_global_monthly_budget_usd)),
+                                (now_utc().replace(hour=0, minute=0, second=0, microsecond=0),
+                                 micro_usd(s.free_ai_global_daily_budget_usd))):
+                available = available and bool(limit) and sum(map(ledger_cost, totals(db, begin))) < limit
     except HTTPException:
         available = False
     db.commit()
@@ -286,7 +325,7 @@ def metrics(db, period_key=None):
                                    get_settings().free_ai_monthly_credits for user in users),
             "providers": {name: {"requests": len([r for r in rows if r.provider == name]),
                 "cost_microusd": sum(ledger_cost(r) for r in rows if r.provider == name)}
-                for name in ("qwen", "deepseek")},
+                for name in INSTITUTIONAL},
             "errors": sum(r.status in {"failed", "expired"} for r in rows),
             "average_latency_ms": sum(r.latency_ms or 0 for r in rows) / len(rows) if rows else 0}
 
@@ -299,9 +338,14 @@ async def run(db, user_id, selected, prompt, finish, *, task_type="unknown", str
     """
     access.require_access(db, user_id)
     request_id = uuid4()
-    names = [selected]
-    if selected == "deepseek" and get_settings().free_ai_deepseek_fallback_to_qwen:
-        names.append("qwen")
+    chosen = resolve(selected)
+    names = [chosen.provider]
+    if chosen.provider == "deepseek" and get_settings().free_ai_deepseek_fallback_to_qwen:
+        try:
+            route("qwen")
+            names.append("qwen")
+        except HTTPException:
+            pass
     for index, name in enumerate(names):
         plan = route(name)
         reservation = reserve(db, user_id, plan, prompt, task_type, request_id)

@@ -1,5 +1,6 @@
 # Optional: institutional EduCrea AI (Qwen and DeepSeek). Without this file `docker compose up` does not need
 # secrets/qwen_api_key or secrets/deepseek_api_key, and the included AI simply reports «not available».
+# For free-tier Gemini use compose.gemini.yaml instead (or combine both files).
 # Use it together with the base file:  docker compose -f compose.yaml -f compose.included.yaml up -d
 # (or set COMPOSE_FILE=compose.yaml:compose.included.yaml in infra/.env). See docs/included-ai.md.
 services:

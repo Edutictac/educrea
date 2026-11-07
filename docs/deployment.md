@@ -8,7 +8,7 @@ Los volúmenes `postgres_data`, `caddy_data` y `caddy_config` persisten datos y 
 
 ## Aplicaciones del servidor
 
-La API invoca, siempre dentro de `bubblewrap`: `pandoc` (fuentes DOCX/ODT/EPUB/HTML y exportaciones), `xelatex` (PDF), `pdftotext` y `pdftoppm` (`poppler-utils`), `tesseract-ocr` con `tesseract-ocr-spa` y `tesseract-ocr-cat` (OCR de PDF escaneados) y Chromium sin interfaz (PNG de infografías). El `Dockerfile` actual de la API aún no las instala: hay que añadirlas y comprobar que `bwrap` puede crear espacios de nombres en el contenedor antes del despliegue. Sin ellas, cada función responde con un error claro (503 o 422) en vez de fallar.
+La API invoca, siempre dentro de `bubblewrap`: `pandoc` (fuentes DOCX/ODT/EPUB/HTML y exportaciones), `xelatex` con `lmodern` y DejaVu (PDF), `pdftotext` y `pdftoppm` (`poppler-utils`), `tesseract-ocr` con `tesseract-ocr-spa` y `tesseract-ocr-cat` (OCR de PDF escaneados) y Chromium sin interfaz (PNG de infografías). El `Dockerfile` de la API ya instala esos paquetes y `bubblewrap`. En Docker, el servicio `api` necesita `seccomp=unconfined`, `apparmor=unconfined` y `systempaths=unconfined` para que `bwrap` pueda crear sus espacios de nombres; el propio `bwrap` sigue aislando cada herramienta. Verificado en local con Docker: DOCX, PDF, PNG y OCR funcionan con esas opciones.
 
 ## Inicio de sesión único (SSO) con Authentik
 

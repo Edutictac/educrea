@@ -16,6 +16,12 @@ services:
     networks: [internal]
   api:
     build: ../apps/api
+    # Bubblewrap must create user, mount and pid namespaces inside the container. The sandbox itself
+    # confines each external tool; these options only allow bwrap to start (verified with Docker 2.26).
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+      - systempaths=unconfined
     environment:
       EDUCREA_DATABASE_URL_FILE: /run/secrets/database_url
       EDUCREA_CREDENTIAL_KEYS_FILE: /run/secrets/credential_keys

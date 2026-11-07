@@ -4,6 +4,7 @@ import { t } from '../i18n'
 import { listSources, type Source } from '../services/sources'
 import { invokeCapability, parseArguments } from '../services/capabilities'
 import { aiChoice, PROVIDER_NAMES } from '../services/aiChoice'
+import { loadIndependently } from '../services/loadIndependently'
 import AiProgress from './AiProgress.vue'
 import IncludedAiQuota from './IncludedAiQuota.vue'
 import { describeAiError, useAiProgress } from '../services/aiProgress'
@@ -61,18 +62,22 @@ let controller: AbortController | null = null
 
 onMounted(async () => {
   void loadSources()
-  try {
-    const [providerStatus, quotaStatusValue, budgetValue, recent, available] = await Promise.all([
-      providersStatus(), quotaStatus(), budgetStatus(), listProposals(props.projectId), listContextFiles(props.projectId)])
-    statuses.value = providerStatus
-    quota.value = quotaStatusValue
-    budget.value = budgetValue
-    proposals.value = recent
-    filePaths.value = available
-    selectedPaths.value = available.filter(path => path === 'activity.json' || path === 'index.html')
-    applyChoice()
-    selectedId.value = recent[0]?.id ?? null
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
+  // Independent requests: a failing quota or budget must not hide the configured AIs or the proposals.
+  const { values, errors } = await loadIndependently({
+    providers: providersStatus, quota: quotaStatus, budget: budgetStatus,
+    proposals: () => listProposals(props.projectId), files: () => listContextFiles(props.projectId) })
+  if (values.providers) statuses.value = values.providers
+  if (values.quota) quota.value = values.quota
+  if (values.budget) budget.value = values.budget
+  if (values.proposals) { proposals.value = values.proposals; selectedId.value = values.proposals[0]?.id ?? null }
+  if (values.files) {
+    filePaths.value = values.files
+    selectedPaths.value = values.files.filter(path => path === 'activity.json' || path === 'index.html')
+  }
+  applyChoice()
+  // The configured AIs are the essential part: their error wins, and any other failure is still reported.
+  const failure = errors.providers ?? errors.proposals ?? errors.files ?? errors.quota ?? errors.budget
+  if (failure) error.value = failure.message || t('error')
 })
 // Follow the project selector: its free AI, or the first available one when «Automática» (with fallback).
 function applyChoice() {

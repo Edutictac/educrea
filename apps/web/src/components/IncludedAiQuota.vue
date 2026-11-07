@@ -2,10 +2,12 @@
 import BetaWaitlistForm from './BetaWaitlistForm.vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { includedStatus, type IncludedStatus } from '../services/ai'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { t } from '../i18n'
 
 const auth = useAuthStore()
+const route = useRoute()
 const status = ref<IncludedStatus | null>(null)
 const percent = computed(() => status.value?.monthly_credits_limit
   ? Math.min(100, Math.round(status.value.monthly_credits_used * 100 / status.value.monthly_credits_limit)) : 100)
@@ -36,7 +38,11 @@ onUnmounted(() => window.removeEventListener('educrea-ai-usage', refresh))
       <p v-else-if="!status.available">{{ t('includedPaused') }}</p>
     </template>
     <p v-else-if="status.authorized">{{ t('includedPaused') }}</p>
-    <p v-if="auth.user?.is_guest"><RouterLink to="/login">{{ t('openBetaRegister') }}</RouterLink></p>
+    <template v-if="auth.user?.is_guest && !status.authorized">
+      <!-- The request form needs an account: /login sends to Authentik and brings the visitor back here. -->
+      <p><RouterLink class="button" :to="{ path: '/login', query: { next: route.fullPath } }">{{ t('betaRequestGuest') }}</RouterLink></p>
+      <p class="hint">{{ t('betaRequestGuestHint') }}</p>
+    </template>
     <BetaWaitlistForm v-if="!status.authorized && !auth.user?.is_guest" />
     <RouterLink to="/ai/providers">{{ t('includedByok') }}</RouterLink>
   </section>

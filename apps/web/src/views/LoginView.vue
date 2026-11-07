@@ -6,10 +6,13 @@ import { useAuthStore } from '../stores/auth'
 
 const oidcEnabled = ref(false)
 const localEnabled = ref(true)
+const redirecting = ref(false)
 onMounted(async () => {
   try {
     const config = await (await fetch('/api/auth/config')).json() as { oidc_enabled: boolean; local_auth_enabled: boolean }
     oidcEnabled.value = config.oidc_enabled; localEnabled.value = config.local_auth_enabled
+    // Accounts are created and managed in Authentik: with SSO only, skip this page and go straight there.
+    if (config.oidc_enabled && !config.local_auth_enabled) { redirecting.value = true; window.location.replace(ssoUrl()) }
   } catch { /* keep local form */ }
 })
 function nextPath() {
@@ -34,7 +37,9 @@ async function submit(kind: 'login' | 'register') {
 </script>
 
 <template>
-  <section class="card narrow">
+  <section v-if="redirecting" class="card narrow" aria-live="polite"><p>{{ t('ssoRedirecting') }}</p>
+    <p><a :href="ssoUrl()">{{ t('ssoLogin') }}</a></p></section>
+  <section v-else class="card narrow">
     <h1>{{ t('title') }}</h1>
     <p>{{ t('openRegisterHint') }}</p>
     <p><RouterLink to="/projects">{{ t('exploreWithoutAccount') }}</RouterLink></p>

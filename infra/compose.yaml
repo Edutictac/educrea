@@ -51,15 +51,12 @@ services:
       EDUCREA_DEEPSEEK_BASE_URL: ${EDUCREA_DEEPSEEK_BASE_URL:-https://api.deepseek.com}
       EDUCREA_DEEPSEEK_INPUT_COST_PER_MILLION: ${EDUCREA_DEEPSEEK_INPUT_COST_PER_MILLION:-0}
       EDUCREA_DEEPSEEK_OUTPUT_COST_PER_MILLION: ${EDUCREA_DEEPSEEK_OUTPUT_COST_PER_MILLION:-0}
-      EDUCREA_QWEN_API_KEY_FILE: /run/secrets/qwen_api_key
-      EDUCREA_DEEPSEEK_API_KEY_FILE: /run/secrets/deepseek_api_key
       EDUCREA_PUBLIC_BASE_URL: ${EDUCREA_PUBLIC_BASE_URL:-}
       EDUCREA_SMTP_HOST: ${EDUCREA_SMTP_HOST:-}
       EDUCREA_SMTP_PORT: ${EDUCREA_SMTP_PORT:-587}
       EDUCREA_SMTP_SECURITY: ${EDUCREA_SMTP_SECURITY:-starttls}
       EDUCREA_SMTP_USERNAME: ${EDUCREA_SMTP_USERNAME:-}
       EDUCREA_SMTP_FROM: ${EDUCREA_SMTP_FROM:-}
-      EDUCREA_SMTP_PASSWORD_FILE: /run/secrets/smtp_password
       EDUCREA_BETA_INVITATION_DAYS: ${EDUCREA_BETA_INVITATION_DAYS:-7}
       EDUCREA_BETA_INVITATION_DAILY_LIMIT: ${EDUCREA_BETA_INVITATION_DAILY_LIMIT:-50}
       EDUCREA_BETA_INVITATION_COOLDOWN_SECONDS: ${EDUCREA_BETA_INVITATION_COOLDOWN_SECONDS:-300}
@@ -75,7 +72,8 @@ services:
       EDUCREA_AI_DAILY_INSTALLATION_REQUESTS: ${EDUCREA_AI_DAILY_INSTALLATION_REQUESTS:-200}
       EDUCREA_AI_DAILY_USER_TOKENS: ${EDUCREA_AI_DAILY_USER_TOKENS:-400000}
       EDUCREA_AI_DAILY_INSTALLATION_TOKENS: ${EDUCREA_AI_DAILY_INSTALLATION_TOKENS:-4000000}
-    secrets: [database_url, credential_keys, oidc_client_secret, qwen_api_key, deepseek_api_key, smtp_password]
+    # Optional secrets (Qwen/DeepSeek for the included AI, SMTP password) live in compose.included.yaml and compose.mail.yaml.
+    secrets: [database_url, credential_keys, oidc_client_secret]
     depends_on:
       db: { condition: service_healthy }
     networks: [internal]
@@ -101,12 +99,6 @@ services:
     depends_on: [web]
     networks: [internal]
 secrets:
-  smtp_password:
-    file: ../secrets/smtp_password
-  qwen_api_key:
-    file: ../secrets/qwen_api_key
-  deepseek_api_key:
-    file: ../secrets/deepseek_api_key
   db_password:
     file: ../secrets/db_password
   database_url:

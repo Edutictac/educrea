@@ -99,7 +99,10 @@ reiniciar la API. La API de Qwen utiliza por defecto la base internacional de Da
 cuenta, modelo, condiciones de tratamiento y facturación antes de activarla. Se desactiva explícitamente el
 razonamiento adicional en ambas APIs (`enable_thinking=false` y `thinking.type=disabled`).
 
-En Docker, crea `secrets/qwen_api_key` y `secrets/deepseek_api_key` con permisos `0600`; pueden estar vacíos
+En Docker, las claves van en `secrets/qwen_api_key` y `secrets/deepseek_api_key` (`0600`) y **solo se montan si usas
+`infra/compose.yaml` junto con `infra/compose.included.yaml`** (`docker compose -f compose.yaml -f compose.included.yaml up -d`,
+o `COMPOSE_FILE=compose.yaml:compose.included.yaml` en `infra/.env`). Sin ese archivo adicional el Compose arranca sin ellos
+y la IA EduCrea queda «no disponible»; con él, ambos archivos deben existir y pueden estar vacíos
 si la modalidad está desactivada. Compose los monta exclusivamente en la API. El entrypoint lee ambos antes de
 bajar privilegios. Fuera de Docker se admiten las variables directas o `EDUCREA_QWEN_API_KEY_FILE` y
 `EDUCREA_DEEPSEEK_API_KEY_FILE`. No imprimir valores ni validar Compose mostrando variables reales de secretos.

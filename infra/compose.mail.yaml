@@ -1,0 +1,12 @@
+# Optional: e-mail for beta invitations (SMTP). Without this file `docker compose up` does not need
+# secrets/smtp_password. Use it together with the base file (and compose.included.yaml if you also use it):
+#   docker compose -f compose.yaml -f compose.mail.yaml up -d
+# or set COMPOSE_FILE=compose.yaml:compose.included.yaml:compose.mail.yaml in infra/.env. See docs/beta-admin.md.
+services:
+  api:
+    environment:
+      EDUCREA_SMTP_PASSWORD_FILE: /run/secrets/smtp_password
+    secrets: [smtp_password]
+secrets:
+  smtp_password:
+    file: ../secrets/smtp_password

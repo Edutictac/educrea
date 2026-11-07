@@ -36,8 +36,18 @@ Pendiente también: crear el registro DNS de `educrea.edutictac.es` y desplegar.
 
 ## IA EduCrea institucional (opcional)
 
-Antes de arrancar el Compose actualizado, prepara los archivos `secrets/qwen_api_key` y
-`secrets/deepseek_api_key` con permisos `0600` (vacíos si no se activa el modo incluido).
+Los secretos de esta modalidad son **opcionales**: el Compose base (`infra/compose.yaml`) arranca sin
+`secrets/qwen_api_key` ni `secrets/deepseek_api_key`, y entonces la IA EduCrea figura como «no disponible» y todo el
+mundo usa su propia clave. Para activarla, crea ambos archivos con permisos `0600` y añade el archivo adicional:
+
+```sh
+cd infra
+docker compose -f compose.yaml -f compose.included.yaml up -d
+```
+
+Para no repetir `-f`, puedes poner `COMPOSE_FILE=compose.yaml:compose.included.yaml` en `infra/.env`. Si activas el
+archivo adicional y falta algún secreto, `docker compose up` se detiene con el error
+`bind source path does not exist: …/secrets/qwen_api_key`: es lo esperado, hay que crear el archivo.
 Aplica la migración `0013_included_ai` y configura modelos, tarifas y presupuestos antes de activar
 `EDUCREA_FREE_AI_ENABLED`. Revisa [included-ai.md](included-ai.md) para configuración, verificación y rollback.
 
@@ -51,5 +61,8 @@ con la herramienta de [gestión de invitaciones](included-ai.md#invitaciones-y-l
 ## Zona de administración y correo de invitaciones
 
 Aplicar hasta `0016_beta_admin` y asignar explícitamente la primera cuenta administradora desde el servidor.
-Crear también `secrets/smtp_password` (`0600`, vacío si no se usa SMTP) para el Compose actualizado.
+El envío de correo es **opcional** y su secreto también: sin él, el Compose base arranca igual y las invitaciones
+no se envían por correo. Para activarlo, crea `secrets/smtp_password` (`0600`) y añade `compose.mail.yaml`
+(`docker compose -f compose.yaml -f compose.included.yaml -f compose.mail.yaml up -d`, o
+`COMPOSE_FILE=compose.yaml:compose.included.yaml:compose.mail.yaml` en `infra/.env`).
 El correo requiere remitente, relay TLS, URL pública HTTPS y SSO configurados. Ver [beta-admin.md](beta-admin.md).

@@ -1,0 +1,15 @@
+# Optional: institutional EduCrea AI (Qwen and DeepSeek). Without this file `docker compose up` does not need
+# secrets/qwen_api_key or secrets/deepseek_api_key, and the included AI simply reports «not available».
+# Use it together with the base file:  docker compose -f compose.yaml -f compose.included.yaml up -d
+# (or set COMPOSE_FILE=compose.yaml:compose.included.yaml in infra/.env). See docs/included-ai.md.
+services:
+  api:
+    environment:
+      EDUCREA_QWEN_API_KEY_FILE: /run/secrets/qwen_api_key
+      EDUCREA_DEEPSEEK_API_KEY_FILE: /run/secrets/deepseek_api_key
+    secrets: [qwen_api_key, deepseek_api_key]
+secrets:
+  qwen_api_key:
+    file: ../secrets/qwen_api_key
+  deepseek_api_key:
+    file: ../secrets/deepseek_api_key

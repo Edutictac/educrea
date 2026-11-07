@@ -59,7 +59,8 @@ Solo en el backend:
 - `EDUCREA_SMTP_SECURITY`: `starttls` (por defecto) o `ssl`; se verifica el certificado TLS.
 - `EDUCREA_SMTP_FROM`: dirección remitente autorizada en el servidor de correo.
 - `EDUCREA_SMTP_USERNAME` y `EDUCREA_SMTP_PASSWORD`, si el relay requiere autenticación.
-- Alternativa: `EDUCREA_SMTP_PASSWORD_FILE`. En Docker, archivo `secrets/smtp_password`, permisos `0600`;
+- Alternativa: `EDUCREA_SMTP_PASSWORD_FILE`. En Docker, archivo `secrets/smtp_password`, permisos `0600`, que solo se
+  monta si añades `infra/compose.mail.yaml` al Compose base (`COMPOSE_FILE=compose.yaml:compose.mail.yaml` en `infra/.env`);
   puede estar vacío si el correo está desactivado. Solo lo monta la API y se lee antes de bajar privilegios.
 - `EDUCREA_BETA_INVITATION_DAILY_LIMIT`, `EDUCREA_BETA_INVITATION_COOLDOWN_SECONDS` y
   `EDUCREA_BETA_INVITATION_DAYS` ajustan los límites.

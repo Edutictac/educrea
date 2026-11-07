@@ -1,5 +1,5 @@
 from .entities import (BetaInvitation, BetaAdminAudit, IncludedAiWaitlist, IncludedAiAccess, AiBudgetAlert, AiBudget, AiCredential, AiProposal, AiUsage, CapabilityCall, FileVersion, OidcFlow,
-                       OidcIdentity, Project, ProjectAsset, ProjectFile, SessionToken, Source, SourceChunk, User)
+                       OidcIdentity, Project, ProjectAsset, ProjectFile, ProjectVideo, SessionToken, Source, SourceChunk, User)
 
 __all__ = ["BetaInvitation", "BetaAdminAudit", "IncludedAiWaitlist", "IncludedAiAccess", "AiBudgetAlert", "AiBudget", "AiCredential", "AiProposal", "AiUsage", "CapabilityCall", "FileVersion", "OidcFlow",
-           "OidcIdentity", "Project", "ProjectAsset", "ProjectFile", "SessionToken", "Source", "SourceChunk", "User"]
+           "OidcIdentity", "Project", "ProjectAsset", "ProjectFile", "ProjectVideo", "SessionToken", "Source", "SourceChunk", "User"]

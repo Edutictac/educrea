@@ -21,3 +21,7 @@ La alternativa «Ilustración generada» estará siempre disponible por elecció
 Una infografía de ejemplo deberá poder editarse y exportarse a PNG sin ninguna llamada a un generador de imágenes. Comprobar que conserva el texto, la atribución de iconos y una alternativa accesible; que sus controles funcionan con teclado; y que el renderizador bloquea scripts, recursos remotos y accesos entre proyectos. Las pruebas automáticas de proveedores de imagen usarán mocks y comprobarán autorización, cuotas y cancelación.
 
 Después de la beta se podrá probar un cursor con IA **solo para el docente durante la autoría**, activado expresamente, sin registrar el comportamiento del alumnado. Una plantilla de lectura por desplazamiento se evaluará por separado en la Fase 7.
+
+## Vídeo BYOK (prototipo)
+
+La generación de clips cortos con Gemini Omni Flash está implementada como prototipo BYOK: 4–6 s, 360p/720p, previsualización y biblioteca de vídeos separada. No sustituye a la infografía editable y todavía no se incrusta en actividades ni en PDF/DOCX. Ver [video-models.md](video-models.md).

@@ -32,3 +32,7 @@ selección ni en la alternancia gratuita. Pruebas con transporte simulado, sin c
 ## Imágenes de pago BYOK
 
 La generación de imágenes es una modalidad BYOK independiente del catálogo de tokens: usa la clave de Gemini del docente y un catálogo propio de modelos y precios por imagen. Está documentada en [image-models.md](image-models.md). El modelo por defecto es Nano Banana 2 Lite, solo 1K, y requiere confirmación de coste, presupuesto mensual y aceptación de derechos y ausencia de datos personales. La IA incluida no genera imágenes.
+
+## Vídeo de pago BYOK
+
+La generación de vídeo con Gemini Omni Flash es otra modalidad BYOK independiente: se factura por segundo, no por tokens, y tiene su propio catálogo, límites y biblioteca. Está documentada en [video-models.md](video-models.md). En esta versión solo admite clips de 4–6 s, 360p/720p, y el resultado se previsualiza antes de guardarlo.

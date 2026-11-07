@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     image_models_json: str = "{}"
     ai_daily_image_requests: int = Field(default=20, gt=0)
     image_request_timeout_seconds: int = Field(default=120, ge=1, le=300)
+    # BYOK video generation. Admin-approved models and per-second prices; empty by default.
+    video_models_json: str = "{}"
+    ai_daily_video_requests: int = Field(default=10, gt=0)
+    video_request_timeout_seconds: int = Field(default=300, ge=30, le=600)
     # Included institutional AI. No personal credentials or implicit paid-model activation.
     free_ai_enabled: bool = False
     free_ai_monthly_credits: int = Field(default=10000, ge=0)

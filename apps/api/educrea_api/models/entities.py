@@ -196,6 +196,26 @@ class ProjectAsset(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class ProjectVideo(Base):
+    """A generated or uploaded MP4 kept in the project library, separate from image assets."""
+
+    __tablename__ = "project_videos"
+    __table_args__ = (UniqueConstraint("project_id", "path"),)
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    path: Mapped[str] = mapped_column(String(160))
+    media_type: Mapped[str] = mapped_column(String(20))
+    size: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64))
+    description: Mapped[str] = mapped_column(String(300))
+    credit: Mapped[str] = mapped_column(String(300), default="")
+    duration_seconds: Mapped[int] = mapped_column(Integer, default=0)
+    resolution: Mapped[str] = mapped_column(String(10), default="")
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class SourceChunk(Base):
     __tablename__ = "source_chunks"
 

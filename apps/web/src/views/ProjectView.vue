@@ -10,6 +10,7 @@ import CapabilitiesPanel from '../components/CapabilitiesPanel.vue'
 import SourcesPanel from '../components/SourcesPanel.vue'
 import HistoryPanel from '../components/HistoryPanel.vue'
 import AssetsPanel from '../components/AssetsPanel.vue'
+import VideoPanel from '../components/VideoPanel.vue'
 import ProjectViewer from '../components/ProjectViewer.vue'
 import AppIcon from '../components/AppIcon.vue'
 import AiPicker from '../components/AiPicker.vue'
@@ -21,7 +22,7 @@ import { useFilesStore } from '../stores/files'
 // On smaller screens the viewer becomes the «Vista previa» tab. Tabs use v-show so unsaved edits survive switching.
 type Workspace = { hasUnsavedChanges: () => boolean }
 type Tab = 'work' | 'assistant' | 'export' | 'tools' | 'preview'
-type Tool = 'sources' | 'images' | 'dua' | 'history' | 'capabilities' | 'settings'
+type Tool = 'sources' | 'images' | 'video' | 'dua' | 'history' | 'capabilities' | 'settings'
 const route = useRoute()
 const router = useRouter()
 const projects = useProjectsStore()
@@ -56,6 +57,7 @@ const tabs = computed(() => [
 const tools = computed(() => [
   { id: 'sources' as const, icon: 'library', label: t('sources') },
   { id: 'images' as const, icon: 'image', label: t('projectImages') },
+  { id: 'video' as const, icon: 'monitor', label: t('projectVideos') },
   { id: 'dua' as const, icon: 'layers', label: t('duaTitle') },
   { id: 'history' as const, icon: 'history', label: t('history') },
   ...(mode.value === 'advanced' ? [{ id: 'capabilities' as const, icon: 'panel-right', label: t('capabilities') }] : []),
@@ -169,6 +171,7 @@ async function remove() {
             </div>
             <SourcesPanel v-if="tool === 'sources'" :project-id="id" embedded @changed="sourcesVersion += 1" />
             <AssetsPanel v-else-if="tool === 'images'" :project-id="id" embedded />
+            <VideoPanel v-else-if="tool === 'video'" :project-id="id" />
             <DuaPanel v-else-if="tool === 'dua'" :project-id="id" :refresh-key="workspaceKey" :auto-apply="mode === 'teacher'" :can-generate="canGenerate" embedded @changed="generated" />
             <HistoryPanel v-else-if="tool === 'history'" :project-id="id" embedded @restored="refreshWorkspace" />
             <CapabilitiesPanel v-else-if="tool === 'capabilities'" :project-id="id" embedded />

@@ -49,6 +49,13 @@ Comprobado el 2026-11-06: el nivel gratuito de Gemini no ofrece cuota para ning�
 - Invitados con clave temporal de Gemini; usuarios registrados con clave cifrada. La IA incluida no genera imágenes.
 - Sin personas reales identificables ni datos del alumnado. Hace falta activar la facturación en un proyecto de Google.
 
+## Generación de vídeo BYOK (prototipo implementado el 2026-11-07)
+
+Prototipo con **Gemini Omni Flash** (`gemini-omni-1.2-flash`), solo clips de 4–6 s, 360p/720p y 16:9/9:16. Usa la clave BYOK de Gemini, con estimación por segundo, presupuesto, confirmación expresa y previsualización antes de guardar en una biblioteca de vídeos separada de las imágenes. Documentado en [video-models.md](video-models.md).
+
+- Sin IA incluida: el vídeo es más caro que el texto y la imagen; de momento solo BYOK.
+- La biblioteca acepta MP4 de hasta 30 MB, 10 vídeos y 200 MB por proyecto.
+- Pendiente: incrustar vídeo en actividades/exportaciones, edición, imagen a vídeo y pruebas con claves reales.
 ## Integración con EduTicTac Commons
 
 Decisión del 2026-11-03: **de momento solo el nivel 1 (SSO)**; el resto queda aquí como hoja de ruta, de menor a mayor acoplamiento. El núcleo de EduCrea no depende de Commons y cada nivel funciona sin los siguientes.

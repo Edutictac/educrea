@@ -3,15 +3,15 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { t } from '../i18n'
 import { listSources, type Source } from '../services/sources'
 import { invokeCapability, parseArguments } from '../services/capabilities'
-import { aiChoice, PROVIDER_NAMES } from '../services/aiChoice'
+import { aiChoice, includedOffered, PROVIDER_NAMES } from '../services/aiChoice'
 import { loadIndependently } from '../services/loadIndependently'
 import AiProgress from './AiProgress.vue'
 import IncludedAiQuota from './IncludedAiQuota.vue'
 import { describeAiError, useAiProgress } from '../services/aiProgress'
 import { useAuthStore } from '../stores/auth'
-import { AiError, budgetStatus, changeProposal, estimatePaid, providersStatus, quotaStatus,
+import { AiError, budgetStatus, changeProposal, estimatePaid, includedStatus, providersStatus, quotaStatus,
   listContextFiles, listProposals, streamProposal,
-  type AgentStep, type BudgetStatus, type PaidEstimate, type ProviderStatuses, type ProviderName, type QuotaStatus, type Proposal } from '../services/ai'
+  type AgentStep, type BudgetStatus, type IncludedStatus, type PaidEstimate, type ProviderStatuses, type ProviderName, type QuotaStatus, type Proposal } from '../services/ai'
 
 const props = defineProps<{ projectId: string; canGenerate: () => boolean; canApply: () => boolean; automatic?: boolean; sourcesVersion?: number }>()
 const emit = defineEmits<{ projectChanged: [] }>()
@@ -19,7 +19,10 @@ const auth = useAuthStore()
 const statuses = ref<ProviderStatuses | null>(null)
 const quota = ref<QuotaStatus | null>(null)
 const budget = ref<BudgetStatus | null>(null)
-const mode = ref<'free' | 'paid' | 'included'>(auth.user?.included_ai_authorized && aiChoice.value.provider === 'educrea' ? 'included' : 'free')
+const included = ref<IncludedStatus | null>(null)
+// The included AI is offered only when the account is invited AND the server says it can serve now.
+const includedAvailable = computed(() => includedOffered(auth.user?.included_ai_authorized === true, included.value))
+const mode = ref<'free' | 'paid' | 'included'>(includedAvailable.value && aiChoice.value.provider === 'educrea' ? 'included' : 'free')
 const estimate = ref<PaidEstimate | null>(null)
 const paidConfirmed = ref(false)
 const provider = ref<ProviderName>('gemini')
@@ -27,7 +30,7 @@ const availableProviders = computed(() => (['gemini', 'groq', 'openrouter', 'oll
   .filter(name => mode.value === 'free' ? !!statuses.value?.[name].confirmed_free_models.length
     : !!statuses.value?.[name].configured && !!statuses.value?.[name].paid_models.length))
 const taskType = ref('unknown')
-const models = computed(() => mode.value === 'included' ? auth.user?.included_ai_authorized ? ['included'] : [] : mode.value === 'free' ? statuses.value?.[provider.value].confirmed_free_models ?? []
+const models = computed(() => mode.value === 'included' ? includedAvailable.value ? ['included'] : [] : mode.value === 'free' ? statuses.value?.[provider.value].confirmed_free_models ?? []
   : statuses.value?.[provider.value].paid_models.map(item => item.model) ?? [])
 const allowFallback = ref(false)
 const actualProvider = ref('')
@@ -65,10 +68,12 @@ onMounted(async () => {
   // Independent requests: a failing quota or budget must not hide the configured AIs or the proposals.
   const { values, errors } = await loadIndependently({
     providers: providersStatus, quota: quotaStatus, budget: budgetStatus,
+    included: () => auth.user?.included_ai_authorized === true ? includedStatus() : Promise.resolve(null),
     proposals: () => listProposals(props.projectId), files: () => listContextFiles(props.projectId) })
   if (values.providers) statuses.value = values.providers
   if (values.quota) quota.value = values.quota
   if (values.budget) budget.value = values.budget
+  if (values.included) included.value = values.included
   if (values.proposals) { proposals.value = values.proposals; selectedId.value = values.proposals[0]?.id ?? null }
   if (values.files) {
     filePaths.value = values.files
@@ -83,7 +88,7 @@ onMounted(async () => {
 function applyChoice() {
   if (!statuses.value) return
   const chosen = aiChoice.value
-  if (chosen.provider === 'educrea' && auth.user?.included_ai_authorized) { mode.value = 'included'; model.value = 'included'; return }
+  if (chosen.provider === 'educrea' && includedAvailable.value) { mode.value = 'included'; model.value = 'included'; return }
   if (mode.value === 'included') mode.value = 'free'
   if (mode.value !== 'free') return
   if (chosen.provider && chosen.provider !== 'educrea' && statuses.value[chosen.provider]?.confirmed_free_models.includes(chosen.model)) {
@@ -96,6 +101,10 @@ function applyChoice() {
   }
 }
 watch(aiChoice, applyChoice, { deep: true })
+// If the included AI pauses or runs out of budget, fall back to the teacher's own API.
+watch(includedAvailable, available => {
+  if (!available && mode.value === 'included') { mode.value = 'free'; applyChoice() }
+})
 onBeforeUnmount(() => controller?.abort())
 watch([instruction, provider, model, selectedPaths, mode, useAutomatic, selectedSources], () => { estimate.value = null; paidConfirmed.value = false }, { deep: true })
 
@@ -153,6 +162,9 @@ async function generate() {
   } finally { busy.value = false; generatingAi.value = false; controller = null
     quota.value = await quotaStatus().catch(() => quota.value)
     budget.value = await budgetStatus().catch(() => budget.value)
+    if (auth.user?.included_ai_authorized === true) {
+      included.value = await includedStatus().catch(() => included.value)
+    }
     estimate.value = null; paidConfirmed.value = false }
 }
 const describeError = (cause: unknown) => describeAiError(cause, props.automatic === true)
@@ -227,7 +239,7 @@ function stateLabel(value: Proposal['status']) {
       <p v-if="automatic" class="hint full">{{ t('aiUsing') }}: <strong>{{ mode === 'included' ? t('includedTitle') : model ? `${PROVIDER_NAMES[provider]} · ${model}` : t('aiNone') }}</strong> · {{ t('aiChangeInHeader') }}</p>
       <template v-else>
       <label>{{ t('modelMode') }}<select v-model="mode" @change="changeMode">
-        <option v-if="auth.user?.included_ai_authorized" value="included">IA EduCrea</option><option value="free">{{ t('freeMode') }}</option><option value="paid">{{ t('paidMode') }}</option>
+        <option v-if="includedAvailable" value="included">IA EduCrea</option><option value="free">{{ t('freeMode') }}</option><option value="paid">{{ t('paidMode') }}</option>
       </select></label>
       <label v-if="mode !== 'included'">{{ t('providerLabel') }}<select v-model="provider" :disabled="!availableProviders.length" @change="changeProvider">
         <option v-for="name in availableProviders" :key="name" :value="name">{{ name }}</option>

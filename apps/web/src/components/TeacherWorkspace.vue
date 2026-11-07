@@ -12,6 +12,7 @@ import AudioPanel from './AudioPanel.vue'
 import AiProgress from './AiProgress.vue'
 import { choiceBody } from '../services/aiChoice'
 import { describeAiError, useAiProgress } from '../services/aiProgress'
+import { MAX_INSTRUCTIONS } from '../services/promptBridge'
 
 const props = defineProps<{ projectId: string }>()
 const emit = defineEmits<{ generated: []; openMaterials: []; resourceChanged: [] }>()
@@ -237,7 +238,7 @@ async function generateFirstVersion() {
           <label>{{ t('diversityNotes') }}<textarea v-model="activity.diversity" maxlength="2000" rows="2" /></label>
         </details>
       </template>
-      <label class="full">{{ t('instructions') }}<textarea v-model="activity.instructions" maxlength="10000" rows="6" /></label>
+      <label class="full">{{ t('instructions') }}<textarea v-model="activity.instructions" :maxlength="MAX_INSTRUCTIONS" rows="6" /></label>
       <fieldset class="full"><legend>{{ t('accessibility') }}</legend>
         <label class="check"><input v-model="activity.accessibility.large_text" type="checkbox" />{{ t('largeText') }}</label>
         <label class="check"><input v-model="activity.accessibility.high_contrast" type="checkbox" />{{ t('highContrast') }}</label>

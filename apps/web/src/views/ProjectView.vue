@@ -14,6 +14,7 @@ import AssetsPanel from '../components/AssetsPanel.vue'
 import VideoPanel from '../components/VideoPanel.vue'
 import AudioPanel from '../components/AudioPanel.vue'
 import ProjectViewer from '../components/ProjectViewer.vue'
+import { PROMPT_APP_URL } from '../services/promptBridge'
 import AppIcon from '../components/AppIcon.vue'
 import AiPicker from '../components/AiPicker.vue'
 import { t } from '../i18n'
@@ -24,7 +25,7 @@ import { useFilesStore } from '../stores/files'
 // On smaller screens the viewer becomes the «Vista previa» tab. Tabs use v-show so unsaved edits survive switching.
 type Workspace = { hasUnsavedChanges: () => boolean }
 type Tab = 'work' | 'assistant' | 'export' | 'tools' | 'preview'
-type Tool = 'sources' | 'images' | 'audio' | 'video' | 'dua' | 'history' | 'capabilities' | 'settings'
+type Tool = 'sources' | 'images' | 'audio' | 'video' | 'dua' | 'history' | 'capabilities' | 'prompt' | 'settings'
 const route = useRoute()
 const router = useRouter()
 const projects = useProjectsStore()
@@ -65,6 +66,7 @@ const tools = computed(() => [
   { id: 'dua' as const, icon: 'layers', label: t('duaTitle') },
   { id: 'history' as const, icon: 'history', label: t('history') },
   ...(mode.value === 'advanced' ? [{ id: 'capabilities' as const, icon: 'panel-right', label: t('capabilities') }] : []),
+  { id: 'prompt' as const, icon: 'sparkles', label: t('promptBridgeTitle') },
   { id: 'settings' as const, icon: 'settings', label: t('projectSettings') },
 ])
 watch(wide, value => { if (value && tab.value === 'preview') tab.value = 'work' })
@@ -181,6 +183,11 @@ async function remove() {
             <DuaPanel v-else-if="tool === 'dua'" :project-id="id" :refresh-key="workspaceKey" :auto-apply="mode === 'teacher'" :can-generate="canGenerate" embedded @changed="generated" />
             <HistoryPanel v-else-if="tool === 'history'" :project-id="id" embedded @restored="refreshWorkspace" />
             <CapabilitiesPanel v-else-if="tool === 'capabilities'" :project-id="id" embedded />
+            <div v-else-if="tool === 'prompt'" class="prompt-bridge">
+              <h3>{{ t('promptBridgeTitle') }}</h3>
+              <p>{{ t('promptBridgeText') }}</p>
+              <a class="button" :href="PROMPT_APP_URL" target="_blank" rel="noopener noreferrer">{{ t('promptBridgeOpen') }}</a>
+            </div>
             <form v-else class="form-grid" @submit.prevent="saveProject">
               <label class="full">{{ t('projectTitle') }}<input v-model="title" required maxlength="160" /></label>
               <label class="full">{{ t('description') }}<textarea v-model="description" maxlength="5000" rows="3" /></label>

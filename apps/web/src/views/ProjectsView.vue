@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { locale, t } from '../i18n'
 import { applyTemplate, INFOGRAPHIC_PATH, infographicTemplate, listTemplates, type TemplateInfo } from '../services/templates'
 import { useAuthStore } from '../stores/auth'
@@ -11,6 +11,7 @@ import IncludedAiQuota from '../components/IncludedAiQuota.vue'
 import { MATERIAL_ACCEPT, uploadSource } from '../services/sources'
 import { imageModels, type ImageModels } from '../services/images'
 import { createIllustrations, illustrationPrompts, type IllustrationStyle } from '../services/illustrations'
+import { MAX_INSTRUCTIONS, fillInstructions, parseBridgeQuery } from '../services/promptBridge'
 
 // Guided creation (phase 7): 1) what to create, 2) a few details, then the project opens in teacher mode with the
 // template files ready and the AI fills the content from the brief.
@@ -20,6 +21,7 @@ const auth = useAuthStore()
 const projects = useProjectsStore()
 const files = useFilesStore()
 const router = useRouter()
+const route = useRoute()
 const templates = ref<TemplateInfo[]>([])
 const choice = ref<Choice | null>(null)
 const title = ref('')
@@ -33,6 +35,11 @@ const busy = ref(false)
 const material = ref<File | null>(null)
 const materialRights = ref(false)
 const progress = ref('')
+// Handoff from EduTicTac Prompt: open the guided creation and help paste the prompt into the brief.
+const fromPrompt = ref(false)
+const bridgeMessage = ref('')
+const bridgeError = ref('')
+const instructionsEl = ref<HTMLTextAreaElement | null>(null)
 // Optional AI illustrations (paid BYOK images), generated before the first version so the AI can place them.
 const imageStatus = ref<ImageModels | null>(null)
 const illustrationCount = ref(0)
@@ -61,6 +68,10 @@ const choices = computed<Choice[]>(() => [
 ])
 
 onMounted(async () => {
+  const bridge = parseBridgeQuery(route.query as Record<string, unknown>)
+  fromPrompt.value = bridge.fromPrompt
+  if (bridge.openCreate) creating.value = true
+  if (bridge.openCreate || bridge.fromPrompt) router.replace({ path: '/projects' })
   if (!auth.user) { router.replace('/explore'); return }
   void imageModels().then(value => { imageStatus.value = value }).catch(() => undefined)
   try { [templates.value] = await Promise.all([listTemplates(), projects.load()]); creating.value = projects.items.length === 0 }
@@ -69,6 +80,22 @@ onMounted(async () => {
 async function pick(item: Choice) {
   choice.value = item; error.value = ''
   await nextTick(); detailsHeading.value?.focus()
+  if (fromPrompt.value && item.kind !== 'libre') { await nextTick(); instructionsEl.value?.focus() }
+}
+async function pasteFromClipboard() {
+  bridgeMessage.value = ''; bridgeError.value = ''
+  try {
+    const result = fillInstructions(await navigator.clipboard.readText())
+    if (!result.ok) {
+      if (result.reason === 'too_long') bridgeError.value = t('promptBridgeTooLong')
+      return
+    }
+    instructions.value = result.text
+    bridgeMessage.value = t('promptBridgePasted')
+    await nextTick(); instructionsEl.value?.focus()
+  } catch {
+    bridgeError.value = t('promptBridgeNoClipboard')
+  }
 }
 const deleting = ref<string | null>(null)
 async function removeProject(id: string, name: string) {
@@ -163,7 +190,14 @@ async function create() {
           <label v-if="choice.id === 'huecos'" class="full">{{ t('gapMode') }}<select v-model="gapMode">
             <option value="bank">{{ t('gapBank') }}</option><option value="text">{{ t('gapText') }}</option>
           </select></label>
-          <label class="full">{{ t('whatAbout') }}<textarea v-model="instructions" maxlength="10000" rows="3" :placeholder="t('whatAboutPlaceholder')" /></label>
+          <div v-if="fromPrompt" class="notice full">
+            <strong>{{ t('promptBridgeIncoming') }}</strong>
+            <p>{{ t('promptBridgeDocumentHint') }}</p>
+            <button type="button" class="secondary" @click="pasteFromClipboard">{{ t('promptBridgePaste') }}</button>
+            <p v-if="bridgeMessage" role="status">{{ bridgeMessage }}</p>
+            <p v-if="bridgeError" role="alert">{{ bridgeError }}</p>
+          </div>
+          <label class="full">{{ t('whatAbout') }}<textarea ref="instructionsEl" v-model="instructions" :maxlength="MAX_INSTRUCTIONS" rows="3" :placeholder="t('whatAboutPlaceholder')" /></label>
           <div class="full material-pick">
             <label>{{ t('startingMaterial') }} <span class="hint">({{ t('optional') }})</span>
               <input type="file" :accept="MATERIAL_ACCEPT" @change="material = ($event.target as HTMLInputElement).files?.[0] ?? null" /></label>

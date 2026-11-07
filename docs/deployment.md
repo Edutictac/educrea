@@ -30,9 +30,17 @@ La pantalla de acceso muestra «Entrar con tu cuenta EduTicTac» cuando el SSO e
 
 **Dominio de producción: `educrea.edutictac.es`** (decidido el 2026-11-07; antes estaba previsto `studio.edutictac.es`). En `.env` se configura con `EDUCREA_DOMAIN=educrea.edutictac.es`, y Caddy emite el certificado cuando el DNS apunta al servidor.
 
-**Pendiente en Authentik (fuera del repositorio):** la aplicación de producción sigue creada con el nombre y los datos antiguos (`edustudio`, Client ID y retorno `studio.edutictac.es`). Para que el login funcione en el dominio nuevo hay que cambiar en Authentik el nombre y el slug (el emisor pasaría a `.../application/o/educrea/`), el Client ID y la URL de retorno `https://educrea.edutictac.es/api/auth/oidc/callback`, y mover el secreto en `pass` a `RUTA_EN_EL_GESTOR_DE_SECRETOS`. Cambiar solo la URL de retorno y dejar el resto basta para empezar, si se prefiere no tocar el slug.
+**Authentik (actualizado el 2026-11-07):** la aplicación de producción es ahora `educrea` (nombre «EduCrea»), con Client ID `educrea.edutictac.es`, emisor `https://id.edutictac.es/application/o/educrea/` y retorno `https://educrea.edutictac.es/api/auth/oidc/callback`. El secreto está en `pass` como `RUTA_EN_EL_GESTOR_DE_SECRETOS`. El DNS resuelve por el wildcard `*.edutictac.es`, no hizo falta crear un registro.
 
-Pendiente también: crear el registro DNS de `educrea.edutictac.es` y desplegar. Hasta entonces solo la aplicación de pruebas es utilizable.
+## Despliegue actual (2026-11-07)
+
+- Servidor: VPS de producción (`IP_DEL_VPS`, SSH `USUARIO_SSH`, puerto `PUERTO_SSH`), directorio `/srv/educrea`.
+- Servicios: `db`, `api` y `web` con `infra/compose.yaml` + `infra/compose.nginx.yaml`; el servicio `proxy` (Caddy) no se usa porque el host ya tiene nginx en 80/443.
+- Web publicada en `127.0.0.1:8097`; nginx del host hace de proxy para `https://educrea.edutictac.es` con `client_max_body_size 40m` y timeouts de 300 s para la generación de vídeo.
+- Certificado: `certbot --webroot` con nombre `educrea.edutictac.es`; renovación automática.
+- Secretos en `/srv/educrea/secrets` (`0600`) y copia en `pass`: `RUTA_EN_EL_GESTOR_DE_SECRETOS`, `RUTA_EN_EL_GESTOR_DE_SECRETOS`, `RUTA_EN_EL_GESTOR_DE_SECRETOS` y `RUTA_EN_EL_GESTOR_DE_SECRETOS`.
+- Migración aplicada: `0018_project_videos`. `EDUCREA_LOCAL_AUTH_ENABLED=false`; el acceso es por SSO de Authentik y los visitantes pueden seguir usando el espacio sin cuenta.
+- Comprobado: `/api/health` 200, portada 200, `/api/auth/config` con `oidc_enabled:true`, redirección de login a Authentik y contenedores `db/api/web` saludables.
 
 ## IA EduCrea institucional (opcional)
 

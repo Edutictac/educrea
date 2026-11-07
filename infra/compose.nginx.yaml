@@ -1,0 +1,7 @@
+# Deployment behind the host's nginx (ports 80/443 already used by other sites).
+# Start only db, api and web; the proxy service (Caddy) is intentionally not started.
+#   docker compose -f compose.yaml -f compose.nginx.yaml up -d db api web
+services:
+  web:
+    ports:
+      - "127.0.0.1:8097:80"

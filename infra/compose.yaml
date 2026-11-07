@@ -2,6 +2,7 @@ name: educrea
 services:
   db:
     image: postgres:17-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: educrea
       POSTGRES_USER: educrea
@@ -16,6 +17,7 @@ services:
     networks: [internal]
   api:
     build: ../apps/api
+    restart: unless-stopped
     # Bubblewrap must create user, mount and pid namespaces inside the container. The sandbox itself
     # confines each external tool; these options only allow bwrap to start (verified with Docker 2.26).
     security_opt:
@@ -96,11 +98,13 @@ services:
       retries: 3
   web:
     build: ../apps/web
+    restart: unless-stopped
     depends_on:
       api: { condition: service_healthy }
     networks: [internal]
   proxy:
     image: caddy:2-alpine
+    restart: unless-stopped
     environment:
       EDUCREA_DOMAIN: ${EDUCREA_DOMAIN:?Set EDUCREA_DOMAIN}
     volumes:

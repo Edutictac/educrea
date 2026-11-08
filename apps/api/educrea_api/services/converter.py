@@ -4,6 +4,7 @@ The worker sees only a private temp directory: no network, read-only system, no 
 no database. Raw HTML/TeX in the source is disabled. Time, size and concurrency are capped.
 """
 
+import json
 import shutil
 import subprocess
 import tempfile
@@ -41,7 +42,8 @@ def _sandbox(workdir: Path, command: list[str], extra_ro: tuple[str, ...] = ()) 
             "--ro-bind", "/usr", "/usr", "--ro-bind", "/etc", "/etc", "--ro-bind", "/var/lib", "/var/lib",
             "--symlink", "usr/bin", "/bin", "--symlink", "usr/lib", "/lib", "--symlink", "usr/lib64", "/lib64",
             "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", *extra, "--bind", str(workdir), "/work",
-            "--chdir", "/work", "--clearenv", "--setenv", "HOME", "/tmp", "--setenv", "PATH", "/usr/bin", *command]
+            "--chdir", "/work", "--clearenv", "--setenv", "HOME", "/tmp", "--setenv", "PATH", "/usr/bin",
+            "--setenv", "LANG", "C.UTF-8", "--setenv", "LC_ALL", "C.UTF-8", *command]
 
 
 def lua_filter(image_paths: list[str]) -> str:
@@ -63,12 +65,13 @@ def convert(source: str, title: str, fmt: str, assets: list | None = None) -> by
         with tempfile.TemporaryDirectory(prefix="educrea-convert-") as tmp:
             workdir = Path(tmp)
             (workdir / "input.md").write_text(source, encoding="utf-8")
+            (workdir / "metadata.yaml").write_text(json.dumps({"title": title}, ensure_ascii=False), encoding="utf-8")
             (workdir / "filter.lua").write_text(lua_filter([asset.path for asset in assets or []]), encoding="utf-8")
             for asset in assets or []:  # only library images are copied; pandoc reads nothing else
                 target = workdir / asset.path
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(asset.data)
-            args = ["pandoc", "-f", READER, "--lua-filter=filter.lua", "--metadata", f"title={title}", "-o", f"output.{fmt}"]
+            args = ["pandoc", "-f", READER, "--lua-filter=filter.lua", "--metadata-file=metadata.yaml", "-o", f"output.{fmt}"]
             if fmt == "pdf":
                 args += ["--pdf-engine=xelatex", "-V", "mainfont=DejaVu Serif", "-V", "geometry:margin=2.5cm"]
             try:

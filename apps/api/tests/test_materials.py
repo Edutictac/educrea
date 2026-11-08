@@ -1,4 +1,5 @@
 import io
+import re
 import zipfile
 
 from fastapi.testclient import TestClient
@@ -74,6 +75,31 @@ def test_docx_and_pdf_export_run_in_sandbox(client: TestClient):
     if shutil.which("xelatex"):
         pdf = client.get(f"{base}/files/{file['id']}/export.pdf")
         assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
+
+
+def test_docx_export_keeps_accents_in_title(client: TestClient):
+    import shutil
+    import pytest
+
+    if not (shutil.which("pandoc") and shutil.which("bwrap")):
+        pytest.skip("pandoc/bwrap no disponibles")
+    headers = {"X-CSRF-Token": register(client, "accents@example.org")}
+    project = client.post("/api/projects", headers=headers, json={"title": "Accents"}).json()
+    base = f"/api/projects/{project['id']}"
+    title = "Fitxa amb imatges, història de la música"
+    file = client.post(f"{base}/files", headers=headers,
+                       json={"path": "fitxa.md", "content": f"# {title}\n\nText amb tildes: cançó.\n"}).json()
+    docx = client.get(f"{base}/files/{file['id']}/export.docx")
+    assert docx.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(docx.content)) as archive:
+        body = archive.read("word/document.xml").decode()
+        core = archive.read("docProps/core.xml").decode()
+        everything = "".join(archive.read(name).decode("utf-8", "replace") for name in archive.namelist()
+                             if name.endswith((".xml", ".rels")))
+    # The title goes to the document title block and to the core properties; both must keep the accents.
+    assert re.sub(r"<[^>]+>", "", body).startswith(title)
+    assert f"<dc:title>{title}</dc:title>" in core
+    assert "\ufffd" not in everything and "histÃ²ria" not in everything
 
 
 def test_static_document_strips_scripts_handlers_and_external_resources():

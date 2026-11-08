@@ -18,6 +18,7 @@ const sourceUrl = /^https?:\/\//.test(import.meta.env.VITE_SOURCE_URL ?? '') ? i
     <div class="ett-footer__links">
       <RouterLink to="/">{{ t('footerHome') }}</RouterLink>
       <a href="https://commons.edutictac.es/privacy.html">{{ t('footerPrivacy') }}</a>
+      <RouterLink to="/cookies">{{ t('footerCookies') }}</RouterLink>
       <a v-if="sourceUrl" :href="sourceUrl">{{ t('footerSource') }}</a>
       <a href="/licenses/AGPL-3.0-or-later.txt">AGPL-3.0+</a>
       <a href="/licenses/lucide.txt">{{ t('iconsCredit') }}</a>

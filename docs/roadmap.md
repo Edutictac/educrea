@@ -109,6 +109,10 @@ Decisión del 2026-11-03: **de momento solo el nivel 1 (SSO)**; el resto queda a
 - Informar de qué proveedor procesará la petición y evitar enviar imágenes o datos identificables del alumnado. Documentar las condiciones de uso y los derechos de los recursos generados.
 - Probar permisos entre usuarios, límites de gasto, archivos maliciosos y conservación de imágenes al exportar y restaurar proyectos.
 
+## Operación pendiente
+
+- [ ] **Copias de seguridad automáticas de la base de datos:** programar `pg_dump` cifrado con retención, copia fuera del servidor y restauración ensayada. Hoy solo hay volcados manuales. Añadir además alerta de disco y verificación de la renovación TLS.
+
 ## Exploración posterior a la beta
 
 - Prototipar un «cursor con IA» opcional para acompañar **al docente durante la creación y revisión** de materiales. Podrá sugerir aclaraciones o dividir contenido denso; no observará al alumnado ni activará seguimiento de su lectura.

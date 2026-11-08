@@ -101,9 +101,17 @@ las pruebas con dobles HTTP y eventos firmados locales con un pago completado en
 gestor de secretos; creación real de Checkout por 10 EUR y reintento con la misma
 `Idempotency-Key` devuelven la misma sesión. Las sesiones se expiraron sin pagar.
 Stripe aceptó la selección automática de métodos y rechazó forzar tarjeta en esa
-configuración. Falta la prueba de pago completado con entrega externa del webhook;
-el secreto del endpoint aún no está configurado. No se desplegó ni se guardaron las
-credenciales en el repositorio.
+configuración. Las credenciales se mantuvieron fuera del repositorio.
+
+**Verificación completa del 2026-11-08:** desplegado con autorización y exclusivamente
+en modo test. Webhook externo configurado para los cuatro eventos de Checkout y
+secreto guardado en el gestor de contraseñas y en el backend. Una cuenta técnica
+sin privilegios completó una recarga ficticia de 10 EUR en Checkout y volvió a
+«Mi saldo». La entrega real del webhook añadió un único movimiento de 10 EUR;
+dos reenvíos firmados adicionales del mismo evento no cambiaron el saldo.
+La sesión técnica quedó revocada. Los intentos de pago incompletos se expiraron
+sin acreditar saldo. Gemini, las cuotas de IA incluida, las imágenes y Banc/Rebost
+se conservaron. No se ha habilitado consumo de ese saldo ni dinero real.
 
 Antes de evolucionar a un servicio real: consumo/reservas y conciliación de IA,
 devoluciones y disputas (hoy no modifican el saldo), conciliación operativa de pagos,

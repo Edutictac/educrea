@@ -2,7 +2,7 @@
 services:
   api:
     environment:
-      EDUCREA_STRIPE_TEST_ENABLED: "true"
+      EDUCREA_STRIPE_TEST_ENABLED: ${EDUCREA_STRIPE_TEST_ENABLED:-false}
       EDUCREA_PUBLIC_BASE_URL: ${EDUCREA_PUBLIC_BASE_URL:?Set the sandbox public origin}
       EDUCREA_STRIPE_SECRET_KEY_FILE: /run/secrets/stripe_secret_key
       EDUCREA_STRIPE_WEBHOOK_SECRET_FILE: /run/secrets/stripe_webhook_secret

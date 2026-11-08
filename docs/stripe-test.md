@@ -1,5 +1,12 @@
 # Recarga de prueba de EduCrea
 
+**Visibilidad (2026-11-08):** por decisión del usuario, el saldo permanece oculto
+hasta completar el servicio. El menú no ofrece «Mi saldo», `/saldo` redirige a
+proyectos y las recargas están desactivadas. El código y los datos de prueba se
+conservan. El archivo Compose de Stripe también exige activar explícitamente
+`EDUCREA_STRIPE_TEST_ENABLED=true`; no reactivar la interfaz ni las recargas al desplegar
+otros cambios.
+
 Primer incremento autorizado: recarga individual de **10 EUR**, con Stripe Payments y
 Checkout alojado (`mode=payment`). Sin suscripciones ni Stripe Billing. No activa
 modelos gestionados de pago, no descuenta generaciones y no modifica las cuotas

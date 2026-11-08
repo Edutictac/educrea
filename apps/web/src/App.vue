@@ -108,7 +108,6 @@ async function logout() {
       <nav id="menu-principal" :class="{ open: menuOpen }" :aria-label="t('mainMenu')" @click="closeOnLink">
         <RouterLink v-if="auth.user || route.meta.home" to="/projects"><AppIcon name="folder" :size="18" />{{ t('projects') }}</RouterLink>
         <RouterLink v-if="auth.user?.is_admin" to="/admin/beta">{{ t('adminBeta') }}</RouterLink>
-        <RouterLink v-if="auth.user && !auth.user.is_guest" to="/saldo">{{ t('walletTitle') }}</RouterLink>
         <RouterLink v-if="auth.user" to="/ai/providers"><AppIcon name="key" :size="18" />{{ t('myProviders') }}</RouterLink>
         <RouterLink v-if="accountFallback && (!auth.user || auth.user.is_guest)" :to="{ path: '/login', query: { next: route.fullPath } }">{{ t('openRegister') }}</RouterLink>
         <select v-if="!accountReady" v-model="locale" :aria-label="t('language')"><option value="es">{{ t('languageSpanish') }}</option><option value="ca">{{ t('languageCatalan') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select>

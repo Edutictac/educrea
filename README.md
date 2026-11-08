@@ -24,6 +24,13 @@ utilizan esas variables. El editor mantiene controles compactos y navegación in
 Los estados de error, confirmación, selección y foco conservan su distinción. El estilo de la
 interfaz no modifica el contenido ni los estilos de las actividades creadas por el docente.
 
+## Cuenta e idioma de EduTicTac
+
+El chip central permite cambiar el idioma y entrar por SSO conservando la pantalla de retorno.
+EduCrea coordina su sesión con Commons y conserva controles propios si el servicio central falla.
+Consulta [la integración de cuenta](docs/account-integration.md) para el contrato, las pruebas
+y los límites del cierre de sesión.
+
 ## Arquitectura
 
 - `apps/web`: Vue 3, TypeScript, Vite, Pinia, Vue Router y Monaco; interfaz en castellano, valenciano e inglés.

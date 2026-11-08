@@ -34,17 +34,26 @@ La pantalla de acceso muestra «Entrar con tu cuenta EduTicTac» cuando el SSO e
 
 ## Chip de cuenta central (Commons)
 
-La web carga `https://commons.edutictac.es/assets/account-widget.js` y monta `<edutictac-account>` en la cabecera
-(`apps/web/src/components/EduTicTacAccount.vue`). Muestra la **sesión central de Commons**, independiente del SSO
-de EduCrea; la convivencia es intencionada hasta la unificación.
+La web carga `https://commons.edutictac.es/assets/account-widget.js` y monta
+`<edutictac-account>` en la cabecera. Su adaptador de idioma se registra antes de montar Vue;
+el menú ofrece castellano, valenciano e inglés y comparte `edutictac_language` con los otros
+subdominios de EduTicTac. El tema sigue siendo el de la aplicación.
 
-- `apps/web/nginx.conf` permite `https://commons.edutictac.es` en `script-src`, `style-src-elem`, `img-src` y
-  `connect-src`. Si el nginx del host añade su propia CSP, debe permitir ese origen; si no, el chip no cargará.
-- En Commons, añade `https://educrea.edutictac.es` a `EDUTICTAC_ID_ALLOWED_ORIGINS`. Sin ese origen el script
-  carga pero la sesión se bloquea por CORS y el chip se queda sin cuenta. Para el chip de EduTicTac Prompt hay que
-  añadir también `https://pages.edutictac.es`.
-- El chip no sustituye al login propio de EduCrea ni al de Prompt. No se han conectado los adaptadores de
-  idioma/tema, así que el chip no muestra esos selectores y se mantienen los propios de cada app.
+- La CSP del contenedor y del proxy debe permitir `https://commons.edutictac.es` en
+  `script-src`, `style-src-elem`, `img-src` y `connect-src`.
+- Commons debe incluir el origen público de EduCrea en `EDUTICTAC_ID_ALLOWED_ORIGINS`, tanto
+  para CORS como para aceptar el retorno del login central al OIDC de la aplicación.
+  Los orígenes locales o instalaciones propias necesitan su autorización específica.
+- Al entrar desde el chip se crea primero la sesión central y después la sesión OIDC local.
+  Una sesión docente central existente puede completar el acceso local al abrir la herramienta.
+  El servidor OIDC sigue comprobando la identidad, correo y permisos: el chip no concede acceso.
+- El cambio de sesión central cierra la sesión local con CSRF y reinicia la interfaz.
+  Los controles propios reaparecen si falla el chip o ambas sesiones no están coordinadas.
+- No hay cambios en la API ni migraciones. El detalle, las pruebas y el límite del cierre
+  de sesión (no es un cierre OIDC global en Authentik) están en [account-integration.md](account-integration.md).
+
+Pendiente antes de dar por validada la integración en producción: probar el recorrido real con
+una cuenta docente, incluido retorno, sincronización entre pestañas y cierre de sesión.
 
 ## Despliegue actual (2026-11-07)
 

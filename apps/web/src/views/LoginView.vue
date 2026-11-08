@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { t } from '../i18n'
+import { accountReturnPath, centralLoginUrl, localLoginUrl } from '../services/account'
 import { useAuthStore } from '../stores/auth'
 
 const oidcEnabled = ref(false)
@@ -15,12 +16,9 @@ onMounted(async () => {
     if (config.oidc_enabled && !config.local_auth_enabled) { redirecting.value = true; window.location.replace(ssoUrl()) }
   } catch { /* keep local form */ }
 })
-function nextPath() {
-  const next = route.query.next
-  return typeof next === 'string' && next.startsWith('/') && !next.startsWith('//') && !next.includes('\\') && next !== '/login'
-    ? next : '/projects'
-}
-const ssoUrl = () => `/api/auth/oidc/login?next=${encodeURIComponent(nextPath())}`
+const nextPath = () => accountReturnPath(route.query.next)
+const ssoUrl = () => route.query.central === '1'
+  ? centralLoginUrl(window.location.origin, nextPath()) : localLoginUrl(nextPath())
 const email = ref('')
 const password = ref('')
 const error = ref('')

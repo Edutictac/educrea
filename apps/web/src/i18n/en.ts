@@ -1,4 +1,5 @@
 export const en = {
+  logoutFailed: 'Could not sign out of EduCrea. Try again using “Sign out”.',
   languageSpanish: "Spanish",
   languageValencian: "Valencian",
   languageEnglish: "English",

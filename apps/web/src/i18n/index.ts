@@ -1,5 +1,6 @@
 import { ref, watch } from 'vue'
 import { en } from './en'
+import { readSharedLanguage, rememberSharedLanguage } from './preference'
 
 export type Locale = 'es' | 'va' | 'en'
 const STORAGE_KEY = 'educrea.locale'
@@ -17,6 +18,8 @@ export function detectLocale(languages: readonly string[], saved: string | null)
 }
 
 function storedLocale(): string | null {
+  const shared = typeof document === 'undefined' ? null : readSharedLanguage(document)
+  if (shared) return shared
   try { return localStorage.getItem(STORAGE_KEY) } catch { return null }
 }
 
@@ -24,11 +27,13 @@ export const locale = ref<Locale>(detectLocale(typeof navigator === 'undefined' 
 watch(locale, (value, previous) => {
   if (previous !== undefined) {
     try { localStorage.setItem(STORAGE_KEY, value) } catch { /* private mode */ }
+    if (typeof document !== 'undefined' && typeof location !== 'undefined') rememberSharedLanguage(value, document, location)
   }
   if (typeof document !== 'undefined') document.documentElement.lang = value === 'va' ? 'ca' : value
-}, { immediate: true })
+}, { immediate: true, flush: 'sync' })
 export const messages = {
   es: {
+    logoutFailed: 'No se ha podido cerrar la sesión de EduCrea. Vuelve a intentarlo con «Salir».',
     languageSpanish: "Castellano",
     languageValencian: "Valenciano",
     languageEnglish: "Inglés",
@@ -248,6 +253,7 @@ export const messages = {
     useTemporaryKey: 'Usar esta clave ahora', temporaryKeyReady: 'Clave lista para esta visita. Si recargas la página tendrás que volver a pegarla; crea una cuenta para guardarla.',
   },
   va: {
+    logoutFailed: 'No s’ha pogut tancar la sessió d’EduCrea. Torna a provar amb «Eixir».',
     languageSpanish: "Castellà",
     languageValencian: "Valencià",
     languageEnglish: "Anglés",

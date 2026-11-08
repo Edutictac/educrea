@@ -86,3 +86,29 @@ describe('borrador de invitado', () => {
     expect(guest.files['index.html']).not.toBe('<h1>Fracciones</h1>')
   })
 })
+
+describe('cierre de sesión coordinado', () => {
+  beforeEach(() => { setActivePinia(createPinia()); vi.restoreAllMocks() })
+  it('conserva identidad y CSRF si el servidor rechaza el cierre', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403 }))
+    const auth = useAuthStore()
+    auth.user = { id: 'teacher-1', email: 'teacher@example.org' }; auth.csrf = 'test-csrf'
+    await expect(auth.logout()).rejects.toThrow()
+    expect(auth.user?.id).toBe('teacher-1')
+    expect(auth.csrf).toBe('test-csrf')
+  })
+  it('cierra con CSRF y recupera una sesión de invitado después del éxito', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, status: 204 })
+      .mockResolvedValueOnce({ ok: false, status: 401 })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ user: { id: 'guest-1', email: '', is_guest: true }, csrf_token: 'guest-csrf' }) })
+    vi.stubGlobal('fetch', fetchMock)
+    const auth = useAuthStore()
+    auth.user = { id: 'teacher-1', email: 'teacher@example.org' }; auth.csrf = 'test-csrf'
+    await auth.logout()
+    expect(fetchMock.mock.calls[0]).toEqual(['/api/auth/logout', {
+      method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-Token': 'test-csrf' },
+    }])
+    expect(auth.user?.is_guest).toBe(true)
+    expect(auth.csrf).toBe('guest-csrf')
+  })
+})

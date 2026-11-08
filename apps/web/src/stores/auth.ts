@@ -42,7 +42,9 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-Token': csrf.value } })
+    const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-Token': csrf.value } })
+    // A failed logout must not silently discard the local CSRF token or claim success.
+    if (!response.ok && response.status !== 401) throw new Error(t('logoutFailed'))
     user.value = null
     csrf.value = ''
     setTemporaryIdentity(null, false)

@@ -4,6 +4,7 @@ import { locale, t } from './index'
 const english: Record<string, string> = {
   'IA EduCrea no está disponible ahora. Puedes utilizar tu propia API.': 'EduCrea AI is unavailable right now. You can use your own API.',
   'No tienes cuota mensual suficiente para esta generación de IA EduCrea. La cuota se renueva el 1 del próximo mes. Puedes seguir utilizando tu propia API.': 'You do not have enough monthly EduCrea AI quota for this generation. Your quota renews on the first day of next month. You can continue using your own API.',
+  'No tienes cuota semanal suficiente para esta generación de IA EduCrea. La cuota se renueva el lunes. Puedes seguir utilizando tu propia API.': 'You do not have enough weekly EduCrea AI quota. Your quota renews on Monday. You can continue using your own API.',
   'IA EduCrea ha alcanzado su límite diario de la beta. Inténtalo mañana o utiliza tu propia API.': 'EduCrea AI has reached its daily beta limit. Try tomorrow or use your own API.',
   'Ya tienes una generación de IA EduCrea en curso.': 'You already have an EduCrea AI generation in progress.',
   'Has alcanzado el límite temporal de IA EduCrea. Inténtalo más tarde.': 'You have reached the EduCrea AI rate limit. Try again later.',

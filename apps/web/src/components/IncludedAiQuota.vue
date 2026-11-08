@@ -6,8 +6,11 @@ import { intlLocale, t } from '../i18n'
 
 const auth = useAuthStore()
 const status = ref<IncludedStatus | null>(null)
-const percent = computed(() => status.value?.monthly_credits_limit
-  ? Math.min(100, Math.round(status.value.monthly_credits_used * 100 / status.value.monthly_credits_limit)) : 100)
+const limit = computed(() => status.value?.credits_limit ?? status.value?.monthly_credits_limit ?? 0)
+const used = computed(() => status.value?.credits_used ?? status.value?.monthly_credits_used ?? 0)
+const percent = computed(() => limit.value
+  ? Math.min(100, Math.round(used.value * 1000 / limit.value) / 10) : 100)
+const remainingPercent = computed(() => Math.round((100 - percent.value) * 10) / 10)
 const renewal = computed(() => status.value ? new Date(status.value.renews_at).toLocaleDateString(
   intlLocale(), { day: 'numeric', month: 'long', timeZone: 'UTC' }) : '')
 async function refresh() {
@@ -26,10 +29,10 @@ onUnmounted(() => window.removeEventListener('educrea-ai-usage', refresh))
     <strong>{{ t('includedTitle') }}</strong>
     <p>{{ t('includedIntro') }}</p>
     <template v-if="status.enabled">
-      <label>{{ t('includedMonthlyUse') }}: {{ percent }} %
+      <label>{{ t(status.quota_period === 'weekly' ? 'includedWeeklyUse' : 'includedMonthlyUse') }}: {{ percent }} %
         <progress :value="percent" max="100" style="width: 100%">{{ percent }} %</progress>
       </label>
-      <p>{{ 100 - percent }} % {{ t('includedAvailable') }} · {{ t('includedRenews') }} {{ renewal }}.</p>
+      <p>{{ remainingPercent }} % {{ t('includedAvailable') }} · {{ t('includedRenews') }} {{ renewal }}.</p>
       <p v-if="!status.remaining_credits">{{ t('includedExhausted') }}</p>
       <p v-else-if="!status.available">{{ t('includedPaused') }}</p>
     </template>

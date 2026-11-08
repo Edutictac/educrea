@@ -139,6 +139,20 @@ Modalidad pensada para dar IA a los betatesters con una sola clave gratuita. Rec
 La cuota mensual de créditos sigue existiendo: con coste cero cada petición útil consume el mínimo
 (`FREE_AI_MIN_CREDITS_PER_REQUEST`), de modo que el límite diario por usuario es el que normalmente se alcanza antes.
 
+## Cuota semanal para la beta
+
+`FREE_AI_WEEKLY_CREDITS=100` sustituye la bolsa mensual por 100 créditos por cuenta
+y semana. Cada generación útil de Gemini gratuito consume un crédito. Se renueva el lunes
+a las 00:00 UTC. Una variable vacía mantiene la cuota mensual anterior. Los límites por
+minuto, hora, día y de instalación siguen aplicándose.
+
+Se usa la fecha de inicio de cada reserva, incluyendo las generaciones previas de la semana.
+Las reservas que terminan tras el lunes siguen imputadas a la semana de inicio. Los fallos
+sin resultado útil liberan créditos. Se conservan históricos y presupuestos monetarios
+mensuales; no requiere migración. La API añade `quota_period`, `credits_limit` y `credits_used`
+y conserva los campos mensuales para clientes anteriores. `remaining_credits` y `renews_at`
+describen la cuota activa. La interfaz muestra el periodo activo y porcentajes con un decimal.
+
 ## Cálculo y bolsa mensual
 
 Se usa aritmética entera, con tarifas en micro-USD por millón, reutilizando `pricing.Price` y `pricing.cost`:

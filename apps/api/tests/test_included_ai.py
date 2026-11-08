@@ -595,3 +595,49 @@ def test_adapter_retains_reported_usage_on_provider_error():
                 assert error.value.usage == {'input_tokens': 10, 'output_tokens': 5}
                 assert 'never expose' not in str(error.value)
     asyncio.run(run())
+
+
+def test_weekly_quota_counts_existing_monthly_usage_and_resets_monday(client, settings, monkeypatch):
+    _, _, user_id = account(client)
+    settings.gemini_api_key = SecretStr('institutional-gemini-test')
+    settings.gemini_model = 'gemini-test'
+    now = datetime(2026, 11, 8, 23, 58, tzinfo=timezone.utc)
+    monkeypatch.setattr(included, 'now_utc', lambda: now)
+    with Session(engine) as db:
+        # Existing monthly ledger must count immediately when weekly mode is enabled.
+        first = included.reserve(db, user_id, included.route('gemini'), 'JSON')
+        included.reconcile(db, first, {'input_tokens': 1, 'output_tokens': 1}, useful=True)
+        settings.free_ai_weekly_credits = 2
+        status = included.summary(db, user_id)
+        assert status['quota_period'] == 'weekly'
+        assert status['credits_used'] == 1
+        assert status['remaining_credits'] == 1
+        assert status['renews_at'].startswith('2026-11-09')
+        second = included.reserve(db, user_id, included.route('gemini'), 'JSON')
+        with pytest.raises(HTTPException) as error:
+            included.reserve(db, user_id, included.route('gemini'), 'JSON')
+        assert error.value.status_code == 429
+        assert 'semanal' in error.value.detail
+        # A request spanning renewal is attributed to its start week.
+        now = datetime(2026, 11, 9, 0, 1, tzinfo=timezone.utc)
+        included.reconcile(db, second, {'input_tokens': 1, 'output_tokens': 1}, useful=True)
+        status = included.summary(db, user_id)
+        assert status['credits_used'] == 0 and status['remaining_credits'] == 2
+        assert status['monthly_credits_used'] == 2
+        assert status['renews_at'].startswith('2026-11-16')
+        third = included.reserve(db, user_id, included.route('gemini'), 'JSON')
+        included.reconcile(db, third, useful=False)
+        assert included.summary(db, user_id)['credits_used'] == 0
+        assert included.history(db, user_id) == [{'period_key': '2026-11', 'credits_used': 2}]
+
+
+def test_weekly_quota_handles_iso_year_boundary_and_environment():
+    settings = Settings(free_ai_weekly_credits='')
+    assert settings.free_ai_weekly_credits is None
+    from unittest.mock import patch
+    settings.free_ai_weekly_credits = 100
+    with patch.object(included, 'get_settings', return_value=settings):
+        kind, start, end, limit = included.quota_window(datetime(2027, 1, 1, tzinfo=timezone.utc))
+    assert kind == 'weekly' and limit == 100
+    assert start == datetime(2026, 12, 28, tzinfo=timezone.utc)
+    assert end == datetime(2027, 1, 4, tzinfo=timezone.utc)

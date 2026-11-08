@@ -204,6 +204,7 @@ export async function streamTeacherAction(projectId: string, action: 'from-brief
 
 
 export interface IncludedStatus { authorized: boolean; access_status: 'invited' | 'not_invited' | 'revoked'; enabled: boolean; available: boolean; period_key: string;
+  quota_period?: 'weekly' | 'monthly'; credits_limit?: number; credits_used?: number;
   monthly_credits_limit: number; monthly_credits_used: number; remaining_credits: number; renews_at: string }
 export async function includedStatus(): Promise<IncludedStatus> {
   return await (await checked(await fetch('/api/ai/included'))).json() as IncludedStatus

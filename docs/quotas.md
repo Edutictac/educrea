@@ -17,7 +17,7 @@ La Fase 5 añade un presupuesto monetario mensual por usuario y reservas de cost
 ## IA EduCrea incluida
 
 La modalidad institucional autorizada convive con BYOK en el mismo motor, adaptadores y registro de uso.
-Su router sustituible por EduPrompt Core, claves institucionales, cuota mensual única, reservas y presupuestos
+Su router sustituible por EduPrompt Core, claves institucionales, cuota semanal o mensual, reservas y presupuestos
 se documentan en [included-ai.md](included-ai.md).
 
 Acepta Gemini (nivel gratuito), Qwen y DeepSeek. Con Gemini a coste cero el presupuesto en dólares no aplica y el

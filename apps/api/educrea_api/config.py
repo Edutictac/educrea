@@ -2,11 +2,16 @@ from functools import lru_cache
 import os
 from pathlib import Path
 
-from pydantic import SecretStr, Field
+from pydantic import SecretStr, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    @field_validator("free_ai_weekly_credits", mode="before")
+    @classmethod
+    def optional_weekly_credits(cls, value):
+        return None if value == "" else value
+
     database_url: str = "postgresql+psycopg://educrea:educrea@localhost:5432/educrea"
     cookie_secure: bool = True
     session_days: int = 7
@@ -31,6 +36,7 @@ class Settings(BaseSettings):
     # Preferred institutional provider for every task; falls back to the task role when it is not configured.
     free_ai_primary_provider: str = "gemini"
     free_ai_monthly_credits: int = Field(default=10000, ge=0)
+    free_ai_weekly_credits: int | None = Field(default=None, ge=0)
     free_ai_credits_per_usd: int = Field(default=100000, gt=0)
     free_ai_min_credits_per_request: int = Field(default=1, ge=0)
     free_ai_minute_request_limit: int = Field(default=15, gt=0)

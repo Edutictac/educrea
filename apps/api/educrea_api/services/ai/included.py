@@ -43,6 +43,22 @@ def period(now):
     return start.strftime("%Y-%m"), start, end
 
 
+def quota_window(now):
+    s = get_settings()
+    if s.free_ai_weekly_credits is None:
+        _, start, end = period(now)
+        return "monthly", start, end, s.free_ai_monthly_credits
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=now.weekday())
+    return "weekly", start, start + timedelta(days=7), s.free_ai_weekly_credits
+
+
+def quota_rows(db, user_id, start, end):
+    # Include usage recorded before enabling weekly quotas; preserve monthly history.
+    return list(db.scalars(select(AiUsage).where(
+        AiUsage.mode == "included", AiUsage.user_id == user_id,
+        AiUsage.created_at >= start, AiUsage.created_at < end)))
+
+
 def micro_usd(value):
     try:
         amount = Decimal(str(value))
@@ -181,10 +197,12 @@ def reserve(db, user_id, plan, prompt, task_type="unknown", request_id=None):
         if db.get(User, user_id) is None:
             raise HTTPException(401, "Sesión no válida")
         expire(db, now)
-        mine = list(db.scalars(select(AiUsage).where(AiUsage.mode == "included", AiUsage.user_id == user_id,
-                                                    AiUsage.period_key == key)))
-        if sum(map(ledger_credits, mine)) + maximum_credits > s.free_ai_monthly_credits:
-            raise HTTPException(429, EXHAUSTED)
+        quota_period, quota_start, quota_end, quota_limit = quota_window(now)
+        mine = quota_rows(db, user_id, quota_start, quota_end)
+        if sum(map(ledger_credits, mine)) + maximum_credits > quota_limit:
+            message = ("No tienes cuota semanal suficiente para esta generación de IA EduCrea. "
+                       "La cuota se renueva el lunes. Puedes seguir utilizando tu propia API.")
+            raise HTTPException(429, message if quota_period == "weekly" else EXHAUSTED)
         active = db.scalar(select(func.count()).select_from(AiUsage).where(
             AiUsage.mode == "included", AiUsage.user_id == user_id, AiUsage.status == "reserved"))
         if active >= s.free_ai_max_concurrent_requests:
@@ -271,7 +289,9 @@ def summary(db, user_id):
     expire(db, now_utc())
     rows = list(db.scalars(select(AiUsage).where(AiUsage.mode == "included", AiUsage.user_id == user_id,
                                                AiUsage.period_key == key)))
-    used = sum(map(ledger_credits, rows))
+    monthly_used = sum(map(ledger_credits, rows))
+    quota_period, quota_start, quota_end, quota_limit = quota_window(now_utc())
+    used = sum(map(ledger_credits, quota_rows(db, user_id, quota_start, quota_end)))
     access_status = access.status(db, user_id)
     authorized = access_status == "invited"
     available = s.free_ai_enabled and authorized
@@ -298,8 +318,9 @@ def summary(db, user_id):
     db.commit()
     return {"enabled": s.free_ai_enabled, "available": available, "authorized": authorized,
             "access_status": access_status, "period_key": key,
-            "monthly_credits_limit": s.free_ai_monthly_credits, "monthly_credits_used": used,
-            "remaining_credits": max(0, s.free_ai_monthly_credits - used), "renews_at": end.isoformat()}
+            "monthly_credits_limit": s.free_ai_monthly_credits, "monthly_credits_used": monthly_used,
+            "quota_period": quota_period, "credits_limit": quota_limit, "credits_used": used,
+            "remaining_credits": max(0, quota_limit - used), "renews_at": quota_end.isoformat()}
 
 
 def history(db, user_id):
@@ -314,6 +335,7 @@ def metrics(db, period_key=None):
     rows = list(db.scalars(select(AiUsage).where(AiUsage.mode == "included", AiUsage.period_key == key)))
     users = {row.user_id for row in rows}
     used = sum(map(ledger_credits, rows))
+    _, quota_start, quota_end, quota_limit = quota_window(now_utc())
     return {"period_key": key, "active_users": len(users), "credits_used": used,
             "average_credits_per_user": used / len(users) if users else 0,
             "estimated_cost_microusd": sum(map(ledger_cost, rows)),
@@ -321,8 +343,7 @@ def metrics(db, period_key=None):
             "monthly_budget_used_percent": (100 * sum(map(ledger_cost, rows)) /
                 micro_usd(get_settings().free_ai_global_monthly_budget_usd)
                 if micro_usd(get_settings().free_ai_global_monthly_budget_usd) else 0),
-            "exhausted_users": sum(sum(ledger_credits(r) for r in rows if r.user_id == user) >=
-                                   get_settings().free_ai_monthly_credits for user in users),
+            "exhausted_users": sum(sum(map(ledger_credits, quota_rows(db, user, quota_start, quota_end))) >= quota_limit for user in users),
             "providers": {name: {"requests": len([r for r in rows if r.provider == name]),
                 "cost_microusd": sum(ledger_cost(r) for r in rows if r.provider == name)}
                 for name in INSTITUTIONAL},

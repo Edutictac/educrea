@@ -258,3 +258,26 @@ def test_revoked_admin_role_is_rechecked_inside_mutations(client, admin, mail):
         db.commit()
     response = client.post('/api/admin/beta/invitations', headers=headers, json={'email': 'teacher@example.org'})
     assert response.status_code == 403 and mail == []
+
+
+def test_admin_can_adjust_image_limits_with_csrf_validation_and_audit(client, admin):
+    headers, actor = admin
+    assert 'image_limits' in client.get('/api/admin/beta').json()
+    assert client.put('/api/admin/beta/image-limits',
+                      json={'weekly_limit': 5, 'global_daily_limit': 50}).status_code == 403
+    response = client.put('/api/admin/beta/image-limits', headers=headers,
+                          json={'weekly_limit': 5, 'global_daily_limit': 50})
+    assert response.status_code == 200
+    assert response.json()['weekly_limit'] == 5 and response.json()['global_daily_limit'] == 50
+    limits = client.get('/api/admin/beta/image-limits').json()
+    assert limits['weekly_custom'] == 5 and limits['global_daily_custom'] == 50
+    assert client.get('/api/admin/beta').json()['image_limits']['weekly_limit'] == 5
+    # Negative values and unknown fields must be rejected before persistence.
+    for body in ({'weekly_limit': -1, 'global_daily_limit': 50},
+                 {'weekly_limit': 5, 'global_daily_limit': -1},
+                 {'weekly_limit': 5}):
+        assert client.put('/api/admin/beta/image-limits', headers=headers, json=body).status_code == 422
+    with Session(engine) as db:
+        audit = db.scalar(select(BetaAdminAudit).where(BetaAdminAudit.action == 'image_limits_updated'))
+        assert audit.actor_id == actor
+        assert db.scalar(select(func.count()).select_from(BetaAdminAudit)) == 1

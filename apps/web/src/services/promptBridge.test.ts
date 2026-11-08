@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   MAX_INSTRUCTIONS,
+  bridgeMetaFromHash,
   clearPendingPrompt,
   decodePromptPayload,
   eduCreaTypeForPrompt,
@@ -81,7 +82,19 @@ describe('direct handoff', () => {
     expect(eduCreaTypeForPrompt('learning-situation')).toBe('situacion')
     expect(eduCreaTypeForPrompt('infographic')).toBe('infografia')
     expect(eduCreaTypeForPrompt('multiple-choice')).toBe('cuestionario')
+    expect(eduCreaTypeForPrompt('gift')).toBe('cuestionario')
+    expect(eduCreaTypeForPrompt('qti')).toBe('cuestionario')
+    expect(eduCreaTypeForPrompt('h5p')).toBe('cuestionario')
+    expect(eduCreaTypeForPrompt('html-game')).toBe('bateria')
+    expect(eduCreaTypeForPrompt('rubric')).toBe('')
     expect(eduCreaTypeForPrompt('unknown')).toBe('')
+  })
+
+  it('reads the language and level sent by Prompt and rejects invalid values', () => {
+    expect(bridgeMetaFromHash('#encargo=z.abc&idioma=va&nivel=secundaria'))
+      .toEqual({ language: 'va', level: 'secundaria' })
+    expect(bridgeMetaFromHash('#idioma=xx&nivel=superior')).toEqual({ language: '', level: '' })
+    expect(bridgeMetaFromHash('')).toEqual({ language: '', level: '' })
   })
 
   it('decodes a plain payload', async () => {

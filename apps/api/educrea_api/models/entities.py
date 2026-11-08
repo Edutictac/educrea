@@ -331,3 +331,12 @@ class BetaAdminAudit(Base):
     invitation_id: Mapped[UUID | None] = mapped_column(ForeignKey("beta_invitations.id", ondelete="SET NULL"), nullable=True)
     action: Mapped[str] = mapped_column(String(40), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class IncludedAiLimits(Base):
+    # Single-row override for the institutional image quotas. None keeps the environment value.
+    __tablename__ = "included_ai_limits"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    images_weekly_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    images_global_daily_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

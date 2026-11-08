@@ -1,14 +1,14 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Response
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import User
 from ..security import current_user, require_csrf
 from ..services import beta_admin, beta_invitations
-from ..services.ai import access
+from ..services.ai import access, included
 
 router = APIRouter(prefix='/admin/beta', tags=['admin'])
 
@@ -20,6 +20,12 @@ class AccessInput(BaseModel):
 
 class InviteInput(BaseModel):
     email: EmailStr
+    model_config = ConfigDict(extra='forbid')
+
+
+class ImageLimitsInput(BaseModel):
+    weekly_limit: int = Field(ge=0)
+    global_daily_limit: int = Field(ge=0)
     model_config = ConfigDict(extra='forbid')
 
 
@@ -49,3 +55,14 @@ def send_invitation(data: InviteInput, user: User = Depends(require_csrf),
 def revoke_invitation(invitation_id: UUID, user: User = Depends(require_csrf),
                       _admin: User = Depends(administrator), db: Session = Depends(get_db)):
     return beta_invitations.revoke(db, user.id, invitation_id)
+
+
+@router.get('/image-limits')
+def get_image_limits(_admin: User = Depends(administrator), db: Session = Depends(get_db)):
+    return included.image_limits_info(db)
+
+
+@router.put('/image-limits')
+def update_image_limits(data: ImageLimitsInput, user: User = Depends(require_csrf),
+                        _admin: User = Depends(administrator), db: Session = Depends(get_db)):
+    return included.set_image_limits(db, data.weekly_limit, data.global_daily_limit, actor_id=user.id)

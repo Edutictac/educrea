@@ -4,6 +4,7 @@ export const PROMPT_APP_URL = 'https://pages.edutictac.es/Edutictac/edutictac-pr
 export const HANDOFF_STORAGE_KEY = 'eduprompt.handoff'
 
 export type BridgeQuery = { openCreate: boolean; fromPrompt: boolean }
+export type BridgeMeta = { language: string; level: string }
 export type FillResult = { ok: true; text: string } | { ok: false; reason: 'empty' | 'too_long' }
 
 function first(value: unknown): string {
@@ -32,10 +33,28 @@ export function templateFromHash(hash: string): string {
   return new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash).get('plantilla') ?? ''
 }
 
+const BRIDGE_LANGUAGES = ['es', 'ca', 'va', 'en']
+const BRIDGE_LEVELS = ['infantil', 'primaria', 'secundaria', 'otros']
+
+export function bridgeMetaFromHash(hash: string): BridgeMeta {
+  if (!hash) return { language: '', level: '' }
+  const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash)
+  const language = params.get('idioma') ?? ''
+  const level = params.get('nivel') ?? ''
+  return { language: BRIDGE_LANGUAGES.includes(language) ? language : '',
+           level: BRIDGE_LEVELS.includes(level) ? level : '' }
+}
+
+// Only direct equivalents: when a Prompt template has none, the landing asks the teacher to choose
+// instead of silently creating a different product (e.g. a printable worksheet).
 const PROMPT_TYPE_TO_EDUCREA: Record<string, string> = {
   'learning-situation': 'situacion',
   infographic: 'infografia',
   'multiple-choice': 'cuestionario',
+  gift: 'cuestionario',
+  qti: 'cuestionario',
+  h5p: 'cuestionario',
+  'html-game': 'bateria',
 }
 
 export function eduCreaTypeForPrompt(template: string): string {

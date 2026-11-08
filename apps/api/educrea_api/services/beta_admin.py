@@ -30,7 +30,8 @@ def dashboard(db, limit=100):
     invites = [invitation_out(i) for i in db.scalars(select(BetaInvitation).order_by(
         BetaInvitation.created_at.desc()).limit(limit))]
     return {'waitlist': waiting, 'guests': guests, 'invitations': invites,
-            'mail_ready': beta_mail.ready(), 'metrics': included.metrics(db)}
+            'mail_ready': beta_mail.ready(), 'metrics': included.metrics(db),
+            'image_limits': included.image_limits_info(db)}
 
 
 def invitation_out(item):

@@ -113,3 +113,17 @@ def test_model_outside_the_catalog_disables_included_images(settings):
     settings.included_image_model = MODEL
     settings.gemini_api_key = None
     assert included.image_model() is None
+
+
+def test_admin_override_replaces_the_environment_image_quota(client: TestClient, settings):
+    headers, project, _ = account(client)
+    with Session(engine) as db:
+        included.set_image_limits(db, 1, 1)
+    status = client.get("/api/ai/images/models").json()
+    assert status["included"]["weekly_limit"] == 1 and status["included"]["remaining"] == 1
+    settings.included_images_weekly_limit = 5  # once saved, the administrator value wins over the environment
+    app.dependency_overrides[get_gemini_image_provider] = lambda: StubImage()
+    route = f"/api/projects/{project}/ai/images"
+    assert client.post(route, headers=headers, json=PROMPT).status_code == 200
+    blocked = client.post(route, headers=headers, json=PROMPT)
+    assert blocked.status_code == 429 and "semana" in blocked.json()["detail"]

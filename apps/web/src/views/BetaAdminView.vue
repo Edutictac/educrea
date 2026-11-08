@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { intlLocale, t } from '../i18n'
 import { useAuthStore } from '../stores/auth'
-import { betaDashboard, changeBetaAccess, sendBetaInvitation, revokeBetaInvitation, type BetaDashboard } from '../services/betaAdmin'
+import { betaDashboard, changeBetaAccess, sendBetaInvitation, revokeBetaInvitation, updateImageLimits, type BetaDashboard } from '../services/betaAdmin'
 
 const auth = useAuthStore()
 const dashboard = ref<BetaDashboard | null>(null)
@@ -10,8 +10,14 @@ const error = ref('')
 const message = ref('')
 const busy = ref(false)
 const email = ref('')
+const weeklyLimit = ref(0)
+const dailyLimit = ref(0)
 async function refresh() {
-  try { dashboard.value = await betaDashboard() }
+  try {
+    dashboard.value = await betaDashboard()
+    weeklyLimit.value = dashboard.value.image_limits.weekly_limit
+    dailyLimit.value = dashboard.value.image_limits.global_daily_limit
+  }
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 }
 onMounted(() => { if (auth.user?.is_admin) void refresh() })
@@ -20,6 +26,9 @@ async function perform(action: () => Promise<unknown>) {
   try { await action(); message.value = t('adminActionDone'); await refresh() }
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error'); await refresh() }
   finally { busy.value = false }
+}
+async function saveLimits() {
+  await perform(() => updateImageLimits(weeklyLimit.value, dailyLimit.value, auth.csrf))
 }
 async function setAccess(id: string, authorized: boolean) {
   if (!authorized && !confirm(t('adminRevokeConfirm'))) return
@@ -52,6 +61,16 @@ function stateLabel(state: string) {
         <p>{{ t('adminActive') }}: {{ dashboard.metrics.active_users }} · {{ t('adminCredits') }}: {{ dashboard.metrics.credits_used }} ·
           {{ t('adminCost') }}: ${{ (dashboard.metrics.estimated_cost_microusd / 1000000).toFixed(4) }} /
           ${{ (dashboard.metrics.monthly_budget_microusd / 1000000).toFixed(2) }}</p>
+        <section class="card">
+          <h2>{{ t('adminImageLimits') }}</h2>
+          <p>{{ t('adminImageLimitsHint') }}</p>
+          <p v-if="!dashboard.image_limits.enabled" class="notice">{{ t('adminImageLimitsDisabled') }}</p>
+          <form @submit.prevent="saveLimits">
+            <label>{{ t('adminImagesWeekly') }}<input v-model.number="weeklyLimit" type="number" min="0" step="1" required /></label>
+            <label>{{ t('adminImagesDaily') }}<input v-model.number="dailyLimit" type="number" min="0" step="1" required /></label>
+            <button type="submit" :disabled="busy">{{ t('save') }}</button>
+          </form>
+        </section>
         <section class="card">
           <h2>{{ t('betaWaitlist') }}</h2>
           <p v-if="!dashboard.waitlist.length">{{ t('adminEmpty') }}</p>

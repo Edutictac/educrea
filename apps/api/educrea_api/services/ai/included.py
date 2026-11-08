@@ -17,7 +17,7 @@ from sqlalchemy import or_, select, text, func
 from sqlalchemy.orm import Session
 
 from ...config import get_settings
-from ...models import AiUsage, AiBudgetAlert, User
+from ...models import AiUsage, AiBudgetAlert, BetaAdminAudit, IncludedAiLimits, User
 from .pricing import Price, cost
 from . import access
 from .providers.base import ProviderError
@@ -468,16 +468,53 @@ def image_key():
     return s.gemini_api_key.get_secret_value().strip()
 
 
+def image_limits_info(db):
+    """Effective image quotas: the administrator override when set, otherwise the environment value."""
+    s = get_settings()
+    row = db.get(IncludedAiLimits, 1)
+    weekly_custom = row.images_weekly_limit if row else None
+    daily_custom = row.images_global_daily_limit if row else None
+    return {"weekly_limit": weekly_custom if weekly_custom is not None else s.included_images_weekly_limit,
+            "global_daily_limit": (daily_custom if daily_custom is not None
+                                   else s.included_images_global_daily_limit),
+            "weekly_custom": weekly_custom, "global_daily_custom": daily_custom,
+            "enabled": image_model() is not None}
+
+
+def image_limits(db):
+    info = image_limits_info(db)
+    return info["weekly_limit"], info["global_daily_limit"]
+
+
+def set_image_limits(db, weekly, daily, actor_id=None):
+    """Persist the administrator's quotas. Audit only the action, never the author's identity in the value."""
+    lock(db)
+    try:
+        row = db.get(IncludedAiLimits, 1)
+        if row is None:
+            row = IncludedAiLimits(id=1, updated_at=now_utc())
+            db.add(row)
+        row.images_weekly_limit = weekly
+        row.images_global_daily_limit = daily
+        row.updated_at = now_utc()
+        db.add(BetaAdminAudit(actor_id=actor_id, action="image_limits_updated"))
+        db.commit()
+        return image_limits_info(db)
+    except BaseException:
+        db.rollback()
+        raise
+
+
 def image_status(db, user_id):
     """Remaining institutional images for this account, or None when it cannot use them."""
     model = image_model()
     if model is None or access.status(db, user_id) != "invited":
         return None
-    s = get_settings()
+    weekly_limit, _ = image_limits(db)
     start, end = week_window(now_utc())
     used = len(_image_rows(db, start, user_id))
-    return {"model": model, "weekly_limit": s.included_images_weekly_limit, "used": used,
-            "remaining": max(0, s.included_images_weekly_limit - used), "renews_at": end.isoformat()}
+    return {"model": model, "weekly_limit": weekly_limit, "used": used,
+            "remaining": max(0, weekly_limit - used), "renews_at": end.isoformat()}
 
 
 def reserve_image(db, user_id, model, maximum_cost):
@@ -495,12 +532,13 @@ def reserve_image(db, user_id, model, maximum_cost):
         if active >= s.free_ai_max_concurrent_requests:
             raise HTTPException(429, "Ya tienes una generación de IA EduCrea en curso.")
         start, _ = week_window(now)
-        if len(_image_rows(db, start, user_id)) >= s.included_images_weekly_limit:
+        weekly_limit, global_daily_limit = image_limits(db)
+        if len(_image_rows(db, start, user_id)) >= weekly_limit:
             raise HTTPException(429, "Has usado todas las imágenes de IA EduCrea de esta semana. "
                                      "Se renuevan el lunes. Puedes usar tu propia clave de Gemini.")
         today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        if s.included_images_global_daily_limit and \
-                len(_image_rows(db, today)) >= s.included_images_global_daily_limit:
+        if global_daily_limit and \
+                len(_image_rows(db, today)) >= global_daily_limit:
             raise HTTPException(429, "IA EduCrea ha alcanzado hoy su límite de imágenes de la beta. "
                                      "Inténtalo mañana o usa tu propia clave de Gemini.")
         entry = AiUsage(user_id=user_id, provider="gemini", model=model, mode="included", request_id=uuid4(),

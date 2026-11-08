@@ -5,6 +5,7 @@ import { locale, t, type Locale } from '../i18n'
 import {
   MAX_INSTRUCTIONS,
   PROMPT_APP_URL,
+  bridgeMetaFromHash,
   clearPendingPrompt,
   decodePromptPayload,
   eduCreaTypeForPrompt,
@@ -36,10 +37,14 @@ const error = ref('')
 const templatesError = ref('')
 const busy = ref(false)
 const typeTouched = ref(false)
+const noMatch = ref(false)
 const canCreate = computed(() => !busy.value && !!title.value.trim() && !!instructions.value.trim())
 const templateName = (item: TemplateInfo) => item.names[locale.value]
 
 onMounted(async () => {
+  const meta = bridgeMetaFromHash(window.location.hash)
+  if (meta.language) language.value = meta.language as Locale
+  if (meta.level) level.value = meta.level
   const payload = payloadFromHash(window.location.hash)
   promptTemplate.value = templateFromHash(window.location.hash)
   let brief = payload ? await decodePromptPayload(payload) : null
@@ -56,12 +61,17 @@ onMounted(async () => {
   if (!brief) return
   try {
     templates.value = await listTemplates()
-    if (!typeTouched.value && proposedType.value
-      && (proposedType.value === 'situacion' || templates.value.some(item => item.id === proposedType.value))) type.value = proposedType.value
-    else if (!typeTouched.value && templates.value.some(item => item.id === 'ficha')) type.value = 'ficha'
+    if (!typeTouched.value) {
+      if (proposedType.value) type.value = proposedType.value
+      else if (promptTemplate.value) { type.value = 'libre'; noMatch.value = true }
+    }
   } catch (cause) {
     templatesError.value = cause instanceof Error ? cause.message : t('error')
-    type.value = 'situacion'
+    if (!typeTouched.value) {
+      if (proposedType.value) type.value = proposedType.value
+      else if (promptTemplate.value) { type.value = 'libre'; noMatch.value = true }
+      else type.value = 'situacion'
+    }
   }
 })
 
@@ -80,6 +90,8 @@ async function create() {
     }
     if (type.value === 'situacion') {
       await files.create(project.id, 'activity.json', JSON.stringify({ kind: 'situacion', ...brief, sessions: 4 }, null, 2) + '\n')
+    } else if (type.value === 'libre') {
+      await files.create(project.id, 'activity.json', JSON.stringify({ kind: 'actividad', ...brief }, null, 2) + '\n')
     } else {
       await applyTemplate(project.id, type.value, brief, auth.csrf)
     }
@@ -115,8 +127,11 @@ async function create() {
           <label class="full">{{ t('activityTitle') }}<input v-model="title" required maxlength="160" :placeholder="t('titlePlaceholder')" /></label>
           <label>{{ t('promptBridgeWhatCreate') }}<select v-model="type" @change="typeTouched = true">
             <option value="situacion">{{ t('kindSituationShort') }}</option>
+            <option value="libre">{{ t('blankProject') }}</option>
             <option v-for="item in templates" :key="item.id" :value="item.id">{{ templateName(item) }}</option>
-          </select><small v-if="proposedType && type === proposedType" class="hint">{{ t('promptBridgeTypeProposed') }}</small></label>
+          </select>
+            <small v-if="proposedType && type === proposedType" class="hint">{{ t('promptBridgeTypeProposed') }}</small>
+            <small v-else-if="noMatch && type === 'libre'" class="hint">{{ t('promptBridgeNoMatch') }}</small></label>
           <label>{{ t('language') }}<select v-model="language">
             <option value="es">{{ t('languageSpanish') }}</option><option value="ca">{{ t('languageCatalan') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option>
           </select></label>

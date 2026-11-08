@@ -51,6 +51,7 @@ EDUCREA_INCLUDED_IMAGES_GLOBAL_DAILY_LIMIT=50               # toda la instalaci�
 ```
 
 - Hace falta que el proyecto de Google de la clave institucional tenga **facturación activa**: el nivel gratuito responde 429 a los modelos de imagen.
+- Los dos límites anteriores son los **valores por defecto del entorno**. La persona administradora puede subirlos o bajarlos sin reiniciar desde «Administración de la beta»: `GET`/`PUT /api/admin/beta/image-limits` guardan el cambio en la tabla `included_ai_limits` y ese valor prevalece sobre el entorno. Un `0` por docente deja a las cuentas sin imágenes; un `0` en el total desactiva el tope diario global. La acción queda en `beta_admin_audit`.
 - Se usa primero IA EduCrea, como con el texto. Cuando se agotan las imágenes de la semana, se usa la clave propia del docente si la tiene, y en ese caso se pide de nuevo la confirmación del coste.
 - La contabilidad va en `AiUsage` con `mode=included` y `task_type=image`: precio fijo del catálogo como coste institucional y 0 créditos. Las imágenes no gastan créditos de texto ni cuentan para los límites por minuto, hora y día del texto, pero comparten la regla de una sola generación en curso por cuenta.
 - Un rechazo claro del proveedor libera la plaza. Un timeout o una respuesta ilegible, que Google puede haber facturado, sigue contando.

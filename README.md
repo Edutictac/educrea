@@ -1,6 +1,10 @@
 # EduCrea
 
-Plataforma libre en desarrollo para crear actividades educativas con ayuda de IA. **Estado: Fase 5**. Se puede explorar sin registro mediante un borrador temporal que ofrece los modos docente y avanzado. Para conservarlo como proyecto hay que crear una cuenta o entrar en una existente. Las cuentas permiten gestionar proyectos propios y revisar propuestas de proveedores autorizados antes de aplicarlas. Aún no hay vista previa ejecutable.
+EduCrea es una herramienta de software libre de EduTicTac para crear actividades y materiales educativos con ayuda de la IA. Incluye plantillas guiadas, situaciones de aprendizaje, adaptación DUA, fuentes de referencia, vista previa, historial y exportación de materiales. Está disponible en castellano, valenciano e inglés.
+
+[Probar EduCrea](https://educrea.edutictac.es) · [GitHub](https://github.com/Edutictac/educrea) · [Forja de EduTicTac](https://git.edutictac.es/Edutictac/educrea)
+
+**Estado: beta docente, fase 7.** Puedes explorar y crear como visitante; entra con tu cuenta EduTicTac para conservar los proyectos vinculados a tu identidad. La generación con IA admite claves propias de proveedores. La IA incluida está reservada a las cuentas autorizadas de la beta.
 
 ## Portada y acceso a la herramienta
 
@@ -50,13 +54,13 @@ compilar para mostrar «Código fuente»; sin una URL real, ese enlace no aparec
 - `infra`: Docker Compose, PostgreSQL interno, Nginx para la web y Caddy para HTTPS.
 - `docs`: decisiones, seguridad y fases pendientes.
 
-La estrategia futura de infografías editables, imágenes y exportación PNG se describe en [recursos visuales](docs/visual-resources.md).
+La estrategia de infografías editables, imágenes y exportación PNG se describe en [recursos visuales](docs/visual-resources.md).
 
 Los modelos de pago requieren clave personal, precio verificado por el administrador, estimación aceptada para cada solicitud y presupuesto mensual interno. Consulta [modelos de pago](docs/paid-models.md). Todos están desactivados por defecto.
 
-La arquitectura prevista para coordinar aplicaciones del servidor desde instrucciones docentes, mediante trabajadores aislados y herramientas autorizadas, está en [architecture.md](docs/architecture.md) y [ai-engine.md](docs/ai-engine.md). Esta capacidad todavía no forma parte de la Fase 5.
+La arquitectura para coordinar conversiones, renderizado y herramientas autorizadas desde instrucciones docentes se describe en [architecture.md](docs/architecture.md) y [ai-engine.md](docs/ai-engine.md). Los trabajadores se ejecutan aislados y el modelo no recibe acceso al shell.
 
-La API y la web son aplicaciones independientes. Los proyectos se identifican por UUID y pertenecen a un usuario. El modo docente guarda datos editables en `activity.json`; el avanzado abre ese mismo archivo y también HTML, CSS y JavaScript. Cambiar de modo no escribe archivos. El guardado comprueba la versión leída para evitar sobrescribir cambios concurrentes. El motor de IA envía solo los archivos elegidos al proveedor autorizado y guarda propuestas estructuradas que el usuario puede aprobar, rechazar o deshacer si no hubo cambios posteriores. El modelo no tiene acceso al shell.
+La API y la web son aplicaciones independientes. Los proyectos se identifican por UUID y pertenecen a un usuario. El modo docente guarda datos editables en `activity.json`; el avanzado abre ese mismo archivo y también HTML, CSS y JavaScript. Cambiar de modo no escribe archivos. El guardado comprueba la versión leída para evitar sobrescribir cambios concurrentes. El motor de IA envía solo los archivos elegidos al proveedor autorizado y guarda propuestas estructuradas. En modo docente se aplican automáticamente con historial y opción de deshacer; el modo avanzado permite revisarlas antes de aplicarlas. El modelo no tiene acceso al shell.
 
 ## Desarrollo local
 
@@ -64,7 +68,7 @@ Requisitos: Python 3.12+, Node 22+, PostgreSQL 17. Copia `.env.example` a `apps/
 
 ## Despliegue
 
-Lee [deployment.md](docs/deployment.md). No hay despliegue público autorizado en esta fase.
+La instalación con Docker Compose y la configuración del SSO se describen en [deployment.md](docs/deployment.md). Mantén las credenciales fuera del repositorio y adapta los dominios y rutas a tu instalación.
 
 ## Licencia
 

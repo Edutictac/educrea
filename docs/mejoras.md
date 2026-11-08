@@ -26,6 +26,7 @@ Lista acordada con el usuario el 2026-11-06 para ir implementando poco a poco. M
 
 ## 4. Nuevas funciones
 
+- [x] (2026-11-08) **Català i valencià separats:** `ca` i `va` se eligen y detectan por separado, con `lang="ca"`/`lang="ca-ES-valencia"`, plantillas, etiquetas y preferencia compartida de EduTicTac. Implementación local; pendiente de despliegue.
 - [x] (2026-11-07) **Completar huecos:** banco de palabras o escritura libre, respuestas alternativas, explicaciones y puntuación SCORM; castellano y valenciano. Implementación local; pendiente de despliegue.
 - [x] (2026-11-07) **Verdadero o falso:** afirmaciones con explicación obligatoria, reintento y puntuación SCORM; castellano y valenciano. Implementación local; pendiente de despliegue.
 - [x] (2026-11-07) **Escuchar y responder:** biblioteca de audios MP3/WAV/Ogg, transcripción o descripción musical revisada, preguntas de comprensión, alternativa textual y puntuación SCORM. Implementación local; requiere migración `0019_project_audios` y despliegue.

@@ -80,7 +80,7 @@ const valencian: Record<string, string> = {
 
 export function apiMessage(detail: unknown): string {
   if (typeof detail !== 'string' || !detail) return t('error')
-  if (locale.value === 'va') return Object.hasOwn(valencian, detail) ? valencian[detail] : detail
+  if (locale.value === 'ca' || locale.value === 'va') return Object.hasOwn(valencian, detail) ? valencian[detail] : detail
   if (locale.value !== 'en') return detail
   if (Object.hasOwn(english, detail)) return english[detail]
   const key = /^Configura tu clave de (.+) antes de generar$/.exec(detail)

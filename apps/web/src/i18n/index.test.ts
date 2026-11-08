@@ -6,9 +6,9 @@ import { PROVIDER_NAMES } from '../services/aiChoice'
 afterEach(() => { locale.value = 'es' })
 
 describe('translation coverage', () => {
-  it('has every message and preserves interpolation parameters in all three languages', () => {
+  it('has every message and preserves interpolation parameters in all four languages', () => {
     const keys = Object.keys(messages.es).sort()
-    for (const language of ['va', 'en'] as const) {
+    for (const language of ['ca', 'va', 'en'] as const) {
       expect(Object.keys(messages[language]).sort()).toEqual(keys)
       for (const key of keys as (keyof typeof messages.es)[]) {
         expect(messages[language][key].trim(), `${language}.${key}`).not.toBe('')
@@ -24,8 +24,11 @@ describe('translation coverage', () => {
     expect(t('languageSpanish')).toBe('Spanish')
     expect(new Date('2026-07-01T00:00:00Z').toLocaleDateString(intlLocale(), { month: 'long', timeZone: 'UTC' })).toBe('July')
     locale.value = 'va'
-    expect(intlLocale()).toBe('ca')
+    expect(intlLocale()).toBe('ca-ES-valencia')
     expect(PROVIDER_NAMES.educrea).toBe('IA EduCrea')
+    locale.value = 'ca'
+    expect(intlLocale()).toBe('ca')
+    expect(t('logout')).toBe('Sortir')
   })
   it('translates known API messages without changing unknown provider diagnostics', () => {
     locale.value = 'en'
@@ -40,20 +43,22 @@ describe('translation coverage', () => {
 })
 
 describe('detectLocale', () => {
-  it('maps Catalan variants to Valencian', () => {
-    expect(detectLocale(['ca'], null)).toBe('va')
+  it('distinguishes Catalan from Valencian', () => {
+    expect(detectLocale(['ca'], null)).toBe('ca')
+    expect(detectLocale(['ca-ES'], null)).toBe('ca')
     expect(detectLocale(['ca-ES-valencia', 'es'], null)).toBe('va')
   })
   it('uses the first supported browser language', () => {
     expect(detectLocale(['en-US', 'ca', 'es'], null)).toBe('en')
-    expect(detectLocale(['fr', 'ca', 'es'], null)).toBe('va')
+    expect(detectLocale(['fr', 'ca', 'es'], null)).toBe('ca')
     expect(detectLocale(['fr', 'es-ES'], null)).toBe('es')
     expect(detectLocale(['fr'], null)).toBe('es')
   })
   it('prefers a saved choice', () => {
     expect(detectLocale(['ca'], 'es')).toBe('es')
+    expect(detectLocale(['es'], 'ca')).toBe('ca')
     expect(detectLocale(['es'], 'va')).toBe('va')
     expect(detectLocale(['es'], 'en')).toBe('en')
-    expect(detectLocale(['ca'], 'zz')).toBe('va')
+    expect(detectLocale(['ca'], 'zz')).toBe('ca')
   })
 })

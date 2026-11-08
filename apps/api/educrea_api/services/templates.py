@@ -23,6 +23,51 @@ TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "data" / "templates"
 DATA_PATTERN = re.compile(r"^\s*window\.EDUCREA_DATA\s*=\s*(\{.*\})\s*;?\s*$", re.S)
 IMAGE_PATH = r"^(imagenes/[A-Za-z0-9._-]+)?$"
 
+# Catalan and Valencian share most vocabulary. Keep one reviewed adaptation table instead of duplicating every
+# sample and label; replace it with a native Catalan translation when one is available.
+CATALAN_REPLACEMENTS = (
+    (r"\bteua\b", "teva"), (r"\bteues\b", "teves"), (r"\bmeua\b", "meva"), (r"\bmeues\b", "meves"),
+    (r"\bseua\b", "seva"), (r"\bseues\b", "seves"),
+    (r"\bEixir\b", "Sortir"), (r"\beixir\b", "sortir"), (r"\bEixida\b", "Sortida"), (r"\beixida\b", "sortida"),
+    (r"\beixides\b", "sortides"), (r"\bEixa\b", "Aquesta"), (r"\beixa\b", "aquesta"), (r"\bEixe\b", "Aquest"),
+    (r"\beixe\b", "aquest"), (r"\beixes\b", "aquestes"), (r"\beixos\b", "aquests"),
+    (r"\besta\b", "aquesta"), (r"\beste\b", "aquest"), (r"\bestes\b", "aquestes"), (r"\bestos\b", "aquests"),
+    (r"\bAcí\b", "Aquí"), (r"\bací\b", "aquí"), (r"\bAçò\b", "Això"), (r"\baçò\b", "això"),
+    (r"\bHui\b", "Avui"), (r"\bhui\b", "avui"), (r"\bHuit\b", "Vuit"), (r"\bhuit\b", "vuit"),
+    (r"\bLlig\b", "Llegeix"), (r"\bllig\b", "llegeix"), (r"\blligen\b", "llegeixen"),
+    (r"\bAfig\b", "Afegeix"), (r"\bafig\b", "afegeix"), (r"\bIxen\b", "Surten"), (r"\bixen\b", "surten"),
+    (r"\bIx\b", "Surt"), (r"\bix\b", "surt"),
+    (r"\bApega\b", "Enganxa"), (r"\bapega\b", "enganxa"), (r"\bapegar\b", "enganxar"),
+    (r"\bVertader\b", "Veritable"), (r"\bvertader\b", "veritable"), (r"\bvertadera\b", "veritable"),
+    (r"\bvertaderes\b", "veritables"), (r"\bvertaders\b", "veritables"), (r"\bAnglés\b", "Anglès"),
+    (r"\bmentres\b", "mentre"), (r"\bconéixer\b", "conèixer"), (r"\btindre\b", "tenir"), (r"\bvindre\b", "venir"),
+    (r"\bservici\b", "servei"), (r"\bservicis\b", "serveis"), (r"\bxicotet\b", "petit"),
+    (r"\bxicoteta\b", "petita"), (r"\bcreïlles\b", "patates"), (r"\bObri\b", "Obre"), (r"\bobri\b", "obre"),
+    (r"\bDescobrix\b", "Descobreix"), (r"\bdescobrix\b", "descobreix"), (r"\bcontindre\b", "contenir"),
+    (r"\barrere\b", "enrere"), (r"\bConta\b", "Explica"), (r"\bconta\b", "explica"),
+    (r"\bcompartisques\b", "comparteixis"), (r"\bcompartisca\b", "comparteixi"), (r"\bcomproves\b", "comprovis"),
+    (r"\bhaja\b", "hagi"), (r"\bHaja\b", "Hagi"), (r"\bhagen\b", "hagin"),
+    (r"\bsiga\b", "sigui"), (r"\bSiga\b", "Sigui"), (r"\bsiguen\b", "siguin"),
+    (r"\btinga\b", "tingui"), (r"\bTinga\b", "Tingui"), (r"\btinguen\b", "tinguin"),
+    (r"\bfaça\b", "faci"), (r"\bFaça\b", "Faci"), (r"\bfacen\b", "facin"),
+    (r"\bpuga\b", "pugui"), (r"\bPuga\b", "Pugui"), (r"\bpuguen\b", "puguin"),
+    (r"\bvulga\b", "vulgui"), (r"\bVulga\b", "Vulgui"), (r"\bvulgues\b", "vulguis"),
+    (r"\bestiga\b", "estigui"), (r"\bestiguen\b", "estiguin"),
+    (r"\bdecidisca\b", "decideixi"), (r"\bdecidisquen\b", "decideixin"),
+)
+
+
+def catalanise(value):
+    if isinstance(value, str):
+        for pattern, replacement in CATALAN_REPLACEMENTS:
+            value = re.sub(pattern, replacement, value)
+        return value
+    if isinstance(value, list):
+        return [catalanise(item) for item in value]
+    if isinstance(value, dict):
+        return {key: catalanise(item) for key, item in value.items()}
+    return value
+
 
 class Strict(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -102,7 +147,7 @@ class Section(Illustrated):
 class Base(Strict):
     title: str = Field(min_length=1, max_length=160)
     instructions: str = Field(default="", max_length=1000)
-    language: Literal["es", "va", "en"] = "es"
+    language: Literal["es", "ca", "va", "en"] = "es"
     accessibility: dict = Field(default_factory=dict)
     labels: dict[str, str] = Field(default_factory=dict)
 
@@ -292,6 +337,7 @@ PUZZLE_SAMPLES = {
     "en": [{"word": "Sun", "clue": "The star that lights the Earth."},
            {"word": "Moon", "clue": "The Earth’s natural satellite."}, {"word": "Earth", "clue": "Our planet."}],
 }
+PUZZLE_SAMPLES["ca"] = catalanise(PUZZLE_SAMPLES["va"])
 
 SAMPLES = {
     "escucha": {
@@ -421,8 +467,10 @@ SAMPLES = {
 
 for puzzle_id, instructions in {
     "sopa_letras": {"es": "Encuentra las palabras del tema en la sopa de letras.",
+                    "ca": "Troba les paraules del tema a la sopa de lletres.",
                     "va": "Troba les paraules del tema en la sopa de lletres.", "en": "Find the topic words in the word search."},
     "crucigrama": {"es": "Lee las pistas y completa el crucigrama.",
+                   "ca": "Llegeix les pistes i completa els mots encreuats.",
                    "va": "Llig les pistes i completa els mots encreuats.", "en": "Read the clues and complete the crossword."},
 }.items():
     SAMPLES[puzzle_id] = {lang: {"instructions": text, "words": PUZZLE_SAMPLES[lang]} for lang, text in instructions.items()}
@@ -433,6 +481,13 @@ FICHA = {
     "va": ("Objectiu", "Recorda", "Activitats", "Per a acabar: autoavaluació"),
     "en": ("Objective", "Remember", "Activities", "To finish: self-assessment"),
 }
+
+LABELS["ca"] = {**catalanise(LABELS["va"]), "check": "Comprova", "flip": "Prem per girar"}
+PUZZLE_LABELS["ca"] = catalanise(PUZZLE_LABELS["va"])
+FICHA["ca"] = catalanise(FICHA["va"])
+PUZZLE_SAMPLES["ca"] = catalanise(PUZZLE_SAMPLES["va"])
+for _samples in SAMPLES.values():
+    _samples["ca"] = catalanise(_samples["va"])
 
 
 class Template:
@@ -539,6 +594,11 @@ TEMPLATES = {t.id: t for t in (
 )}
 
 
+for _template in TEMPLATES.values():
+    _template.names["ca"] = catalanise(_template.names["va"])
+    _template.descriptions["ca"] = catalanise(_template.descriptions["va"])
+
+
 GROUPS = {
     "bateria": "quick", "cuestionario": "quick", "verdadero_falso": "quick", "huecos": "quick",
     "sopa_letras": "games", "crucigrama": "games", "emparejar": "games", "ordenar": "games",
@@ -612,7 +672,7 @@ def initial_files(template_id: str, brief: dict) -> dict[str, str]:
         return {}  # the infographic is created by the web client from its own template
     safe_title = title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     index = (TEMPLATE_DIR / "index.html").read_text(encoding="utf-8")
-    index = index.replace("{LANG}", "ca" if language == "va" else language).replace("{TITLE}", safe_title)
+    index = index.replace("{LANG}", "ca-ES-valencia" if language == "va" else language).replace("{TITLE}", safe_title)
     common = {"title": title, "language": language,
               "accessibility": {"large_text": accessibility.get("large_text") is True,
                                 "high_contrast": accessibility.get("high_contrast") is True},
@@ -648,7 +708,7 @@ def initial_files(template_id: str, brief: dict) -> dict[str, str]:
 def instruction(template_id: str, brief: dict, base: str) -> str:
     """Instruction for the first version of a project created from a template."""
     template = get(template_id)
-    language = {"es": "castellano", "va": "valenciano (catalán)", "en": "inglés"}.get(brief.get("language"), "castellano")
+    language = {"es": "castellano", "ca": "catalán", "va": "valenciano (catalán)", "en": "inglés"}.get(brief.get("language"), "castellano")
     if template.kind == "interactiva":
         if template_id == "huecos":
             mode = "text" if brief.get("gap_mode") == "text" else "bank"

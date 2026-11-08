@@ -10,7 +10,7 @@ export function infographicTemplate(title: string, language: Locale = locale.val
   const tr = (key: Parameters<typeof t>[0]) => t(key, language)
   const safe = title.replace(/[<>&"]/g, '')
   return `<!doctype html>
-<html lang="${language === 'va' ? 'ca' : language}">
+<html lang="${language === 'va' ? 'ca-ES-valencia' : language}">
 <head>
 ${LUCIDE_NOTICE}
 <meta charset="utf-8">
@@ -53,8 +53,8 @@ ${LUCIDE_NOTICE}
 
 // Guided templates served by the API (phase 7).
 export type TemplateGroup = 'quick' | 'games' | 'reading' | 'docs'
-export interface TemplateInfo { id: string; kind: 'interactiva' | 'infografia' | 'ficha'; names: Record<'es' | 'va' | 'en', string>; descriptions: Record<'es' | 'va' | 'en', string>; group?: TemplateGroup; illustrable?: boolean }
-export interface TemplateBrief { gap_mode?: 'bank' | 'text'; mix?: ('choice' | 'true_false' | 'gap')[]; title: string; language: 'es' | 'va' | 'en'; level: string; instructions: string; accessibility: { large_text: boolean; high_contrast: boolean } }
+export interface TemplateInfo { id: string; kind: 'interactiva' | 'infografia' | 'ficha'; names: Record<Locale, string>; descriptions: Record<Locale, string>; group?: TemplateGroup; illustrable?: boolean }
+export interface TemplateBrief { gap_mode?: 'bank' | 'text'; mix?: ('choice' | 'true_false' | 'gap')[]; title: string; language: Locale; level: string; instructions: string; accessibility: { large_text: boolean; high_contrast: boolean } }
 
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {

@@ -49,7 +49,7 @@ def apply_template(project_id: UUID, data: ApplyTemplate, user: User = Depends(r
     if "illustrations" in brief:
         brief["illustrations"] = brief["illustrations"] is True  # only a flag: never text for the prompt
     brief["title"] = str(brief.get("title") or project.title)[:160]
-    brief["language"] = brief.get("language") if brief.get("language") in ("es", "va", "en") else "es"
+    brief["language"] = brief.get("language") if brief.get("language") in ("es", "ca", "va", "en") else "es"
     brief.update(kind="ficha" if template.kind == "ficha" else "actividad", template=template.id)
     files = {"activity.json": json.dumps(brief, ensure_ascii=False, indent=2) + "\n",
              **service.initial_files(template.id, brief)}

@@ -78,7 +78,7 @@ se documentan en [included-ai.md](included-ai.md).
 ## Batería de pruebas con IA real
 
 `apps/api/scripts/ai_battery.sh` lanza 9 encargos típicos contra la API real, en el mismo proceso y sobre una **copia** de la base de desarrollo (`data/battery/`, ignorada por Git):
-- las 6 plantillas interactivas, la ficha y una situación de aprendizaje, en castellano y valenciano;
+- las 6 plantillas interactivas, la ficha y una situación de aprendizaje, en castellano, catalán y valenciano;
 - una adaptación DUA sobre la ficha.
 
 Usa las claves BYOK de una cuenta existente, sin mostrarlas nunca, y solo envía contenido inventado. Por cada encargo anota si sale válido y aplicado, si queda pendiente de revisión o si falla, con el código de error. Con `--auto` deja que la API elija y cambie de modelo, como hace «IA automática»; por defecto prueba cada modelo confirmado por separado. Consume cuota gratuita: unas 9 peticiones por modelo.

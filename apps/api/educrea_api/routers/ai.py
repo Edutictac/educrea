@@ -649,7 +649,7 @@ async def stream_sections(project_id: UUID, data: SectionsInput, user: User = De
     snapshot = {row.path: {"content": row.content, "version": row.version} for row in files}
     current = snapshot.get(engine.SITUATION_PATH, {}).get("content", "")
     source_ids = list(db.scalars(select(Source.id).where(Source.project_id == project_id).order_by(Source.created_at)))
-    language = brief.get("language") if brief.get("language") in ("es", "va", "en") else "es"
+    language = brief.get("language") if brief.get("language") in ("es", "ca", "va", "en") else "es"
     local = section_service.titles(language)
     title = str(brief.get("title") or project.title)
     db.rollback()

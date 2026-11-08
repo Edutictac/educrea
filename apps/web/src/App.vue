@@ -111,7 +111,7 @@ async function logout() {
         <RouterLink v-if="auth.user && !auth.user.is_guest" to="/saldo">{{ t('walletTitle') }}</RouterLink>
         <RouterLink v-if="auth.user" to="/ai/providers"><AppIcon name="key" :size="18" />{{ t('myProviders') }}</RouterLink>
         <RouterLink v-if="accountFallback && (!auth.user || auth.user.is_guest)" :to="{ path: '/login', query: { next: route.fullPath } }">{{ t('openRegister') }}</RouterLink>
-        <select v-if="!accountReady" v-model="locale" :aria-label="t('language')"><option value="es">{{ t('languageSpanish') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select>
+        <select v-if="!accountReady" v-model="locale" :aria-label="t('language')"><option value="es">{{ t('languageSpanish') }}</option><option value="ca">{{ t('languageCatalan') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select>
         <button v-if="accountFallback && auth.user && !auth.user.is_guest" type="button" class="text-button" @click="logout"><AppIcon name="log-out" :size="18" />{{ t('logout') }}</button>
       </nav>
       <EduTicTacAccount @state="accountState" />

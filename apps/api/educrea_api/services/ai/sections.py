@@ -98,7 +98,7 @@ def brief_details(brief: dict) -> str:
 
 def section_prompt(brief: dict, name: str, document: str, passages: list[dict] | None, request: str = "") -> str:
     language = brief.get("language") if brief.get("language") in SITUATION_SKELETONS else "es"
-    lang = {"es": "castellano", "va": "valenciano (catalán)", "en": "inglés"}.get(language, "castellano")
+    lang = {"es": "castellano", "ca": "catalán", "va": "valenciano (catalán)", "en": "inglés"}.get(language, "castellano")
     heading = titles(language)[name]
     context = document if len(document) <= DOCUMENT_CONTEXT_CHARS else document[:DOCUMENT_CONTEXT_CHARS] + "\n[…]"
     return (

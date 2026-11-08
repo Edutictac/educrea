@@ -12,7 +12,7 @@ export const accountLocale = normalizeAccountLocale
 export function installAccountLanguage(host: Window = window): () => void {
   const previous = host.edutictacLanguage
   const adapter: LanguageAdapter = {
-    languages: ['es', 'va', 'en'], get: () => locale.value,
+    languages: ['ca', 'va', 'es', 'en'], get: () => locale.value,
     set(value) { const next = accountLocale(value); if (next) locale.value = next },
   }
   host.edutictacLanguage = adapter

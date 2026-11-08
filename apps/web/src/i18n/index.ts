@@ -2,15 +2,17 @@ import { ref, watch } from 'vue'
 import { en } from './en'
 import { readSharedLanguage, rememberSharedLanguage } from './preference'
 
-export type Locale = 'es' | 'va' | 'en'
+export type Locale = 'es' | 'ca' | 'va' | 'en'
 const STORAGE_KEY = 'educrea.locale'
 
-// Saved choice first; otherwise the first browser language we support (Catalan/Valencian -> 'va').
+// Saved choice first. Browser tags distinguish Valencian (ca-ES-valencia) from Catalan (ca).
 export function detectLocale(languages: readonly string[], saved: string | null): Locale {
-  if (saved === 'es' || saved === 'va' || saved === 'en') return saved
+  if (saved === 'es' || saved === 'ca' || saved === 'va' || saved === 'en') return saved
   for (const language of languages) {
-    const base = language.toLowerCase().split('-')[0]
-    if (base === 'ca') return 'va'
+    const tag = language.toLowerCase()
+    if (tag.includes('valencia')) return 'va'
+    const base = tag.split('-')[0]
+    if (base === 'ca') return 'ca'
     if (base === 'es') return 'es'
     if (base === 'en') return 'en'
   }
@@ -29,9 +31,9 @@ watch(locale, (value, previous) => {
     try { localStorage.setItem(STORAGE_KEY, value) } catch { /* private mode */ }
     if (typeof document !== 'undefined' && typeof location !== 'undefined') rememberSharedLanguage(value, document, location)
   }
-  if (typeof document !== 'undefined') document.documentElement.lang = value === 'va' ? 'ca' : value
+  if (typeof document !== 'undefined') document.documentElement.lang = value === 'va' ? 'ca-ES-valencia' : value
 }, { immediate: true, flush: 'sync' })
-export const messages = {
+const baseMessages = {
   es: {
     walletTitle: "Mi saldo",
     walletTestNotice: "Modo de prueba: no se cobra dinero real.",
@@ -49,6 +51,7 @@ export const messages = {
     footerHome: 'Inicio', footerPrivacy: 'Privacidad de EduTicTac', footerCookies: 'Cookies', footerTerms: 'Términos', footerSource: 'Código fuente',
     logoutFailed: 'No se ha podido cerrar la sesión de EduCrea. Vuelve a intentarlo con «Salir».',
     languageSpanish: "Castellano",
+    languageCatalan: "Catalán",
     languageValencian: "Valenciano",
     languageEnglish: "Inglés",
     ollamaServer: "Ollama (servidor)",
@@ -286,8 +289,9 @@ export const messages = {
     footerHome: 'Inici', footerPrivacy: 'Privacitat d’EduTicTac', footerCookies: 'Galetes', footerTerms: 'Termes', footerSource: 'Codi font',
     logoutFailed: 'No s’ha pogut tancar la sessió d’EduCrea. Torna a provar amb «Eixir».',
     languageSpanish: "Castellà",
+    languageCatalan: "Català",
     languageValencian: "Valencià",
-    languageEnglish: "Anglés",
+    languageEnglish: "Anglès",
     ollamaServer: "Ollama (servidor)",
     workspaceOpenError: "No s’ha pogut obrir l’espai de treball",
     invalidTemporaryKey: "Clau temporal no vàlida",
@@ -509,6 +513,53 @@ export const messages = {
   en,
 } as const
 
+// Catalan and Valencian share most vocabulary. Keep one reviewed adaptation table instead of duplicating every
+// string, and replace it with a native Catalan translation when one is available.
+const CATALAN_REPLACEMENTS: [RegExp, string][] = [
+  [/\bteua\b/g, 'teva'], [/\bteues\b/g, 'teves'], [/\bmeua\b/g, 'meva'], [/\bmeues\b/g, 'meves'],
+  [/\bseua\b/g, 'seva'], [/\bseues\b/g, 'seves'],
+  [/\bEixir\b/g, 'Sortir'], [/\beixir\b/g, 'sortir'], [/\bEixida\b/g, 'Sortida'], [/\beixida\b/g, 'sortida'],
+  [/\beixides\b/g, 'sortides'], [/\bEixa\b/g, 'Aquesta'], [/\beixa\b/g, 'aquesta'], [/\bEixe\b/g, 'Aquest'],
+  [/\beixe\b/g, 'aquest'], [/\beixes\b/g, 'aquestes'], [/\beixos\b/g, 'aquests'],
+  [/\besta\b/g, 'aquesta'], [/\beste\b/g, 'aquest'], [/\bestes\b/g, 'aquestes'], [/\bestos\b/g, 'aquests'],
+  [/\bAcí\b/g, 'Aquí'], [/\bací\b/g, 'aquí'], [/\bAçò\b/g, 'Això'], [/\baçò\b/g, 'això'],
+  [/\bHui\b/g, 'Avui'], [/\bhui\b/g, 'avui'], [/\bHuit\b/g, 'Vuit'], [/\bhuit\b/g, 'vuit'],
+  [/\bLlig\b/g, 'Llegeix'], [/\bllig\b/g, 'llegeix'], [/\blligen\b/g, 'llegeixen'],
+  [/\bAfig\b/g, 'Afegeix'], [/\bafig\b/g, 'afegeix'], [/\bIxen\b/g, 'Surten'], [/\bixen\b/g, 'surten'],
+  [/\bIx\b/g, 'Surt'], [/\bix\b/g, 'surt'],
+  [/\bApega\b/g, 'Enganxa'], [/\bapega\b/g, 'enganxa'], [/\bapegar\b/g, 'enganxar'],
+  [/\bVertader\b/g, 'Veritable'], [/\bvertader\b/g, 'veritable'], [/\bvertadera\b/g, 'veritable'],
+  [/\bvertaderes\b/g, 'veritables'], [/\bvertaders\b/g, 'veritables'], [/\bAnglés\b/g, 'Anglès'],
+  [/\bmentres\b/g, 'mentre'], [/\bconéixer\b/g, 'conèixer'], [/\btindre\b/g, 'tenir'], [/\bvindre\b/g, 'venir'],
+  [/\bservici\b/g, 'servei'], [/\bservicis\b/g, 'serveis'], [/\bxicotet\b/g, 'petit'], [/\bxicoteta\b/g, 'petita'],
+  [/\bcreïlles\b/g, 'patates'], [/\bObri\b/g, 'Obre'], [/\bobri\b/g, 'obre'], [/\bDescobrix\b/g, 'Descobreix'],
+  [/\bdescobrix\b/g, 'descobreix'], [/\bcontindre\b/g, 'contenir'], [/\barrere\b/g, 'enrere'],
+  [/\bConta\b/g, 'Explica'], [/\bconta\b/g, 'explica'], [/\bcompartisques\b/g, 'comparteixis'],
+  [/\bcompartisca\b/g, 'comparteixi'], [/\bcomproves\b/g, 'comprovis'],
+  [/\bhaja\b/g, 'hagi'], [/\bHaja\b/g, 'Hagi'], [/\bhagen\b/g, 'hagin'],
+  [/\bsiga\b/g, 'sigui'], [/\bSiga\b/g, 'Sigui'], [/\bsiguen\b/g, 'siguin'],
+  [/\btinga\b/g, 'tingui'], [/\bTinga\b/g, 'Tingui'], [/\btinguen\b/g, 'tinguin'],
+  [/\bfaça\b/g, 'faci'], [/\bFaça\b/g, 'Faci'], [/\bfacen\b/g, 'facin'],
+  [/\bpuga\b/g, 'pugui'], [/\bPuga\b/g, 'Pugui'], [/\bpuguen\b/g, 'puguin'],
+  [/\bvulga\b/g, 'vulgui'], [/\bVulga\b/g, 'Vulgui'], [/\bvulgues\b/g, 'vulguis'],
+  [/\bestiga\b/g, 'estigui'], [/\bestiguen\b/g, 'estiguin'],
+  [/\bdecidisca\b/g, 'decideixi'], [/\bdecidisquen\b/g, 'decideixin'],
+]
+
+export const catalanise = (text: string) => CATALAN_REPLACEMENTS.reduce((value, [pattern, replacement]) => value.replace(pattern, replacement), text)
+const catalan = Object.fromEntries(Object.entries(baseMessages.va).map(([key, value]) => [key, catalanise(value)])) as Record<keyof typeof baseMessages.es, string>
+Object.assign(catalan, {
+  sourceRights: 'Tinc dret a utilitzar aquest document i entenc que el seu contingut s’enviarà al proveïdor d’IA (no hi posis dades personals de l’alumnat).',
+  aiDecidesFiles: 'Que la IA decideixi quins fitxers llegeix i canvia',
+})
+
+export const messages = {
+  es: baseMessages.es,
+  ca: catalan,
+  va: baseMessages.va,
+  en: baseMessages.en,
+} as const
+
 export function t(key: keyof typeof messages.es, language: Locale = locale.value): string { return messages[language][key] }
 
-export const intlLocale = () => locale.value === 'va' ? 'ca' : locale.value
+export const intlLocale = () => locale.value === 'va' ? 'ca-ES-valencia' : locale.value

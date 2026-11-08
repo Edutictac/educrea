@@ -5,7 +5,7 @@
   var form = h('form', { novalidate: true })
 
   function normalize(value) {
-    return value.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase(E.D.language === 'va' ? 'ca' : 'es')
+    return value.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase(E.D.language === 'va' ? 'ca-ES-valencia' : E.D.language === 'ca' ? 'ca' : E.D.language === 'en' ? 'en' : 'es')
   }
   function heading(block, key, fallback) { return block.heading || E.label(key, fallback) }
 

@@ -1,6 +1,6 @@
 # EduCrea
 
-EduCrea es una herramienta de software libre de EduTicTac para crear actividades y materiales educativos con ayuda de la IA. Incluye plantillas guiadas, situaciones de aprendizaje, adaptación DUA, fuentes de referencia, vista previa, historial y exportación de materiales. Está disponible en castellano, valenciano e inglés.
+EduCrea es una herramienta de software libre de EduTicTac para crear actividades y materiales educativos con ayuda de la IA. Incluye plantillas guiadas, situaciones de aprendizaje, adaptación DUA, fuentes de referencia, vista previa, historial y exportación de materiales. Está disponible en castellano, catalán, valenciano e inglés.
 
 [Probar EduCrea](https://educrea.edutictac.es) · [GitHub](https://github.com/Edutictac/educrea) · [Forja de EduTicTac](https://git.edutictac.es/Edutictac/educrea)
 
@@ -10,7 +10,7 @@ EduCrea es una herramienta de software libre de EduTicTac para crear actividades
 
 La ruta `/` presenta EduCrea con ejemplos, una actividad de demostración interactiva,
 los formatos disponibles, tres pasos de uso y preguntas frecuentes. Está disponible en
-castellano, valenciano e inglés y se puede leer sin abrir una sesión de invitado ni depender
+castellano, catalán, valenciano e inglés y se puede leer sin abrir una sesión de invitado ni depender
 de la API. Los botones «Empieza a crear» abren `/projects?nuevo=1`; «Mis proyectos» conserva
 el acceso al espacio de trabajo. El logotipo vuelve a la portada. La entrada `/eduprompt`
 sigue recibiendo encargos de EduTicTac Prompt.
@@ -49,7 +49,7 @@ compilar para mostrar «Código fuente»; sin una URL real, ese enlace no aparec
 
 ## Arquitectura
 
-- `apps/web`: Vue 3, TypeScript, Vite, Pinia, Vue Router y Monaco; interfaz en castellano, valenciano e inglés.
+- `apps/web`: Vue 3, TypeScript, Vite, Pinia, Vue Router y Monaco; interfaz en castellano, catalán, valenciano e inglés.
 - `apps/api`: FastAPI, SQLAlchemy, Alembic y PostgreSQL; sesiones locales, proyectos y archivos versionados.
 - `infra`: Docker Compose, PostgreSQL interno, Nginx para la web y Caddy para HTTPS.
 - `docs`: decisiones, seguridad y fases pendientes.

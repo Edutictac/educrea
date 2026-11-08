@@ -137,7 +137,7 @@ def test_puzzle_ai_generates_only_vocabulary_and_scorm_packages_the_engine(clien
 
 
 @pytest.mark.skipif(not (BROWSER and shutil.which('bwrap')), reason='chromium/bwrap not installed')
-@pytest.mark.parametrize('language', ['es', 'va', 'en'])
+@pytest.mark.parametrize('language', ['es', 'ca', 'va', 'en'])
 def test_search_mouse_coordinates_keyboard_scoring_and_retry(language):
     files = templates.initial_files('sopa_letras', {'language': language})
     actions = r"""
@@ -181,7 +181,7 @@ def test_search_mouse_coordinates_keyboard_scoring_and_retry(language):
 
 
 @pytest.mark.skipif(not (BROWSER and shutil.which('bwrap')), reason='chromium/bwrap not installed')
-@pytest.mark.parametrize('language', ['es', 'va', 'en'])
+@pytest.mark.parametrize('language', ['es', 'ca', 'va', 'en'])
 def test_crossword_clues_normalized_answers_wrong_answers_and_retry(language):
     files = templates.initial_files('crucigrama', {'language': language})
     data = templates.parse_data(files['datos.js'])

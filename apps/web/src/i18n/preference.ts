@@ -2,8 +2,8 @@ import type { Locale } from './index'
 
 // A display preference only: this cookie never represents identity or access.
 export function normalizeAccountLocale(value: string | null): Locale | null {
-  if (value === 'ca' || value === 'ca-ES-valencia') return 'va'
-  return value === 'es' || value === 'va' || value === 'en' ? value : null
+  if (value === 'ca-ES-valencia') return 'va'
+  return value === 'es' || value === 'ca' || value === 'va' || value === 'en' ? value : null
 }
 export function readSharedLanguage(doc: Pick<Document, 'cookie'>): Locale | null {
   try {

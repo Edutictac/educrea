@@ -19,21 +19,30 @@ INTERACTIVE = [t.id for t in service.TEMPLATES.values() if t.kind == "interactiv
 BROWSER = shutil.which("chromium") or shutil.which("chromium-browser")
 
 
-def test_catalog_has_fourteen_trilingual_templates(client: TestClient):
+def test_catalog_has_fourteen_templates_in_four_languages(client: TestClient):
     headers, _ = setup_user(client)
     items = client.get("/api/templates").json()
-    assert len(items) == 14 and all(item["names"]["es"] and item["names"]["va"] and item["names"]["en"] for item in items)
+    assert len(items) == 14 and all(item["names"]["es"] and item["names"]["ca"] and item["names"]["va"] and item["names"]["en"] for item in items)
     assert {item["group"] for item in items} == {"quick", "games", "reading", "docs"}
 
 
 @pytest.mark.parametrize("template_id", INTERACTIVE)
-@pytest.mark.parametrize("language", ["es", "va", "en"])
+@pytest.mark.parametrize("language", ["es", "ca", "va", "en"])
 def test_samples_are_valid_for_their_schema(template_id, language):
     files = service.initial_files(template_id, {"title": "Prueba", "language": language})
     assert set(files) == {"index.html", "style.css", "comun.js", "script.js", "datos.js"}
     assert service.validate_data(template_id, files["datos.js"]) == []
-    assert ('lang="ca"' if language == "va" else f'lang="{language}"') in files["index.html"]
+    assert ('lang="ca-ES-valencia"' if language == "va" else f'lang="{language}"') in files["index.html"]
     assert "innerHTML" not in files["script.js"] + files["comun.js"]
+
+
+def test_catalan_and_valencian_stay_distinct():
+    catalan = service.initial_files("cuestionario", {"title": "Prova", "language": "ca"})
+    valencian = service.initial_files("cuestionario", {"title": "Prova", "language": "va"})
+    assert 'lang="ca"' in catalan["index.html"] and 'lang="ca-ES-valencia"' in valencian["index.html"]
+    assert json.loads(re.search(r"= (\{.*\});", catalan["datos.js"], re.S).group(1))["labels"]["check"] == "Comprova"
+    assert "catalán" in service.instruction("ficha", {"language": "ca"}, "Base")
+    assert service.FICHA["ca"][0] == "Objectiu"
 
 
 def test_validation_explains_the_problems():
@@ -147,7 +156,7 @@ def test_true_false_ai_requires_explanations_before_auto_applying(client: TestCl
 
 
 @pytest.mark.skipif(not (BROWSER and shutil.which("bwrap")), reason="chromium/bwrap not installed")
-@pytest.mark.parametrize("language", ["es", "va"])
+@pytest.mark.parametrize("language", ["es", "ca", "va"])
 def test_true_false_grades_false_and_empty_answers_and_resets(language):
     files = service.initial_files("verdadero_falso", {"title": "Prueba", "language": language})
     labels = service.LABELS[language]
@@ -206,7 +215,7 @@ def test_gaps_creation_and_ai_keep_the_chosen_mode(client: TestClient, mode):
 
 @pytest.mark.skipif(not (BROWSER and shutil.which("bwrap")), reason="chromium/bwrap not installed")
 @pytest.mark.parametrize("mode", ["bank", "text"])
-@pytest.mark.parametrize("language", ["es", "va"])
+@pytest.mark.parametrize("language", ["es", "ca", "va"])
 def test_gaps_grade_alternatives_accents_retry_and_report_score(mode, language):
     files = service.initial_files("huecos", {"title": "Prueba", "language": language, "gap_mode": mode})
     data = service.parse_data(files["datos.js"])
@@ -239,7 +248,7 @@ def test_gaps_grade_alternatives_accents_retry_and_report_score(mode, language):
     """.replace('MODE', json.dumps(mode))
     dom = run_in_browser(inline(files).replace("</body>", f"<script>{actions}</script></body>"))
     assert 'data-tested="ok"' in dom
-    assert 'lang="ca"' in dom if language == "va" else 'lang="es"' in dom
+    assert ('lang="ca-ES-valencia"' if language == "va" else f'lang="{language}"') in dom
 
 
 @pytest.mark.skipif(not (BROWSER and shutil.which("bwrap")), reason="chromium/bwrap not installed")
@@ -407,7 +416,7 @@ def test_ordering_engine_checks_the_order():
       }
       document.querySelector('button.principal').click()"""
     dom = run_in_browser(inline(files).replace("</body>", f"<script>{solve}</script></body>"))
-    assert "Tot en ordre!" in dom and 'lang="ca"' in dom
+    assert "Tot en ordre!" in dom and 'lang="ca-ES-valencia"' in dom
 
 
 def test_dua_on_a_template_project_adapts_the_data_and_validates_it(client: TestClient):

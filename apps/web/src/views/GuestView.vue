@@ -3,11 +3,11 @@ import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import MonacoEditor from '../components/MonacoEditor.vue'
 import ActivityPreview from '../components/ActivityPreview.vue'
-import { t } from '../i18n'
+import { t, type Locale } from '../i18n'
 import { useAuthStore } from '../stores/auth'
 import { guestPaths, useGuestStore, type GuestPath } from '../stores/guest'
 
-type Activity = { title: string; instructions: string; language: string; level: string;
+type Activity = { title: string; instructions: string; language: Locale; level: string;
   activity_type: string; accessibility: { large_text: boolean; high_contrast: boolean }; [key: string]: unknown }
 const guest = useGuestStore()
 const auth = useAuthStore()
@@ -60,7 +60,7 @@ async function saveDraft() {
           <option value="cuestionario">{{ t('quiz') }}</option><option value="juego">{{ t('game') }}</option>
           <option value="simulacion">{{ t('simulation') }}</option><option value="otra">{{ t('other') }}</option>
         </select></label>
-        <label>{{ t('language') }}<select v-model="activity.language"><option value="es">{{ t('languageSpanish') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select></label>
+        <label>{{ t('language') }}<select v-model="activity.language"><option value="es">{{ t('languageSpanish') }}</option><option value="ca">{{ t('languageCatalan') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select></label>
         <label>{{ t('educationLevel') }}<select v-model="activity.level"><option value="infantil">{{ t('earlyYears') }}</option>
           <option value="primaria">{{ t('primary') }}</option><option value="secundaria">{{ t('secondary') }}</option></select></label>
         <label class="full">{{ t('instructions') }}<textarea v-model="activity.instructions" maxlength="10000" rows="6" /></label>

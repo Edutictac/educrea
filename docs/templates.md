@@ -1,6 +1,6 @@
 # Plantillas guiadas (Fase 7)
 
-EduCrea ofrece varias plantillas, en castellano, valenciano e inglés, que se eligen al crear un proyecto («¿Qué quieres crear?»). Además se puede crear una situación de aprendizaje o un proyecto en blanco.
+EduCrea ofrece varias plantillas, en castellano, catalán, valenciano e inglés, que se eligen al crear un proyecto («¿Qué quieres crear?»). Además se puede crear una situación de aprendizaje o un proyecto en blanco.
 
 | Plantilla | Tipo | Archivos | Qué rellena la IA |
 |---|---|---|---|
@@ -24,7 +24,7 @@ EduCrea ofrece varias plantillas, en castellano, valenciano e inglés, que se el
 - **Motor fijo + datos.** Cada plantilla interactiva tiene un motor revisado (`index.html`, `style.css`, `comun.js`, `script.js`, en `apps/api/educrea_api/data/templates/`) y un archivo de datos `datos.js` con la forma `window.EDUCREA_DATA = {...};`. La IA solo rellena `datos.js`: la salida es pequeña, no puede romper la accesibilidad del motor y se comprueba con un esquema.
 - **Validación.** `services/templates.py` define un esquema por plantilla: longitudes, índices de respuesta que existen, `right` distintos, grupos existentes, imágenes solo de `imagenes/` y con texto alternativo. Una propuesta que toca el motor o cuyos datos no pasan el esquema **nunca se aplica sola**: queda pendiente y el docente ve la lista de problemas.
 - **Accesibilidad.** Los motores construyen la página con `textContent` y nodos DOM, sin HTML en cadenas. Funcionan con teclado y lector de pantalla: no hay arrastrar y soltar (se usan desplegables y botones Subir/Bajar), el foco es visible, los resultados se anuncian en regiones `aria-live`, las tarjetas usan `aria-pressed` y la lectura por partes, `<details>`. Las opciones del encargo «texto grande» y «alto contraste» se aplican con las clases `grande` y `contraste`. Se respeta `prefers-reduced-motion` y hay estilos de impresión.
-- **Idiomas.** Los textos de la interfaz de la actividad (`labels`) y los ejemplos iniciales van en castellano, valenciano o inglés según el encargo, y `lang` es `es`, `ca` o `en`.
+- **Idiomas.** Los textos de la interfaz de la actividad (`labels`) y los ejemplos iniciales van en castellano, catalán, valenciano o inglés según el encargo. `lang` es `es`, `ca` (catalán), `ca-ES-valencia` (valenciano) o `en`.
 - **Sin red.** Sin CDN, fuentes ni recursos externos: la actividad funciona en la vista previa aislada y descomprimida desde el ZIP. Las imágenes de la biblioteca se incrustan también cuando se citan en `datos.js` (`"image": "imagenes/…"`).
 - **Limitación conocida.** La exportación PNG elimina los scripts, así que solo es útil para la infografía y no para las plantillas interactivas.
 
@@ -75,7 +75,7 @@ La guía de IA pide mezclar afirmaciones verdaderas y falsas y evitar ambigüeda
 Cada afirmación tiene un grupo de botones de opción nativos con leyenda y resultado asociado.
 «Comprobar» distingue respuestas correctas, incorrectas y vacías, muestra la explicación y comunica
 la puntuación al SCORM. «Volver a empezar» limpia selección y resultados y lleva el foco a la primera opción.
-Las etiquetas y ejemplos están disponibles en castellano y valenciano.
+Las etiquetas y ejemplos están disponibles en castellano, catalán y valenciano.
 
 ## Batería de ejercicios (2026-11-08)
 
@@ -128,7 +128,7 @@ actualizar la plantilla; los proyectos conservan los cinco archivos habituales.
 Se admiten entre 2 y 14 letras por respuesta al omitir tildes, espacios, guiones, apóstrofos
 y puntos. Se conservan `Ñ` y `Ç`; `l·l` ocupa dos casillas. Se rechazan duplicados tras esta
 normalización y símbolos ajenos al alfabeto admitido. Las palabras y pistas visibles conservan
-la escritura original. El tablero, la ayuda y los ejemplos están en castellano, valenciano e inglés.
+la escritura original. El tablero, la ayuda y los ejemplos están en castellano, catalán, valenciano e inglés.
 
 - **Sopa de letras:** horizontal, vertical y diagonal en ambos sentidos. Se seleccionan la primera
 y la última letra con dos pulsaciones, sin arrastrar. Las flechas mueven el foco; Intro/Espacio

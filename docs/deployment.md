@@ -36,7 +36,7 @@ La pantalla de acceso muestra «Entrar con tu cuenta EduTicTac» cuando el SSO e
 
 La web carga `https://commons.edutictac.es/assets/account-widget.js` y monta
 `<edutictac-account>` en la cabecera. Su adaptador de idioma se registra antes de montar Vue;
-el menú ofrece castellano, valenciano e inglés y comparte `edutictac_language` con los otros
+el menú ofrece castellano, catalán, valenciano e inglés y comparte `edutictac_language` con los otros
 subdominios de EduTicTac. El tema sigue siendo el de la aplicación.
 
 - La CSP del contenedor y del proxy debe permitir `https://commons.edutictac.es` en

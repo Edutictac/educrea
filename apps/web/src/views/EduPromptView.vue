@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { locale, t } from '../i18n'
+import { locale, t, type Locale } from '../i18n'
 import {
   MAX_INSTRUCTIONS,
   PROMPT_APP_URL,
@@ -28,7 +28,7 @@ const proposedType = computed(() => eduCreaTypeForPrompt(promptTemplate.value))
 const instructions = ref('')
 const title = ref(t('promptBridgeDefaultTitle'))
 const type = ref('situacion')
-const language = ref<'es' | 'va' | 'en'>(locale.value)
+const language = ref<Locale>(locale.value)
 const level = ref('primaria')
 const loading = ref(true)
 const empty = ref(false)
@@ -118,7 +118,7 @@ async function create() {
             <option v-for="item in templates" :key="item.id" :value="item.id">{{ templateName(item) }}</option>
           </select><small v-if="proposedType && type === proposedType" class="hint">{{ t('promptBridgeTypeProposed') }}</small></label>
           <label>{{ t('language') }}<select v-model="language">
-            <option value="es">{{ t('languageSpanish') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option>
+            <option value="es">{{ t('languageSpanish') }}</option><option value="ca">{{ t('languageCatalan') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option>
           </select></label>
           <label>{{ t('educationLevel') }}<select v-model="level">
             <option value="infantil">{{ t('earlyYears') }}</option><option value="primaria">{{ t('primary') }}</option>

@@ -1,4 +1,6 @@
-export const landingMessages = {
+import { catalanise } from './index'
+
+const baseLanding = {
   es: {
     nav: ['Qué puedes crear', 'Cómo funciona', 'Preguntas frecuentes'], enter: 'Abrir EduCrea',
     eyebrow: 'DE TU IDEA AL AULA', title: 'Tus ideas merecen', accent: 'cobrar vida.',
@@ -123,3 +125,16 @@ export const landingMessages = {
     endLabel: 'THE NEXT IDEA IS YOURS', endTitle: 'Make room for what you want to teach.', endText: 'Start small. A question, a worksheet, an activity for your next lesson.',
   },
 }
+
+type Landing = typeof baseLanding.va
+const localise = <T>(value: T): T => Array.isArray(value)
+  ? value.map(item => localise(item)) as T
+  : value && typeof value === 'object'
+    ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, localise(item)])) as T
+    : (typeof value === 'string' ? catalanise(value) as T : value)
+const ca = localise(baseLanding.va)
+Object.assign(ca, {
+  enter: 'Obre EduCrea',
+  note: 'Pots explorar sense registre · Castellà, català, valencià i English',
+})
+export const landingMessages = { ...baseLanding, ca }

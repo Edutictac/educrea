@@ -29,7 +29,7 @@ def project_language(db: Session, project_id: UUID) -> str:
         value = json.loads(file.content).get("language") if file else None
     except ValueError:
         value = None
-    return {"va": "ca", "en": "en", "es": "es"}.get(value, "es")
+    return {"ca": "ca", "va": "ca-ES-valencia", "en": "en", "es": "es"}.get(value, "es")
 
 
 def download_name(value: str, extension: str) -> str:

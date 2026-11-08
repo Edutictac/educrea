@@ -6,15 +6,15 @@ import { ACCOUNT_BASE, accountReturnPath, centralLoginUrl, centralTeacherSession
 afterEach(() => { locale.value = 'es'; vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('account language adapter', () => {
-  it('connects all three languages and announces changes without accepting unsupported values', () => {
+  it('connects all four languages and announces changes without accepting unsupported values', () => {
     const events: Event[] = []
     vi.stubGlobal('CustomEvent', class extends Event { detail: unknown; constructor(name: string, init?: CustomEventInit) { super(name); this.detail = init?.detail } })
     const host = { dispatchEvent: (event: Event) => { events.push(event); return true } } as unknown as Window
     const dispose = installAccountLanguage(host)
-    expect(host.edutictacLanguage?.languages).toEqual(['es', 'va', 'en'])
+    expect(host.edutictacLanguage?.languages).toEqual(['ca', 'va', 'es', 'en'])
     host.edutictacLanguage?.set('ca')
-    expect(locale.value).toBe('va')
-    expect(host.edutictacLanguage?.get()).toBe('va')
+    expect(locale.value).toBe('ca')
+    expect(host.edutictacLanguage?.get()).toBe('ca')
     expect(events.at(-1)?.type).toBe('edutictac:langchange')
     host.edutictacLanguage?.set('en')
     expect(locale.value).toBe('en')
@@ -24,7 +24,8 @@ describe('account language adapter', () => {
     expect(host.edutictacLanguage).toBeUndefined()
   })
   it('uses the shared display preference and scopes it only to EduTicTac domains', () => {
-    expect(readSharedLanguage({ cookie: 'other=value; edutictac_language=ca' })).toBe('va')
+    expect(readSharedLanguage({ cookie: 'other=value; edutictac_language=ca' })).toBe('ca')
+    expect(readSharedLanguage({ cookie: 'edutictac_language=ca-ES-valencia' })).toBe('va')
     expect(readSharedLanguage({ cookie: 'edutictac_language=unknown' })).toBeNull()
     expect(normalizeAccountLocale('ca-ES-valencia')).toBe('va')
     const doc = { cookie: '' }

@@ -3,9 +3,9 @@
 ## Idioma
 
 `services/account.ts` registra `window.edutictacLanguage` antes de montar el chip remoto.
-Ofrece `es`, `va` y `en`, lee y modifica el `locale` reactivo de Vue y anuncia los cambios
-mediante `edutictac:langchange`. `ca` se interpreta como `va`; el chip recibe `data-lang="va"`
-y el documento conserva `lang="ca"`.
+Ofrece `es`, `ca`, `va` y `en`, lee y modifica el `locale` reactivo de Vue y anuncia los cambios
+mediante `edutictac:langchange`. `ca` es catalán y `va` es valenciano; el documento usa
+`lang="ca"` o `lang="ca-ES-valencia"` respectivamente.
 
 `i18n/preference.ts` comparte únicamente la preferencia visual `edutictac_language`:
 Domain `edutictac.es` solo en ese dominio o sus subdominios, Secure con HTTPS, SameSite=Lax.

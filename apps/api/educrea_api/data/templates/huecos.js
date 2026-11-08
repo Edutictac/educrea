@@ -3,7 +3,7 @@
   'use strict'
   var E = window.EDU, h = E.h, items = E.D.items || [], rows = []
   var bank = E.D.mode !== 'text'
-  function normalize(value) { return value.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase(E.D.language === 'va' ? 'ca' : 'es') }
+  function normalize(value) { return value.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase(E.D.language === 'va' ? 'ca-ES-valencia' : E.D.language === 'ca' ? 'ca' : E.D.language === 'en' ? 'en' : 'es') }
   var words = E.shuffle(Array.from(new Set(items.map(function (item) { return item.answers[0] }))))
   if (bank) E.app.append(h('p', { class: 'banco' }, h('strong', { text: E.label('wordBank', 'Banco de palabras') + ': ' }), h('span', { text: words.join(' · ') })))
   var list = h('ol', { class: 'lista' })

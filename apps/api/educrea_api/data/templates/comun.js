@@ -30,7 +30,7 @@
   function label(key, fallback) { return typeof L[key] === 'string' ? L[key] : fallback }
   function score(right, total) { return label('score', '{n} de {total}').replace('{n}', right).replace('{total}', total) }
   function button(text, onclick, primary) { return h('button', { type: 'button', class: primary ? 'principal' : '', text: text, onclick: onclick }) }
-  document.documentElement.lang = D.language === 'va' ? 'ca' : 'es'
+  document.documentElement.lang = D.language === 'va' ? 'ca-ES-valencia' : D.language === 'ca' ? 'ca' : D.language === 'en' ? 'en' : 'es'
   if (D.title) document.title = D.title
   var access = D.accessibility || {}
   document.body.classList.toggle('grande', access.large_text === true)

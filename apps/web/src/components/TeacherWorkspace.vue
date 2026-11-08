@@ -53,7 +53,7 @@ const SECTIONS_VA = ['Dades de la situació', 'Context i justificació', 'Repte 
 const SECTIONS_EN = ['Situation data', 'Context and justification', 'Challenge and final product',
   'Specific competences and assessment criteria', 'Basic knowledge', 'Session sequence', 'Assessment',
   'Attention to diversity (UDL)', 'Materials and resources']
-const sectionTitle = (index: number) => (activity.value.language === 'va' ? SECTIONS_VA
+const sectionTitle = (index: number) => (activity.value.language === 'va' || activity.value.language === 'ca' ? SECTIONS_VA
   : activity.value.language === 'en' ? SECTIONS_EN : SECTIONS)[index]
 const hasSituation = computed(() => files.items.some(item => item.path === 'situacion.md'))
 const chosenSections = ref<string[]>([])
@@ -226,7 +226,7 @@ async function generateFirstVersion() {
         <option value="cuestionario">{{ t('quiz') }}</option><option value="juego">{{ t('game') }}</option>
         <option value="simulacion">{{ t('simulation') }}</option><option value="otra">{{ t('other') }}</option>
       </select></label>
-      <label>{{ t('language') }}<select v-model="activity.language"><option value="es">{{ t('languageSpanish') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select></label>
+      <label>{{ t('language') }}<select v-model="activity.language"><option value="es">{{ t('languageSpanish') }}</option><option value="ca">{{ t('languageCatalan') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select></label>
       <label>{{ t('educationLevel') }}<select v-model="activity.level"><option value="infantil">{{ t('earlyYears') }}</option>
         <option value="primaria">{{ t('primary') }}</option><option value="secundaria">{{ t('secondary') }}</option>
         <option value="otros">{{ t('other') }}</option></select></label>

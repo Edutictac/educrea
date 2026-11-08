@@ -183,7 +183,9 @@ SITUATION_SKELETON_EN = (
     "Specific competences and assessment criteria", "Basic knowledge", "Session sequence",
     "Assessment", "Attention to diversity (UDL)", "Materials and resources",
 )
-SITUATION_SKELETONS = {"es": SITUATION_SECTIONS, "va": SITUATION_SKELETON_VA, "en": SITUATION_SKELETON_EN}
+SITUATION_SKELETON_CA = SITUATION_SKELETON_VA
+SITUATION_SKELETONS = {"es": SITUATION_SECTIONS, "ca": SITUATION_SKELETON_CA, "va": SITUATION_SKELETON_VA,
+                       "en": SITUATION_SKELETON_EN}
 SITUATION_PATH = "situacion.md"
 HEADING = re.compile(r"^#{1,6}\s+(.+?)\s*$", re.MULTILINE)
 
@@ -212,7 +214,7 @@ def situation_instruction(brief: dict) -> str:
     language = str(brief.get("language") or "es")
     if language not in SITUATION_SKELETONS:
         language = "es"
-    lang = {"es": "castellano", "va": "valenciano (catalán)", "en": "inglés"}[language]
+    lang = {"es": "castellano", "ca": "catalán", "va": "valenciano (catalán)", "en": "inglés"}[language]
     wants = []
     accessibility = brief.get("accessibility") if isinstance(brief.get("accessibility"), dict) else {}
     if accessibility.get("large_text"):
@@ -298,7 +300,7 @@ def _instruction_for(brief: dict) -> str:
     if template:
         return template_service.instruction(template, brief, brief_instruction(brief, with_files=False))
     return brief_instruction(brief)
-LANGUAGE_NAMES = {"es": "castellano", "va": "valenciano (catalán)", "en": "inglés"}
+LANGUAGE_NAMES = {"es": "castellano", "ca": "catalán", "va": "valenciano (catalán)", "en": "inglés"}
 LEVEL_NAMES = {"infantil": "Educación Infantil", "primaria": "Educación Primaria", "secundaria": "Educación Secundaria",
                "otros": "otro nivel"}
 
@@ -306,15 +308,15 @@ LEVEL_NAMES = {"infantil": "Educación Infantil", "primaria": "Educación Primar
 def brief_instruction(brief: dict, with_files: bool = True) -> str:
     """Turns the teacher's activity.json brief into the instruction for the first version."""
     language = str(brief.get("language") or "es")
-    if language not in ("es", "va", "en"):
+    if language not in ("es", "ca", "va", "en"):
         language = "es"
-    lang = {"es": "castellano", "va": "valenciano", "en": "inglés"}[language]
+    lang = {"es": "castellano", "ca": "catalán", "va": "valenciano", "en": "inglés"}[language]
     accessibility = brief.get("accessibility") if isinstance(brief.get("accessibility"), dict) else {}
     wants = [name for key, name in (("large_text", "texto grande"), ("high_contrast", "alto contraste"))
              if accessibility.get(key) is True]
     parts = [
         f"Crea la primera versión completa de la actividad «{str(brief.get('title') or '').strip() or 'sin título'}», "
-        f"lista para usar en el aula. Todo el texto visible debe estar en {lang} y el HTML debe llevar lang=\"{'ca' if language == 'va' else language}\".",
+        f"lista para usar en el aula. Todo el texto visible debe estar en {lang} y el HTML debe llevar lang=\"{'ca-ES-valencia' if language == 'va' else language}\".",
         f"Tipo de actividad: {brief.get('activity_type') or 'otra'}. Nivel educativo: "
         f"{LEVEL_NAMES.get(str(brief.get('level')), str(brief.get('level')))}.",
         f"Encargo del docente:\n{str(brief.get('instructions') or '').strip()}",
@@ -378,7 +380,7 @@ DUA_EXTENSIONS = (".html", ".md")
 
 
 def dua_instruction(path: str, needs: str, language: str | None) -> str:
-    lang = {"va": "valenciano (catalán)", "es": "castellano", "en": "inglés"}.get(language or "", "el mismo idioma del material")
+    lang = {"ca": "catalán", "va": "valenciano (catalán)", "es": "castellano", "en": "inglés"}.get(language or "", "el mismo idioma del material")
     kind = ("documento Markdown" if path.lower().endswith(".md") else
             "datos de una plantilla interactiva (adapta los textos, consignas, opciones, explicaciones e imágenes "
             "dentro del objeto JSON, conservando exactamente su estructura y sin tocar el motor de la plantilla)"

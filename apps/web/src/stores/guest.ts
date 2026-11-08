@@ -10,7 +10,7 @@ export const guestPaths: GuestPath[] = ['activity.json', 'index.html', 'style.cs
 export function initialGuestFiles(language: Locale = locale.value): Record<GuestPath, string> {
   const tr = (key: Parameters<typeof t>[0]) => t(key, language)
   const title = tr('guestActivityTitle')
-  const htmlLanguage = language === 'va' ? 'ca' : language
+  const htmlLanguage = language === 'va' ? 'ca-ES-valencia' : language
   return {
     'activity.json': JSON.stringify({ title, instructions: tr('guestActivityInstructions'), language,
       level: 'primaria', activity_type: 'cuestionario', accessibility: { large_text: false, high_contrast: false } }, null, 2) + '\n',

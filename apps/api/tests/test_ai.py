@@ -713,7 +713,7 @@ def test_first_version_from_brief(client: TestClient, monkeypatch):
     assert [f["path"] for f in client.get(f"/api/projects/{project_id}/files").json()] == [
         "activity.json", "index.html", "script.js", "style.css"]
     prompt = captured["prompt"]
-    for expected in ("valenciano", 'lang="ca"', "Educación Infantil", "juego", "Relaciona cada instrumento",
+    for expected in ("valenciano", 'lang="ca-ES-valencia"', "Educación Infantil", "juego", "Relaciona cada instrumento",
                      "texto grande y alto contraste", "Els instruments"):
         assert expected in prompt, expected
     assert "primera versión" in response.json()["summary"].lower()

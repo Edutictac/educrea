@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { locale, t } from '../i18n'
+import { locale, t, type Locale } from '../i18n'
 import { applyTemplate, INFOGRAPHIC_PATH, infographicTemplate, listTemplates, type TemplateGroup, type TemplateInfo } from '../services/templates'
 import { useAuthStore } from '../stores/auth'
 import { useFilesStore } from '../stores/files'
@@ -34,7 +34,7 @@ const route = useRoute()
 const templates = ref<TemplateInfo[]>([])
 const choice = ref<Choice | null>(null)
 const title = ref('')
-const language = ref<'es' | 'va' | 'en'>(locale.value === 'va' ? 'va' : locale.value === 'en' ? 'en' : 'es')
+const language = ref<Locale>(locale.value)
 const level = ref('primaria')
 const instructions = ref('')
 const gapMode = ref<'bank' | 'text'>('bank')
@@ -155,7 +155,7 @@ async function create() {
       await applyTemplate(project.id, choice.value.id, brief, auth.csrf)
       if (choice.value.id === 'infografia') {
         const html = infographicTemplate(brief.title, brief.language)
-        const htmlLang = language.value === 'va' ? 'ca' : language.value
+        const htmlLang = language.value === 'va' ? 'ca-ES-valencia' : language.value
         await files.create(project.id, INFOGRAPHIC_PATH, html.replace('<html lang="es">', `<html lang="${htmlLang}">`))
       }
     } else if (choice.value.kind === 'situacion') {
@@ -221,7 +221,7 @@ async function create() {
         <label class="full">{{ t('activityTitle') }}<input v-model="title" required maxlength="160" :placeholder="t('titlePlaceholder')" /></label>
         <div v-if="received" class="actions full handoff-actions"><button type="submit" :disabled="!canCreate">{{ busy ? t('creating') : t('createAndOpen') }}</button><span class="hint">{{ t('promptBridgeCreateHint') }}</span></div>
         <template v-if="choice.kind !== 'libre'">
-          <label>{{ t('language') }}<select v-model="language"><option value="es">{{ t('languageSpanish') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select></label>
+          <label>{{ t('language') }}<select v-model="language"><option value="es">{{ t('languageSpanish') }}</option><option value="ca">{{ t('languageCatalan') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select></label>
           <label>{{ t('educationLevel') }}<select v-model="level"><option value="infantil">{{ t('earlyYears') }}</option>
             <option value="primaria">{{ t('primary') }}</option><option value="secundaria">{{ t('secondary') }}</option>
             <option value="otros">{{ t('other') }}</option></select></label>

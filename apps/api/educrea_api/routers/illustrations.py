@@ -14,6 +14,8 @@ from ..services.ai.providers import registry
 from ..services.ai.providers.base import ProviderError
 from ..services.ai.providers.gemini import GeminiProvider, get_gemini_provider
 from ..services.ai.schemas import PreferredModel
+from ..services.ai import included
+from ..services.ai.routing import TaskContext, get_router
 from .ai import (_retry_skips, _streaming, ai_events, first_free_request, included_events, included_request,
                  wants_included)
 from .projects import project_for_owner
@@ -54,10 +56,18 @@ async def illustration_prompts(project_id: UUID, data: IllustrationRequest, user
         stored = db.scalar(select(ProjectFile.content).where(ProjectFile.project_id == project_id,
                                                              ProjectFile.path == path))
         content = illustrations.readable(stored or "", path)
+    prompt = illustrations.instruction(brief, data.count, content)
     available = registry.first_free(db, user_id)
+    if wants_included(db, user_id):
+        # Invited accounts: IA EduCrea writes the descriptions (as the rest of the text); if it is paused or out of
+        # quota, the teacher's own free AI takes over when there is one.
+        try:
+            return await _included_prompts(db, user_id, prompt, data)
+        except HTTPException:
+            if available is None:
+                raise
     if available is None:
         raise HTTPException(409, "Configura una IA gratuita para que pueda describir las ilustraciones")
-    prompt = illustrations.instruction(brief, data.count, content)
     skip_providers: set[str] = set()
     skip_models: set[tuple[str, str]] = set()
     while True:
@@ -87,6 +97,16 @@ async def illustration_prompts(project_id: UUID, data: IllustrationRequest, user
             db.rollback()
             quotas.reconcile(db, reservation, result.usage if result else None, failed=True)
             raise
+
+
+async def _included_prompts(db: Session, user_id: UUID, prompt: str, data: IllustrationRequest) -> list[dict]:
+    def finish(text: str, _usage: dict) -> list[dict]:
+        return illustrations.parse(text, "educrea", data.count, data.style)
+    chosen = get_router().select(TaskContext(task_type="planning"))
+    async for event, value in included.run(db, user_id, chosen, prompt, finish, task_type="planning", streaming=False):
+        if event == "result":
+            return value
+    raise HTTPException(502, "IA EduCrea no ha podido completar la generación. Inténtalo más tarde.")
 
 
 @router.post("/projects/{project_id}/ai/illustrations/place/stream")

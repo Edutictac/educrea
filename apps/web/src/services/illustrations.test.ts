@@ -29,3 +29,16 @@ describe('included images', () => {
     expect(includedLeft(null, 'm')).toBeNull()
   })
 })
+
+describe('api errors in Valencian', () => {
+  it('translates illustration and IA EduCrea messages', async () => {
+    const { locale } = await import('../i18n')
+    const { apiMessage } = await import('../i18n/apiErrors')
+    const previous = locale.value
+    locale.value = 'va'
+    expect(apiMessage('Configura una IA gratuita para que pueda describir las ilustraciones'))
+      .toBe('Configura una IA gratuïta perquè puga descriure les il·lustracions')
+    expect(apiMessage('Mensaje desconocido')).toBe('Mensaje desconocido')
+    locale.value = previous
+  })
+})

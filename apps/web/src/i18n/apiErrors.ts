@@ -46,8 +46,41 @@ const english: Record<string, string> = {
   'Tu cuenta ya tiene acceso a IA EduCrea': 'Your account already has access to EduCrea AI',
 }
 
+// Valencian: the messages docents meet most (IA EduCrea, images, illustrations); others stay as sent.
+const valencian: Record<string, string> = {
+  'IA EduCrea no está disponible ahora. Puedes utilizar tu propia API.': 'IA EduCrea no està disponible ara. Pots utilitzar la teua pròpia API.',
+  'No tienes cuota mensual suficiente para esta generación de IA EduCrea. La cuota se renueva el 1 del próximo mes. Puedes seguir utilizando tu propia API.': 'No tens prou quota mensual per a esta generació d’IA EduCrea. La quota es renova l’1 del mes que ve. Pots continuar utilitzant la teua pròpia API.',
+  'No tienes cuota semanal suficiente para esta generación de IA EduCrea. La cuota se renueva el lunes. Puedes seguir utilizando tu propia API.': 'No tens prou quota setmanal per a esta generació d’IA EduCrea. La quota es renova dilluns. Pots continuar utilitzant la teua pròpia API.',
+  'IA EduCrea ha alcanzado su límite diario de la beta. Inténtalo mañana o utiliza tu propia API.': 'IA EduCrea ha arribat al seu límit diari de la beta. Torna-ho a provar demà o utilitza la teua pròpia API.',
+  'Ya tienes una generación de IA EduCrea en curso.': 'Ja tens una generació d’IA EduCrea en curs.',
+  'Has alcanzado el límite temporal de IA EduCrea. Inténtalo más tarde.': 'Has arribat al límit temporal d’IA EduCrea. Torna-ho a provar més tard.',
+  'IA EduCrea no ha podido completar la generación. Inténtalo más tarde.': 'IA EduCrea no ha pogut completar la generació. Torna-ho a provar més tard.',
+  'El contenido supera el límite por petición de IA EduCrea.': 'El contingut supera el límit per petició d’IA EduCrea.',
+  'El contexto supera el límite de IA EduCrea.': 'El context supera el límit d’IA EduCrea.',
+  'Configura un proveedor gratuito y confirma un modelo antes de generar': 'Configura un proveïdor gratuït i confirma un model abans de generar',
+  'Configura una IA gratuita para que pueda describir las ilustraciones': 'Configura una IA gratuïta perquè puga descriure les il·lustracions',
+  'Ninguna IA gratuita ha podido describir las ilustraciones ahora. Vuelve a intentarlo en unos minutos.': 'Cap IA gratuïta ha pogut descriure les il·lustracions ara. Torna-ho a provar d’ací a uns minuts.',
+  'La IA no ha propuesto ninguna ilustración válida. Vuelve a intentarlo.': 'La IA no ha proposat cap il·lustració vàlida. Torna-ho a provar.',
+  'El proyecto no tiene encargo (activity.json)': 'El projecte no té encàrrec (activity.json)',
+  'Este tipo de recurso no admite ilustraciones': 'Este tipus de recurs no admet il·lustracions',
+  'Alguna imagen no está en la biblioteca del proyecto': 'Alguna imatge no està en la biblioteca del projecte',
+  'Configura tu clave de Gemini antes de generar imágenes': 'Configura la teua clau de Gemini abans de generar imatges',
+  'Confirma la estimación actual antes de generar la imagen': 'Confirma l’estimació actual abans de generar la imatge',
+  'Confirma que tienes derecho a generar la imagen y que no incluye datos personales': 'Confirma que tens dret a generar la imatge i que no inclou dades personals',
+  'El proveedor devolvió una imagen no válida': 'El proveïdor ha tornat una imatge no vàlida',
+  'Has alcanzado el límite diario de imágenes generadas': 'Has arribat al límit diari d’imatges generades',
+  'IA EduCrea no puede generar imágenes ahora. Inténtalo más tarde.': 'IA EduCrea no pot generar imatges ara. Torna-ho a provar més tard.',
+  'La imagen generada supera el tamaño máximo de la biblioteca': 'La imatge generada supera la mida màxima de la biblioteca',
+  'Modelo de imagen no habilitado': 'Model d’imatge no habilitat',
+  'Has usado todas las imágenes de IA EduCrea de esta semana. Se renuevan el lunes. Puedes usar tu propia clave de Gemini.': 'Has gastat totes les imatges d’IA EduCrea d’esta setmana. Es renoven dilluns. Pots usar la teua pròpia clau de Gemini.',
+  'IA EduCrea ha alcanzado hoy su límite de imágenes de la beta. Inténtalo mañana o usa tu propia clave de Gemini.': 'IA EduCrea ha arribat hui al seu límit d’imatges de la beta. Torna-ho a provar demà o usa la teua pròpia clau de Gemini.',
+  'Presupuesto mensual insuficiente': 'Pressupost mensual insuficient',
+  'Sesión no válida': 'Sessió no vàlida',
+}
+
 export function apiMessage(detail: unknown): string {
   if (typeof detail !== 'string' || !detail) return t('error')
+  if (locale.value === 'va') return Object.hasOwn(valencian, detail) ? valencian[detail] : detail
   if (locale.value !== 'en') return detail
   if (Object.hasOwn(english, detail)) return english[detail]
   const key = /^Configura tu clave de (.+) antes de generar$/.exec(detail)

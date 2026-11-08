@@ -165,3 +165,28 @@ def test_main_path_and_catalog_flag():
     flags = {item["id"]: item["illustrable"] for item in templates.catalog()}
     assert flags["infografia"] and flags["ficha"] and flags["tarjetas"]
     assert not flags["sopa_letras"] and not flags["crucigrama"] and not flags["escucha"]
+
+
+def test_invited_account_without_own_ai_describes_with_ia_educrea(client: TestClient, monkeypatch):
+    from test_included_ai import Stub as IncludedStub, account
+    from pydantic import SecretStr
+    from educrea_api.config import Settings
+    from educrea_api.services.ai import included
+
+    s = Settings(free_ai_enabled=True, qwen_api_key=SecretStr("institutional-qwen-test"), qwen_model="qwen-test",
+                 qwen_input_cost_per_million="1", qwen_output_cost_per_million="2",
+                 deepseek_api_key=SecretStr("institutional-deepseek-test"), deepseek_model="deepseek-test",
+                 deepseek_input_cost_per_million="3", deepseek_output_cost_per_million="6",
+                 free_ai_global_daily_budget_usd="10", free_ai_global_monthly_budget_usd="100")
+    monkeypatch.setattr(included, "get_settings", lambda: s)
+    from educrea_api.routers import ai as ai_router
+    monkeypatch.setattr(ai_router.included, "get_settings", lambda: s)
+    monkeypatch.setattr(included, "adapter", lambda plan: IncludedStub(answer(2)))
+    headers, project_id, _ = account(client)
+    assert client.post(f"/api/projects/{project_id}/template", headers=headers,
+                       json={"template": "ficha", "brief": {**BRIEF, "language": "va"}}).status_code == 201
+    response = client.post(f"/api/projects/{project_id}/ai/illustrations/prompts", headers=headers,
+                           json={"count": 2, "from_content": True})
+    assert response.status_code == 200, response.text
+    assert len(response.json()) == 2
+    assert client.get("/api/ai/included").json()["credits_used"] > 0

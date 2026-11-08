@@ -1,5 +1,5 @@
 export const en = {
-  footerHome: 'Home', footerPrivacy: 'EduTicTac privacy', footerCookies: 'Cookies', footerSource: 'Source code',
+  footerHome: 'Home', footerPrivacy: 'EduTicTac privacy', footerCookies: 'Cookies', footerTerms: 'Terms', footerSource: 'Source code',
   logoutFailed: 'Could not sign out of EduCrea. Try again using “Sign out”.',
   languageSpanish: "Spanish",
   languageValencian: "Valencian",

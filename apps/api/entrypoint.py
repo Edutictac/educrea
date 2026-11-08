@@ -17,6 +17,10 @@ for name in ("GEMINI", "QWEN", "DEEPSEEK"):
 smtp_path = os.environ.pop("EDUCREA_SMTP_PASSWORD_FILE", "")
 if smtp_path:
     os.environ["EDUCREA_SMTP_PASSWORD"] = Path(smtp_path).read_text().strip()
+for name in ("STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"):
+    secret_path = os.environ.pop(f"EDUCREA_{name}_FILE", "")
+    if secret_path:
+        os.environ[f"EDUCREA_{name}"] = Path(secret_path).read_text().strip()
 os.setgroups([])
 os.setgid(10001)
 os.setuid(10001)

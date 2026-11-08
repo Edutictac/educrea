@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 from .db import engine
+from .routers import billing
 from .services import history as _history  # noqa: F401  registers the file-history listener
 from .routers import admin, ai, assets, audios, auth, capabilities, templates, files, history, illustrations, images, materials, oidc, projects, sources, video_ai, videos
 
@@ -9,6 +10,7 @@ from .services.ai.temporary_credentials import TemporaryCredentialMiddleware
 
 app = FastAPI(title="EduCrea API", version="0.1.0", docs_url=None, redoc_url=None)
 app.add_middleware(TemporaryCredentialMiddleware)
+app.include_router(billing.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(oidc.router, prefix="/api")

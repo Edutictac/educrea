@@ -73,6 +73,10 @@ class Settings(BaseSettings):
     gemini_output_cost_per_million: str = "0"
     # Invitation delivery, exclusively from backend. Disabled until configured.
     public_base_url: str = ""
+    # Sandbox top-ups only. No live-mode switch exists in this prototype.
+    stripe_test_enabled: bool = False
+    stripe_secret_key: SecretStr | None = None
+    stripe_webhook_secret: SecretStr | None = None
     smtp_host: str = ""
     smtp_port: int = Field(default=587, ge=1, le=65535)
     smtp_security: str = "starttls"
@@ -114,7 +118,7 @@ def get_settings() -> Settings:
     oidc_secret_file = os.environ.get("EDUCREA_OIDC_CLIENT_SECRET_FILE")
     if oidc_secret_file:
         overrides["oidc_client_secret"] = Path(oidc_secret_file).read_text().strip()
-    for name in ("gemini_api_key", "qwen_api_key", "deepseek_api_key", "smtp_password"):
+    for name in ("gemini_api_key", "qwen_api_key", "deepseek_api_key", "smtp_password", "stripe_secret_key", "stripe_webhook_secret"):
         path = os.environ.get(f"EDUCREA_{name.upper()}_FILE")
         if path:
             overrides[name] = Path(path).read_text().strip()

@@ -1,6 +1,14 @@
 # Monetización transparente: saldo prepagado con comisión del 10 %
 
-Estado: **propuesta de diseño (2026-11-06)**, sin implementar. Desarrolla la Fase 9 del [roadmap](roadmap.md). Antes de cobrar a nadie hay que cerrar las comprobaciones legales del apartado 7.
+Estado: **diseño del servicio (2026-11-06), con prototipo de recarga en modo test**.
+Desarrolla la Fase 9 del [roadmap](roadmap.md). Antes de cobrar a nadie hay que cerrar
+las comprobaciones legales del apartado 7.
+
+**Avance 2026-11-08:** implementado el primer incremento de pruebas: recarga individual
+de 10 EUR con Checkout alojado, webhook y registro de saldo separado. Desactivado por
+defecto; sin dinero real, consumo de IA ni despliegue. Configuración, validación y
+límites en [stripe-test.md](stripe-test.md). El resto de este documento sigue siendo
+el diseño del servicio completo, aún pendiente.
 
 ## 1. Principios
 

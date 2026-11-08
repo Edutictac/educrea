@@ -27,6 +27,7 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/admin/beta', component: BetaAdminView },
   { path: '/beta', component: BetaRequestView },
   { path: '/ai/providers', component: AiProvidersView },
+  { path: '/saldo', component: () => import('./views/WalletView.vue') },
 ] })
 
 const pinia = createPinia()

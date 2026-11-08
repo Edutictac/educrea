@@ -1,0 +1,14 @@
+# Optional sandbox only. Read secrets before dropping privileges; never expose them to the web.
+services:
+  api:
+    environment:
+      EDUCREA_STRIPE_TEST_ENABLED: "true"
+      EDUCREA_PUBLIC_BASE_URL: ${EDUCREA_PUBLIC_BASE_URL:?Set the sandbox public origin}
+      EDUCREA_STRIPE_SECRET_KEY_FILE: /run/secrets/stripe_secret_key
+      EDUCREA_STRIPE_WEBHOOK_SECRET_FILE: /run/secrets/stripe_webhook_secret
+    secrets: [stripe_secret_key, stripe_webhook_secret]
+secrets:
+  stripe_secret_key:
+    file: ../secrets/stripe_secret_key
+  stripe_webhook_secret:
+    file: ../secrets/stripe_webhook_secret

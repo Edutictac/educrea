@@ -35,9 +35,10 @@ y los límites del cierre de sesión.
 
 Todas las rutas, incluida la portada, utilizan `AppFooter.vue`: el mismo formato de pie que
 EduTicTac Commons, con marca, aplicación, versión del paquete, inicio, privacidad de EduTicTac,
-cookies, licencia y créditos de iconos. La página `/cookies` es pública y documenta las cookies
-y el almacenamiento del navegador; no hay banner de consentimiento porque todas son técnicas o
-preferencias elegidas por la persona usuaria. La hoja canónica `edutictac-footer.css` se guarda localmente.
+cookies, licencia y créditos de iconos. El enlace «Cookies» apunta a la página canónica de la
+comunidad, que documenta las cookies y el almacenamiento del navegador de todas las aplicaciones;
+no hay banner de consentimiento porque todas son técnicas o preferencias elegidas por la persona
+usuaria. La hoja canónica `edutictac-footer.css` se guarda localmente.
 Los textos de las licencias se sirven desde `/licenses/` y los enlaces se traducen con la interfaz.
 Si la instalación dispone de un repositorio público, puede configurar `VITE_SOURCE_URL` al
 compilar para mostrar «Código fuente»; sin una URL real, ese enlace no aparece.

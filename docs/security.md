@@ -13,9 +13,10 @@ Las futuras aplicaciones de conversión y renderizado se ejecutarán en trabajad
 
 ## Cookies y almacenamiento del navegador
 
-La página pública `/cookies` documenta el inventario completo y está enlazada desde el pie. No se
-muestra banner de consentimiento porque todo el almacenamiento es técnico o una preferencia elegida
-por la persona usuaria (art. 22.2 LSSI y guía de cookies de la AEPD):
+La página canónica de la comunidad (`https://edutictac.es/galetes.html`) documenta el inventario
+completo y está enlazada desde el pie. No se muestra banner de consentimiento porque todo el
+almacenamiento es técnico o una preferencia elegida por la persona usuaria (art. 22.2 LSSI y guía
+de cookies de la AEPD):
 
 - `educrea_session` (HttpOnly, Secure, SameSite Strict, 7 días): sesión y CSRF.
 - `educrea_oidc_flow` (HttpOnly, Secure, SameSite Lax, 10 minutos, `/api/auth/oidc`): estado del SSO.
@@ -27,4 +28,4 @@ por la persona usuaria (art. 22.2 LSSI y guía de cookies de la AEPD):
 
 No hay analítica, publicidad, perfilado ni medición de terceros. La CSP solo permite
 `commons.edutictac.es` como origen externo. Si se añade cualquier finalidad no exenta, hará falta
-consentimiento previo, granular y revocable, y la página `/cookies` deberá actualizarse.
+consentimiento previo, granular y revocable, y la página canónica deberá actualizarse.

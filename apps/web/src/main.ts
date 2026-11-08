@@ -14,7 +14,6 @@ const ProjectView = () => import('./views/ProjectView.vue')
 const AiProvidersView = () => import('./views/AiProvidersView.vue')
 const BetaAdminView = () => import('./views/BetaAdminView.vue')
 const BetaRequestView = () => import('./views/BetaRequestView.vue')
-const CookiesView = () => import('./views/CookiesView.vue')
 
 installAccountLanguage()
 
@@ -27,7 +26,6 @@ const router = createRouter({ history: createWebHistory(), routes: [
   { path: '/projects/:id', component: ProjectView, meta: { wide: true } },
   { path: '/admin/beta', component: BetaAdminView },
   { path: '/beta', component: BetaRequestView },
-  { path: '/cookies', component: CookiesView, meta: { public: true } },
   { path: '/ai/providers', component: AiProvidersView },
 ] })
 

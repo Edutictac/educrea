@@ -104,7 +104,7 @@ export const en = {
   approvePaid: 'I authorise this paid request with my key and accept the estimated maximum cost.',
   confirmPaidEstimate: 'Calculate and confirm the maximum cost before generating.',
   keyConfigured: 'Key configured', keyMissing: 'Key not configured',
-  noVerifiedModels: 'The administrator has not enabled any models verified as free yet. Generation is blocked.',
+  noVerifiedModels: 'EduCrea does not have any free models enabled for this provider yet. This is not a problem with your key: you can save it and try another provider or come back later.',
   verifiedModels: 'Verified free models', geminiKey: 'Gemini API key', saveKey: 'Save key',
   revokeKey: 'Revoke key', confirmRevoke: 'Revoke your key for this provider?', keySaved: 'Key saved',
   keyRevoked: 'Key revoked', keyPrivacy: 'The key is encrypted on the server. Do not include personal data about students in the instructions.',

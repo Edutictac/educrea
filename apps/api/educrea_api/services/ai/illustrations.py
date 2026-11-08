@@ -22,7 +22,7 @@ from . import engine
 from .images import MAX_PROMPT_CHARS
 
 Style = Literal["plana", "acuarela", "realista", "colorear"]
-MAX_ILLUSTRATIONS = 6
+MAX_ILLUSTRATIONS = 10
 MAX_CONTENT_CHARS = 6000
 STYLE_PROMPTS: dict[str, str] = {
     "plana": "Estilo: ilustración plana de libro infantil, colores suaves, formas sencillas y fondo limpio.",

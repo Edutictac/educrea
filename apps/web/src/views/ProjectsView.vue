@@ -10,7 +10,7 @@ import AppIcon from '../components/AppIcon.vue'
 import IncludedAiQuota from '../components/IncludedAiQuota.vue'
 import { MATERIAL_ACCEPT, uploadSource } from '../services/sources'
 import { imageModels, includedLeft, type ImageModels } from '../services/images'
-import { createIllustrations, illustrationPrompts, templateIllustrable, type IllustrationStyle } from '../services/illustrations'
+import { MAX_ILLUSTRATIONS, createIllustrations, illustrationPrompts, templateIllustrable, type IllustrationStyle } from '../services/illustrations'
 import { MAX_INSTRUCTIONS, fillInstructions, parseBridgeQuery, takePendingPrompt } from '../services/promptBridge'
 
 // Guided creation (phase 7): 1) what to create, 2) a few details, then the project opens in teacher mode with the
@@ -68,7 +68,7 @@ const budgetLeft = computed(() => imageStatus.value
 const illustrationTotal = computed(() => illustrationCount.value * (imageModel.value?.max_cost_microusd ?? 0))
 // With IA EduCrea the teacher pays nothing: no cost confirmation, the count is capped by the images left this week.
 const includedImages = computed(() => includedLeft(imageStatus.value, imageModel.value?.model))
-const maxIllustrations = computed(() => includedImages.value === null ? 6 : Math.min(6, includedImages.value))
+const maxIllustrations = computed(() => includedImages.value === null ? MAX_ILLUSTRATIONS : Math.min(MAX_ILLUSTRATIONS, includedImages.value))
 const illustrationsReady = computed(() => !canIllustrate.value || illustrationCount.value === 0
   || (includedImages.value !== null ? illustrationRightsOk.value && illustrationCount.value <= includedImages.value
     : illustrationCostOk.value && illustrationRightsOk.value && illustrationTotal.value <= budgetLeft.value))

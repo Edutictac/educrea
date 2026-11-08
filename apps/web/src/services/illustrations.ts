@@ -7,6 +7,8 @@ import { type AiStreamEvent, type Proposal, streamTeacherAction } from './ai'
 import { estimateImage, generateImage } from './images'
 import { temporaryKeyHeaders } from './temporaryKeys'
 
+/** Same as the API's illustrations.MAX_ILLUSTRATIONS. */
+export const MAX_ILLUSTRATIONS = 10
 export type IllustrationStyle = 'plana' | 'acuarela' | 'realista' | 'colorear'
 export interface IllustrationPrompt { alt: string; prompt: string }
 

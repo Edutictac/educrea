@@ -58,7 +58,7 @@ def test_prompts_are_written_by_the_free_ai_with_style_and_safety(client: TestCl
 def test_prompts_validate_input_and_need_a_free_ai(client: TestClient):
     headers, project_id = project_with_brief(client)
     route = f"/api/projects/{project_id}/ai/illustrations/prompts"
-    assert client.post(route, headers=headers, json={"count": 7}).status_code == 422
+    assert client.post(route, headers=headers, json={"count": 11}).status_code == 422
     assert client.post(route, headers=headers, json={"count": 2, "style": "neon"}).status_code == 422
     assert client.post(route, json={"count": 2}).status_code == 403  # CSRF
     client.delete("/api/ai/providers/gemini/free-models/gemini-test-free/confirm", headers=headers)

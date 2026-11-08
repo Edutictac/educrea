@@ -8,7 +8,7 @@ import { RouterLink } from 'vue-router'
 import { t } from '../i18n'
 import { choiceBody } from '../services/aiChoice'
 import { imageModels, includedLeft, type ImageModels } from '../services/images'
-import { createIllustrations, illustrationPrompts, illustrationTarget, placeIllustrations,
+import { MAX_ILLUSTRATIONS, createIllustrations, illustrationPrompts, illustrationTarget, placeIllustrations,
   type IllustrationStyle } from '../services/illustrations'
 import { useAuthStore } from '../stores/auth'
 import { useFilesStore } from '../stores/files'
@@ -37,7 +37,7 @@ const budgetLeft = computed(() => status.value
 const total = computed(() => count.value * (model.value?.max_cost_microusd ?? 0))
 // IA EduCrea (invited accounts): nothing to pay, capped by the images left this week.
 const included = computed(() => includedLeft(status.value, model.value?.model))
-const maxCount = computed(() => included.value === null ? 6 : Math.min(6, included.value))
+const maxCount = computed(() => included.value === null ? MAX_ILLUSTRATIONS : Math.min(MAX_ILLUSTRATIONS, included.value))
 const ready = computed(() => !busy.value && !props.disabled && hasContent.value && rightsOk.value && count.value >= 1
   && (included.value !== null ? count.value <= included.value : costOk.value && total.value <= budgetLeft.value))
 const usd = (micro: number) => `$${(micro / 1000000).toFixed(2)}`

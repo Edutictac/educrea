@@ -7,7 +7,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { t } from '../i18n'
 import { choiceBody } from '../services/aiChoice'
-import { imageModels, type ImageModels } from '../services/images'
+import { imageModels, includedLeft, type ImageModels } from '../services/images'
 import { createIllustrations, illustrationPrompts, illustrationTarget, placeIllustrations,
   type IllustrationStyle } from '../services/illustrations'
 import { useAuthStore } from '../stores/auth'
@@ -35,11 +35,17 @@ const model = computed(() => status.value?.models.find(item => item.model === st
 const budgetLeft = computed(() => status.value
   ? status.value.budget.monthly_limit_microusd - status.value.budget.spent_or_reserved_microusd : 0)
 const total = computed(() => count.value * (model.value?.max_cost_microusd ?? 0))
-const ready = computed(() => !busy.value && !props.disabled && hasContent.value && costOk.value && rightsOk.value
-  && total.value <= budgetLeft.value)
+// IA EduCrea (invited accounts): nothing to pay, capped by the images left this week.
+const included = computed(() => includedLeft(status.value, model.value?.model))
+const maxCount = computed(() => included.value === null ? 6 : Math.min(6, included.value))
+const ready = computed(() => !busy.value && !props.disabled && hasContent.value && rightsOk.value && count.value >= 1
+  && (included.value !== null ? count.value <= included.value : costOk.value && total.value <= budgetLeft.value))
 const usd = (micro: number) => `$${(micro / 1000000).toFixed(2)}`
 
-async function refresh() { status.value = await imageModels().catch(() => null) }
+async function refresh() {
+  status.value = await imageModels().catch(() => null)
+  if (count.value > maxCount.value) count.value = Math.max(1, maxCount.value)
+}
 onMounted(refresh)
 
 async function run() {
@@ -49,7 +55,8 @@ async function run() {
     progress.value = t('illustrationsWriting')
     const prompts = await illustrationPrompts(props.projectId, count.value, style.value, auth.csrf, true)
     const result = await createIllustrations(props.projectId, prompts, model.value.model, auth.csrf,
-      (index, all) => { progress.value = t('illustrationProgress').replace('{n}', String(index)).replace('{total}', String(all)) })
+      (index, all) => { progress.value = t('illustrationProgress').replace('{n}', String(index)).replace('{total}', String(all)) },
+      included.value === null)
     if (!result.assets.length) throw new Error(result.errors[0] ?? t('error'))
     progress.value = t('illustrationsPlacing')
     controller = new AbortController(); placing.value = true
@@ -81,15 +88,18 @@ async function run() {
       <p v-if="!hasContent" class="notice">{{ t('illustrateNeedsContent') }}</p>
       <div class="row">
         <label>{{ t('illustrationsCount') }}<select v-model.number="count" :disabled="busy">
-          <option v-for="n in 6" :key="n" :value="n">{{ n }}</option></select></label>
+          <option v-for="n in maxCount" :key="n" :value="n">{{ n }}</option></select></label>
         <label>{{ t('illustrationsStyle') }}<select v-model="style" :disabled="busy">
           <option value="plana">{{ t('styleFlat') }}</option><option value="acuarela">{{ t('styleWatercolor') }}</option>
           <option value="realista">{{ t('styleRealistic') }}</option><option value="colorear">{{ t('styleColoring') }}</option></select></label>
       </div>
-      <p v-if="total > budgetLeft" role="alert">{{ t('illustrationsOverBudget') }}
-        <RouterLink to="/ai/providers">{{ t('changeBudget') }}</RouterLink></p>
-      <label class="check"><input v-model="costOk" type="checkbox" :disabled="busy" />
-        {{ t('illustrationsCost').replace('{cost}', usd(total)) }}</label>
+      <p v-if="included !== null" class="hint">{{ included > 0 ? t('includedImagesLeft').replace('{n}', String(included)).replace('{total}', String(status.included?.weekly_limit ?? 0)) : t('includedImagesNone') }}</p>
+      <template v-else>
+        <p v-if="total > budgetLeft" role="alert">{{ t('illustrationsOverBudget') }}
+          <RouterLink to="/ai/providers">{{ t('changeBudget') }}</RouterLink></p>
+        <label class="check"><input v-model="costOk" type="checkbox" :disabled="busy" />
+          {{ t('illustrationsCost').replace('{cost}', usd(total)) }}</label>
+      </template>
       <label class="check"><input v-model="rightsOk" type="checkbox" :disabled="busy" />{{ t('imageRightsNoPersonal') }}</label>
       <div class="actions"><button type="button" :disabled="!ready" @click="run">{{ t('illustrateRun') }}</button>
         <button v-if="placing" type="button" class="secondary" @click="controller?.abort()">{{ t('cancel') }}</button></div>

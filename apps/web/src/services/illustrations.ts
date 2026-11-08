@@ -47,7 +47,7 @@ function toFile(base64: string, mediaType: string, index: number): File {
 
 /** Generates and saves every illustration; returns how many were saved and the errors of the ones that failed. */
 export async function createIllustrations(projectId: string, prompts: IllustrationPrompt[], model: string,
-  csrf: string, onProgress: (index: number, total: number) => void): Promise<{ saved: number; assets: Asset[]; errors: string[] }> {
+  csrf: string, onProgress: (index: number, total: number) => void, paid = true): Promise<{ saved: number; assets: Asset[]; errors: string[] }> {
   let saved = 0
   const assets: Asset[] = []
   const errors: string[] = []
@@ -55,7 +55,7 @@ export async function createIllustrations(projectId: string, prompts: Illustrati
     onProgress(index + 1, prompts.length)
     try {
       const estimate = await estimateImage(projectId, item.prompt, model, '1:1', csrf)
-      const image = await generateImage(projectId, item.prompt, model, '1:1', estimate, csrf)
+      const image = await generateImage(projectId, item.prompt, model, '1:1', estimate, csrf, paid)
       assets.push(await uploadAsset(projectId, toFile(image.image_base64, image.media_type, index + 1), item.alt,
         image.suggested_credit, csrf))
       saved += 1

@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { t } from '../i18n'
 import { uploadAsset } from '../services/assets'
-import { estimateImage, generateImage, imageModels, type GeneratedImage, type ImageEstimate, type ImageModels } from '../services/images'
+import { estimateImage, generateImage, imageModels, includedLeft, type GeneratedImage, type ImageEstimate, type ImageModels } from '../services/images'
 import { useAuthStore } from '../stores/auth'
 
 const props = defineProps<{ projectId: string }>()
@@ -34,8 +34,11 @@ const dataUri = computed(() => generated.value
   ? `data:${generated.value.media_type};base64,${generated.value.image_base64}` : '')
 const budgetOk = computed(() => budgetLimit.value > 0 && !!estimate.value
   && budgetSpent.value + estimate.value.maximum_cost_microusd <= budgetLimit.value)
-const canGenerate = computed(() => configured.value && !!estimate.value && costConfirmed.value && rights.value
-  && noPersonalData.value && prompt.value.trim().length >= 3 && budgetOk.value && !busy.value)
+// IA EduCrea (invited accounts): the institution pays, so no cost confirmation or personal budget is needed.
+const included = computed(() => includedLeft(status.value, model.value))
+const canGenerate = computed(() => configured.value && !!estimate.value && rights.value && noPersonalData.value
+  && prompt.value.trim().length >= 3 && !busy.value
+  && (included.value !== null ? included.value > 0 : costConfirmed.value && budgetOk.value))
 
 async function load() {
   try {
@@ -57,7 +60,7 @@ async function generate() {
   error.value = ''; message.value = ''; busy.value = true; saved.value = false
   try {
     generated.value = await generateImage(props.projectId, prompt.value.trim(), model.value, aspect.value,
-      estimate.value, auth.csrf)
+      estimate.value, auth.csrf, included.value === null)
     alt.value = prompt.value.trim().slice(0, 300)
     credit.value = generated.value.suggested_credit
     message.value = t('imageGenerated')
@@ -108,7 +111,8 @@ onMounted(load)
       <label>{{ t('imagePrompt') }}
         <textarea v-model="prompt" rows="3" maxlength="1000" required :placeholder="t('imagePromptPlaceholder')" />
       </label>
-      <p v-if="budgetLimit" class="hint">{{ t('imageBudget') }}: {{ cost(budgetSpent) }} / {{ cost(budgetLimit) }}
+      <p v-if="included !== null" class="hint">{{ included > 0 ? t('includedImagesLeft').replace('{n}', String(included)).replace('{total}', String(status?.included?.weekly_limit ?? 0)) : t('includedImagesNone') }}</p>
+      <p v-else-if="budgetLimit" class="hint">{{ t('imageBudget') }}: {{ cost(budgetSpent) }} / {{ cost(budgetLimit) }}
         <RouterLink to="/ai/providers">{{ t('changeBudget') }}</RouterLink></p>
       <p v-else class="notice">{{ t('imageBudgetZero') }} <RouterLink to="/ai/providers">{{ t('changeBudget') }}</RouterLink></p>
       <div class="actions">
@@ -116,7 +120,7 @@ onMounted(load)
           {{ t('imageEstimate') }}
         </button>
       </div>
-      <div v-if="estimate" class="notice">
+      <div v-if="estimate && included === null" class="notice">
         <p><strong>{{ t('imageCost') }}: {{ cost(estimate.maximum_cost_microusd) }}</strong> ({{ t('imageCostCharged') }})</p>
         <p v-if="!budgetOk" class="notice">{{ t('imageBudgetInsufficient') }}</p>
         <label class="check"><input v-model="costConfirmed" type="checkbox" />

@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     image_models_json: str = "{}"
     ai_daily_image_requests: int = Field(default=20, gt=0)
     image_request_timeout_seconds: int = Field(default=120, ge=1, le=300)
+    # Images with IA EduCrea for invited accounts: institutional Gemini key, a model of the image catalog, and
+    # count-based limits (each image has a fixed price borne by EduCrea). Disabled by default.
+    included_images_enabled: bool = False
+    included_image_model: str = ""
+    included_images_weekly_limit: int = Field(default=10, ge=0)
+    included_images_global_daily_limit: int = Field(default=50, ge=0)
     # BYOK video generation. Admin-approved models and per-second prices; empty by default.
     video_models_json: str = "{}"
     ai_daily_video_requests: int = Field(default=10, gt=0)

@@ -1,6 +1,6 @@
 # Generación de imágenes BYOK: Gemini Nano Banana
 
-Estado: **implementado el 2026-11-07** para usuarios registrados e invitados con clave temporal. Solo resolución 1K. La IA incluida no genera imágenes en esta fase.
+Estado: **implementado el 2026-11-07** para usuarios registrados e invitados con clave temporal. Solo resolución 1K. Desde el 2026-11-08, las cuentas con invitación a IA EduCrea también pueden generar imágenes con la clave institucional (ver «Imágenes con IA EduCrea»).
 
 ## Modelo y precio
 
@@ -38,6 +38,23 @@ EDUCREA_IMAGE_REQUEST_TIMEOUT_SECONDS=120
 5. «Guardar en el proyecto» usa la biblioteca de imágenes existente: PNG/JPEG, máximo 2 MB, texto alternativo obligatorio, crédito, control de duplicados y límite de 50 imágenes.
 
 El coste se cobra al generar, aunque la imagen se descarte. Si Gemini falla o no devuelve una imagen, la reserva interna se libera.
+
+## Imágenes con IA EduCrea (cuentas invitadas)
+
+Las cuentas registradas con invitación activa a IA EduCrea generan imágenes con la **clave institucional de Gemini**, sin clave propia y sin coste para el docente. Las sesiones anónimas de visitante quedan fuera.
+
+```sh
+EDUCREA_INCLUDED_IMAGES_ENABLED=true
+EDUCREA_INCLUDED_IMAGE_MODEL=gemini-3.1-flash-lite-image   # debe estar en EDUCREA_IMAGE_MODELS_JSON
+EDUCREA_INCLUDED_IMAGES_WEEKLY_LIMIT=10                     # por cuenta; se renueva el lunes (UTC)
+EDUCREA_INCLUDED_IMAGES_GLOBAL_DAILY_LIMIT=50               # toda la instalación; 0 lo desactiva
+```
+
+- Hace falta que el proyecto de Google de la clave institucional tenga **facturación activa**: el nivel gratuito responde 429 a los modelos de imagen.
+- Se usa primero IA EduCrea, como con el texto. Cuando se agotan las imágenes de la semana, se usa la clave propia del docente si la tiene, y en ese caso se pide de nuevo la confirmación del coste.
+- La contabilidad va en `AiUsage` con `mode=included` y `task_type=image`: precio fijo del catálogo como coste institucional y 0 créditos. Las imágenes no gastan créditos de texto ni cuentan para los límites por minuto, hora y día del texto, pero comparten la regla de una sola generación en curso por cuenta.
+- Un rechazo claro del proveedor libera la plaza. Un timeout o una respuesta ilegible, que Google puede haber facturado, sigue contando.
+- La API nunca devuelve la clave institucional. `GET /api/ai/images/models` añade `own_key` e `included` (modelo, límite semanal, usadas, restantes y renovación). Con IA EduCrea, la interfaz no pide confirmar el coste.
 
 ## Ilustraciones en lote
 

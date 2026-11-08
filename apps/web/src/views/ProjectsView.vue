@@ -9,7 +9,7 @@ import { useProjectsStore } from '../stores/projects'
 import AppIcon from '../components/AppIcon.vue'
 import IncludedAiQuota from '../components/IncludedAiQuota.vue'
 import { MATERIAL_ACCEPT, uploadSource } from '../services/sources'
-import { imageModels, type ImageModels } from '../services/images'
+import { imageModels, includedLeft, type ImageModels } from '../services/images'
 import { createIllustrations, illustrationPrompts, templateIllustrable, type IllustrationStyle } from '../services/illustrations'
 import { MAX_INSTRUCTIONS, fillInstructions, parseBridgeQuery, takePendingPrompt } from '../services/promptBridge'
 
@@ -66,8 +66,12 @@ const canIllustrate = computed(() => !!choice.value && choice.value.kind === 'pl
 const budgetLeft = computed(() => imageStatus.value
   ? imageStatus.value.budget.monthly_limit_microusd - imageStatus.value.budget.spent_or_reserved_microusd : 0)
 const illustrationTotal = computed(() => illustrationCount.value * (imageModel.value?.max_cost_microusd ?? 0))
+// With IA EduCrea the teacher pays nothing: no cost confirmation, the count is capped by the images left this week.
+const includedImages = computed(() => includedLeft(imageStatus.value, imageModel.value?.model))
+const maxIllustrations = computed(() => includedImages.value === null ? 6 : Math.min(6, includedImages.value))
 const illustrationsReady = computed(() => !canIllustrate.value || illustrationCount.value === 0
-  || (illustrationCostOk.value && illustrationRightsOk.value && illustrationTotal.value <= budgetLeft.value))
+  || (includedImages.value !== null ? illustrationRightsOk.value && illustrationCount.value <= includedImages.value
+    : illustrationCostOk.value && illustrationRightsOk.value && illustrationTotal.value <= budgetLeft.value))
 const canCreate = computed(() => !busy.value && !!title.value.trim() && (!material.value || materialRights.value) && illustrationsReady.value
   && (choice.value?.id !== 'bateria' || mix.value.length > 0))
 const usd = (micro: number) => `$${(micro / 1000000).toFixed(2)}`
@@ -169,7 +173,8 @@ async function create() {
         progress.value = t('illustrationsWriting')
         const prompts = await illustrationPrompts(project.id, illustrationCount.value, illustrationStyle.value, auth.csrf)
         const result = await createIllustrations(project.id, prompts, imageModel.value.model, auth.csrf,
-          (index, total) => { progress.value = t('illustrationProgress').replace('{n}', String(index)).replace('{total}', String(total)) })
+          (index, total) => { progress.value = t('illustrationProgress').replace('{n}', String(index)).replace('{total}', String(total)) },
+          includedImages.value === null)
         if (result.errors.length) alert(`${t('illustrationsPartial').replace('{n}', String(result.saved))} ${result.errors[0]}`)
       } catch (cause) { alert(`${t('illustrationsFailed')} ${cause instanceof Error ? cause.message : ''}`) }
     }
@@ -247,16 +252,19 @@ async function create() {
           <fieldset v-if="canIllustrate" class="full material-pick">
             <legend>{{ t('illustrationsTitle') }} <span class="hint">({{ t('optional') }})</span></legend>
             <label>{{ t('illustrationsCount') }}<select v-model.number="illustrationCount">
-              <option :value="0">{{ t('illustrationsNone') }}</option><option v-for="n in 6" :key="n" :value="n">{{ n }}</option></select></label>
+              <option :value="0">{{ t('illustrationsNone') }}</option><option v-for="n in maxIllustrations" :key="n" :value="n">{{ n }}</option></select></label>
+            <p v-if="includedImages !== null" class="hint">{{ includedImages > 0 ? t('includedImagesLeft').replace('{n}', String(includedImages)).replace('{total}', String(imageStatus?.included?.weekly_limit ?? 0)) : t('includedImagesNone') }}</p>
             <template v-if="illustrationCount > 0">
               <label>{{ t('illustrationsStyle') }}<select v-model="illustrationStyle">
                 <option value="plana">{{ t('styleFlat') }}</option><option value="acuarela">{{ t('styleWatercolor') }}</option>
                 <option value="realista">{{ t('styleRealistic') }}</option><option value="colorear">{{ t('styleColoring') }}</option></select></label>
               <p class="hint">{{ t('illustrationsIntro') }}</p>
-              <p v-if="illustrationTotal > budgetLeft" role="alert">{{ t('illustrationsOverBudget') }}
-                <RouterLink to="/ai/providers">{{ t('changeBudget') }}</RouterLink></p>
-              <label class="check"><input v-model="illustrationCostOk" type="checkbox" />
-                {{ t('illustrationsCost').replace('{cost}', usd(illustrationTotal)) }}</label>
+              <template v-if="includedImages === null">
+                <p v-if="illustrationTotal > budgetLeft" role="alert">{{ t('illustrationsOverBudget') }}
+                  <RouterLink to="/ai/providers">{{ t('changeBudget') }}</RouterLink></p>
+                <label class="check"><input v-model="illustrationCostOk" type="checkbox" />
+                  {{ t('illustrationsCost').replace('{cost}', usd(illustrationTotal)) }}</label>
+              </template>
               <label class="check"><input v-model="illustrationRightsOk" type="checkbox" />{{ t('imageRightsNoPersonal') }}</label>
             </template>
           </fieldset>

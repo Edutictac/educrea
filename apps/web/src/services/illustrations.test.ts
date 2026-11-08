@@ -18,3 +18,14 @@ describe('illustrations', () => {
     expect(templateIllustrable({ id: 'infografia' })).toBe(true)
   })
 })
+
+describe('included images', () => {
+  it('counts IA EduCrea images only for its model', async () => {
+    const { includedLeft } = await import('./images')
+    const status = { configured: true, default: 'm', models: [], budget: { monthly_limit_microusd: 0, spent_or_reserved_microusd: 0 },
+      included: { model: 'm', weekly_limit: 10, used: 3, remaining: 7, renews_at: '' } } as never
+    expect(includedLeft(status, 'm')).toBe(7)
+    expect(includedLeft(status, 'other')).toBeNull()
+    expect(includedLeft(null, 'm')).toBeNull()
+  })
+})

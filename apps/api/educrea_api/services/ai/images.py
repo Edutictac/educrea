@@ -106,11 +106,27 @@ def estimate(prompt: str, model: str, aspect_ratio: str = DEFAULT_ASPECT) -> dic
             "fingerprint": fingerprint}
 
 
-def configured(db: Session, user_id: UUID) -> bool:
-    temporary = temporary_credential(db, user_id, PROVIDER)
-    if temporary:
+def own_key(db: Session, user_id: UUID) -> bool:
+    if temporary_credential(db, user_id, PROVIDER):
         return True
     return personal_credential(db, user_id, PROVIDER) is not None
+
+
+def included_status(db: Session, user_id: UUID) -> dict | None:
+    from . import included
+    return included.image_status(db, user_id)
+
+
+def configured(db: Session, user_id: UUID) -> bool:
+    """The account can generate: with its own Gemini key, or with IA EduCrea when invited."""
+    return own_key(db, user_id) or included_status(db, user_id) is not None
+
+
+def uses_included(db: Session, user_id: UUID, model: str) -> bool:
+    """IA EduCrea first for invited accounts (as with text), while it has images left this week for that model;
+    otherwise the teacher's own key."""
+    status = included_status(db, user_id)
+    return status is not None and status["model"] == model and (status["remaining"] > 0 or not own_key(db, user_id))
 
 
 def api_key(db: Session, user_id: UUID) -> str:

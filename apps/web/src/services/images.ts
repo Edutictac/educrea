@@ -13,8 +13,12 @@ export interface ImageModel {
   max_cost_microusd: number  // upper bound for any accepted prompt
 }
 
+// Images with IA EduCrea for invited accounts: institutional key, weekly count, nothing to pay.
+export interface IncludedImages { model: string; weekly_limit: number; used: number; remaining: number; renews_at: string }
 export interface ImageModels {
   configured: boolean
+  own_key?: boolean
+  included?: IncludedImages | null
   default: string | null
   models: ImageModel[]
   budget: BudgetStatus
@@ -69,17 +73,23 @@ export async function estimateImage(projectId: string, prompt: string, model: st
 }
 
 export async function generateImage(projectId: string, prompt: string, model: string, aspectRatio: string,
-  estimate: ImageEstimate, csrf: string): Promise<GeneratedImage> {
+  estimate: ImageEstimate, csrf: string, paid = true): Promise<GeneratedImage> {
   return await (await checked(await fetch(`/api/projects/${projectId}/ai/images`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, ...temporaryKeyHeaders() },
     body: JSON.stringify({
       prompt, model, aspect_ratio: aspectRatio,
-      paid_authorized: true,
+      paid_authorized: paid,  // false with IA EduCrea: the API refuses to charge the teacher's own key
       approved_max_cost_microusd: estimate.maximum_cost_microusd,
       approved_estimate_fingerprint: estimate.fingerprint,
       rights_acknowledged: true,
       no_personal_data: true,
     }),
   }))).json() as GeneratedImage
+}
+
+/** IA EduCrea images left for the given model, or null when that model is paid with the teacher's own key. */
+export function includedLeft(status: ImageModels | null, model: string | undefined): number | null {
+  const included = status?.included
+  return included && included.model === model ? included.remaining : null
 }

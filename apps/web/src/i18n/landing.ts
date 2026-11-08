@@ -36,7 +36,7 @@ export const landingMessages = {
       { q: '¿Qué debo tener en cuenta al trabajar con IA?', a: 'Las propuestas pueden contener errores: revísalas y adáptalas a tu grupo. No incluyas nombres, trabajos identificables ni otros datos personales del alumnado en las instrucciones o documentos que compartas con proveedores de IA.' },
       { q: '¿Es software libre?', a: 'Sí. EduCrea es un proyecto de software libre con licencia AGPL-3.0 o posterior. Puedes utilizarlo, estudiarlo y adaptarlo respetando su licencia.' },
     ],
-    endLabel: 'LA PRÓXIMA IDEA ES TUYA', endTitle: 'Haz sitio a lo que quieres enseñar.', endText: 'Empieza con algo pequeño. Una pregunta, una ficha, una actividad para tu próxima clase.', footer: 'Una herramienta de EduTicTac para la creatividad docente.', free: 'Software libre · AGPL-3.0+',
+    endLabel: 'LA PRÓXIMA IDEA ES TUYA', endTitle: 'Haz sitio a lo que quieres enseñar.', endText: 'Empieza con algo pequeño. Una pregunta, una ficha, una actividad para tu próxima clase.',
   },
   va: {
     nav: ['Què pots crear', 'Com funciona', 'Preguntes freqüents'], enter: 'Obri EduCrea',
@@ -75,7 +75,7 @@ export const landingMessages = {
       { q: 'Què he de tindre en compte en treballar amb IA?', a: 'Les propostes poden contindre errors: revisa-les i adapta-les al teu grup. No inclogues noms, treballs identificables ni altres dades personals de l’alumnat en les instruccions o documents que compartisques amb proveïdors d’IA.' },
       { q: 'És programari lliure?', a: 'Sí. EduCrea és un projecte de programari lliure amb llicència AGPL-3.0 o posterior. Pots utilitzar-lo, estudiar-lo i adaptar-lo respectant la seua llicència.' },
     ],
-    endLabel: 'LA PRÒXIMA IDEA ÉS TEUA', endTitle: 'Fes lloc al que vols ensenyar.', endText: 'Comença amb alguna cosa xicoteta. Una pregunta, una fitxa, una activitat per a la teua pròxima classe.', footer: 'Una ferramenta d’EduTicTac per a la creativitat docent.', free: 'Programari lliure · AGPL-3.0+',
+    endLabel: 'LA PRÒXIMA IDEA ÉS TEUA', endTitle: 'Fes lloc al que vols ensenyar.', endText: 'Comença amb alguna cosa xicoteta. Una pregunta, una fitxa, una activitat per a la teua pròxima classe.',
   },
   en: {
     nav: ['What you can create', 'How it works', 'Common questions'], enter: 'Open EduCrea',
@@ -114,6 +114,6 @@ export const landingMessages = {
       { q: 'What should I keep in mind when using AI?', a: 'Proposals may contain errors: review them and adapt them to your class. Do not include student names, identifiable work or other personal student data in instructions or documents shared with AI providers.' },
       { q: 'Is it free software?', a: 'Yes. EduCrea is free software licensed under AGPL-3.0 or later. You can use, study and adapt it in accordance with its licence.' },
     ],
-    endLabel: 'THE NEXT IDEA IS YOURS', endTitle: 'Make room for what you want to teach.', endText: 'Start small. A question, a worksheet, an activity for your next lesson.', footer: 'An EduTicTac tool for teacher creativity.', free: 'Free software · AGPL-3.0+',
+    endLabel: 'THE NEXT IDEA IS YOURS', endTitle: 'Make room for what you want to teach.', endText: 'Start small. A question, a worksheet, an activity for your next lesson.',
   },
 }

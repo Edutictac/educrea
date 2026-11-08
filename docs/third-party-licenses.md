@@ -30,3 +30,15 @@ encabezado `@license lucide-static … ISC`.
   y la prueba `third_party.test.ts` (comprueba manifiesto, cabeceras ISC y coherencia de la lista de Feather).
 
 Esta auditoría es técnica, no asesoramiento jurídico; para un servicio comercial (fase 9) conviene una revisión legal.
+
+## Pie común de EduTicTac Commons
+
+La hoja `apps/web/src/styles/edutictac-footer.css` es copia sin modificar del pie canónico
+publicado en `https://commons.edutictac.es/assets/edutictac-footer.css`, reutilizado entre
+las aplicaciones del ecosistema EduTicTac bajo AGPL-3.0. Se conserva su cabecera de procedencia.
+El componente Vue adapta únicamente nombre, versión, enlaces e idioma; sus variables usan
+la paleta de EduCrea. No añade paquetes ni cargas desde CDN.
+
+El pie enlaza copias locales del texto AGPL del proyecto y del aviso ISC/MIT de Lucide,
+conservadas sin modificar en `apps/web/public/licenses/`. Al actualizar las licencias,
+actualizar también esas copias.

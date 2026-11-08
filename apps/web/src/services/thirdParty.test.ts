@@ -33,3 +33,14 @@ describe('vendored Lucide icons', () => {
     }
   })
 })
+
+
+describe('published license notices', () => {
+  it('serves the complete project and Lucide license texts linked from the common footer', () => {
+    const projectRoot = join(__dirname, '../../../..')
+    const publicRoot = join(__dirname, '../../public/licenses')
+    expect(readFileSync(join(publicRoot, 'AGPL-3.0-or-later.txt'), 'utf8'))
+      .toBe(readFileSync(join(projectRoot, 'LICENSE'), 'utf8'))
+    expect(readFileSync(join(publicRoot, 'lucide.txt'), 'utf8')).toBe(license)
+  })
+})

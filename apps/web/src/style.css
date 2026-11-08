@@ -88,7 +88,6 @@ edutictac-account.site-account:empty { display: none; }
 .menu-toggle { display: none; }
 main { width: min(100% - 3rem, 1120px); margin: 2.5rem auto; flex: 1; }
 main.wide { width: min(100% - 3rem, 1680px); margin-top: 1.5rem; }
-footer { text-align: center; padding: 1.2rem; color: var(--c-muted); font-size: .85rem; }
 
 /* Surfaces */
 .card { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--radius); padding: 1.6rem; margin: 0 0 1.2rem; box-shadow: var(--shadow-sm); }

@@ -33,6 +33,7 @@ watch(locale, (value, previous) => {
 }, { immediate: true, flush: 'sync' })
 export const messages = {
   es: {
+    footerHome: 'Inicio', footerPrivacy: 'Privacidad de EduTicTac', footerSource: 'Código fuente',
     logoutFailed: 'No se ha podido cerrar la sesión de EduCrea. Vuelve a intentarlo con «Salir».',
     languageSpanish: "Castellano",
     languageValencian: "Valenciano",
@@ -253,6 +254,7 @@ export const messages = {
     useTemporaryKey: 'Usar esta clave ahora', temporaryKeyReady: 'Clave lista para esta visita. Si recargas la página tendrás que volver a pegarla; crea una cuenta para guardarla.',
   },
   va: {
+    footerHome: 'Inici', footerPrivacy: 'Privacitat d’EduTicTac', footerSource: 'Codi font',
     logoutFailed: 'No s’ha pogut tancar la sessió d’EduCrea. Torna a provar amb «Eixir».',
     languageSpanish: "Castellà",
     languageValencian: "Valencià",

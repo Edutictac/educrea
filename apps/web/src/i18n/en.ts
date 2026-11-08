@@ -1,4 +1,5 @@
 export const en = {
+  footerHome: 'Home', footerPrivacy: 'EduTicTac privacy', footerSource: 'Source code',
   logoutFailed: 'Could not sign out of EduCrea. Try again using “Sign out”.',
   languageSpanish: "Spanish",
   languageValencian: "Valencian",

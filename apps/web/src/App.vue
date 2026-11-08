@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from './components/AppIcon.vue'
+import AppFooter from './components/AppFooter.vue'
 import EduTicTacAccount from './components/EduTicTacAccount.vue'
 import { locale, t } from './i18n'
 import { includedStatus } from './services/ai'
@@ -119,6 +120,6 @@ async function logout() {
     </header>
     <p v-if="auth.user?.is_guest && !route.meta.home" class="workspace-notice hint"><AppIcon name="lightbulb" :size="17" /><span>{{ t('openWorkspaceNotice') }}</span></p>
     <main id="contenido" :class="{ wide: route.meta.wide, 'home-main': route.meta.home }" tabindex="-1"><p v-if="error" role="alert">{{ error }}</p><RouterView v-if="!resetWorkspace && (auth.ready || route.meta.public)" :key="route.path" /></main>
-    <footer v-if="!route.meta.home">EduCrea · {{ t('footerNote') }} · {{ t('iconsCredit') }}</footer>
+    <AppFooter />
   </div>
 </template>

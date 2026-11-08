@@ -31,6 +31,15 @@ EduCrea coordina su sesión con Commons y conserva controles propios si el servi
 Consulta [la integración de cuenta](docs/account-integration.md) para el contrato, las pruebas
 y los límites del cierre de sesión.
 
+## Pie común
+
+Todas las rutas, incluida la portada, utilizan `AppFooter.vue`: el mismo formato de pie que
+EduTicTac Commons, con marca, aplicación, versión del paquete, inicio, privacidad de EduTicTac,
+licencia y créditos de iconos. La hoja canónica `edutictac-footer.css` se guarda localmente.
+Los textos de las licencias se sirven desde `/licenses/` y los enlaces se traducen con la interfaz.
+Si la instalación dispone de un repositorio público, puede configurar `VITE_SOURCE_URL` al
+compilar para mostrar «Código fuente»; sin una URL real, ese enlace no aparece.
+
 ## Arquitectura
 
 - `apps/web`: Vue 3, TypeScript, Vite, Pinia, Vue Router y Monaco; interfaz en castellano, valenciano e inglés.

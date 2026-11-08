@@ -281,7 +281,9 @@ def brief_template(brief: dict | None) -> str | None:
 
 ILLUSTRATIONS_RULE = ("\n\nEl docente ha generado ilustraciones para este recurso: están en available_images. Úsalas todas, "
                      "cada una una sola vez y donde mejor apoyen el contenido (en una plantilla, en el campo image del "
-                     "elemento que representan, con su alt; en Markdown, como ![alt](ruta)). No inventes otras rutas.")
+                     "elemento que representan, con su alt; en una infografía o página HTML, como <img src=\"ruta\" "
+                     "alt=\"alt\" class=\"ilustracion\"> dentro del bloque que ilustran; en Markdown, como ![alt](ruta)). "
+                     "No inventes otras rutas.")
 
 
 def instruction_for(brief: dict) -> str:

@@ -192,7 +192,7 @@ async function readEvents(response: Response, onEvent: (event: AiStreamEvent) =>
 }
 
 // Teacher shortcuts with real progress: first version from the brief and DUA adaptation.
-export async function streamTeacherAction(projectId: string, action: 'from-brief' | 'dua' | 'sections', body: object, csrf: string,
+export async function streamTeacherAction(projectId: string, action: 'from-brief' | 'dua' | 'sections' | 'illustrations/place', body: object, csrf: string,
   signal: AbortSignal, onEvent: (event: AiStreamEvent) => void): Promise<Proposal> {
   const response = await checked(await fetch(`/api/projects/${projectId}/ai/${action}/stream`, {
     method: 'POST', signal, headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, ...temporaryKeyHeaders() }, body: JSON.stringify(body) }))

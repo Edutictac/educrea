@@ -548,9 +548,16 @@ GROUPS = {
 }
 
 
+def illustrable(template_id: str) -> bool:
+    """Whether AI illustrations can be placed: documents and infographics always, interactive templates only when
+    their data has an image field (word search, crossword and listening have none)."""
+    template = TEMPLATES.get(template_id)
+    return template is not None and (template.kind != "interactiva" or "image y alt" in template.guide)
+
+
 def catalog() -> list[dict]:
     return [{"id": t.id, "kind": t.kind, "names": t.names, "descriptions": t.descriptions,
-             "group": GROUPS.get(t.id, "docs")} for t in TEMPLATES.values()]
+             "group": GROUPS.get(t.id, "docs"), "illustrable": illustrable(t.id)} for t in TEMPLATES.values()]
 
 
 def get(template_id: str) -> Template:

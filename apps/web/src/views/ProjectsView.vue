@@ -10,7 +10,7 @@ import AppIcon from '../components/AppIcon.vue'
 import IncludedAiQuota from '../components/IncludedAiQuota.vue'
 import { MATERIAL_ACCEPT, uploadSource } from '../services/sources'
 import { imageModels, type ImageModels } from '../services/images'
-import { createIllustrations, illustrationPrompts, type IllustrationStyle } from '../services/illustrations'
+import { createIllustrations, illustrationPrompts, templateIllustrable, type IllustrationStyle } from '../services/illustrations'
 import { MAX_INSTRUCTIONS, fillInstructions, parseBridgeQuery, takePendingPrompt } from '../services/promptBridge'
 
 // Guided creation (phase 7): 1) what to create, 2) a few details, then the project opens in teacher mode with the
@@ -59,7 +59,9 @@ const illustrationCostOk = ref(false)
 const illustrationRightsOk = ref(false)
 const imageModel = computed(() => imageStatus.value?.models.find(item => item.model === imageStatus.value?.default)
   ?? imageStatus.value?.models[0])
-const canIllustrate = computed(() => !!choice.value && choice.value.kind === 'plantilla' && choice.value.id !== 'infografia'
+// Infographics, worksheets and every template whose data has an image field (not word search, crossword, listening).
+const canIllustrate = computed(() => !!choice.value && choice.value.kind === 'plantilla'
+  && templateIllustrable(templates.value.find(item => item.id === choice.value?.id) ?? { id: choice.value.id })
   && !!imageModel.value && imageStatus.value?.configured === true)
 const budgetLeft = computed(() => imageStatus.value
   ? imageStatus.value.budget.monthly_limit_microusd - imageStatus.value.budget.spent_or_reserved_microusd : 0)

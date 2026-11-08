@@ -23,6 +23,7 @@ ${LUCIDE_NOTICE}
   .step { flex: 1 1 220px; border: 3px solid #126382; border-radius: 14px; padding: 16px; background: #eaf4f8; }
   .step svg { display: block; margin: 0 auto 8px; color: #126382; }
   .step h2 { font-size: 1.2rem; margin: 0 0 6px; }
+  .ilustracion { display: block; width: 100%; max-width: 220px; height: auto; margin: .5rem auto; border-radius: 8px; }
   details { margin-top: 20px; }
 </style>
 </head>
@@ -52,7 +53,7 @@ ${LUCIDE_NOTICE}
 
 // Guided templates served by the API (phase 7).
 export type TemplateGroup = 'quick' | 'games' | 'reading' | 'docs'
-export interface TemplateInfo { id: string; kind: 'interactiva' | 'infografia' | 'ficha'; names: Record<'es' | 'va' | 'en', string>; descriptions: Record<'es' | 'va' | 'en', string>; group?: TemplateGroup }
+export interface TemplateInfo { id: string; kind: 'interactiva' | 'infografia' | 'ficha'; names: Record<'es' | 'va' | 'en', string>; descriptions: Record<'es' | 'va' | 'en', string>; group?: TemplateGroup; illustrable?: boolean }
 export interface TemplateBrief { gap_mode?: 'bank' | 'text'; mix?: ('choice' | 'true_false' | 'gap')[]; title: string; language: 'es' | 'va' | 'en'; level: string; instructions: string; accessibility: { large_text: boolean; high_contrast: boolean } }
 
 async function checked(response: Response): Promise<Response> {

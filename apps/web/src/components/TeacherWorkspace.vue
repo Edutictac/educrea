@@ -9,6 +9,7 @@ import { useFilesStore, type ProjectFile } from '../stores/files'
 import { listTemplates, templateStatus, updateTemplateEngine, type TemplateInfo } from '../services/templates'
 import StartingMaterial from './StartingMaterial.vue'
 import AudioPanel from './AudioPanel.vue'
+import IllustratePanel from './IllustratePanel.vue'
 import AiProgress from './AiProgress.vue'
 import { choiceBody } from '../services/aiChoice'
 import { describeAiError, useAiProgress } from '../services/aiProgress'
@@ -206,6 +207,9 @@ async function generateFirstVersion() {
       <div class="actions"><button type="button" :disabled="!chosenSections.length || dirty" @click="developSections">{{ t('developSectionsRun') }}</button>
         <button type="button" class="ghost" @click="chosenSections = chosenSections.length === SECTIONS.length ? [] : [...SECTIONS]">{{ t('selectAll') }}</button></div>
     </details>
+    <IllustratePanel v-if="!loading && !blocked && file && !generating" :project-id="projectId" :disabled="dirty"
+      :brief="{ kind: activity.kind, template: typeof original.template === 'string' ? original.template : undefined }"
+      @placed="emit('generated'); if (documentKind) emit('openMaterials')" />
     <AudioPanel v-if="template?.id === 'escucha'" :project-id="projectId" @changed="generated = false; emit('resourceChanged')" />
     <StartingMaterial v-if="!loading && !blocked && file" :project-id="projectId" @changed="generated = false" />
     <form v-if="!loading && !blocked" class="form-grid" @submit.prevent="save">

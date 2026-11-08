@@ -39,11 +39,24 @@ EDUCREA_IMAGE_REQUEST_TIMEOUT_SECONDS=120
 
 El coste se cobra al generar, aunque la imagen se descarte. Si Gemini falla o no devuelve una imagen, la reserva interna se libera.
 
+## Ilustraciones en lote
+
+Para no generar las imágenes una a una, hay dos accesos que encadenan todo el proceso con una sola confirmación del coste máximo total (número de imágenes × coste máximo por imagen):
+
+- **Al crear el recurso** (creación guiada, paso 2): de 0 a 6 ilustraciones y un estilo (plana, acuarela, realista o para colorear). Disponible en infografías, fichas y plantillas cuyos datos tienen campo `image`. No está disponible en sopa de letras, crucigrama ni escucha, que no tienen ese campo: el catálogo de plantillas lo indica con `illustrable`. La primera versión recibe la orden de colocar todas las imágenes (marca `illustrations` del encargo).
+- **«Ilustrar este recurso con IA»**, en el modo docente de un recurso ya creado (infografía, ficha, situación de aprendizaje o plantilla con imágenes). La IA gratuita lee el encargo **y el contenido actual** (sin etiquetas, estilos ni SVG, máximo 6000 caracteres) y escribe una descripción y un texto alternativo por imagen. Luego se generan y se guardan en la biblioteca. Al final, una propuesta aplicada las coloca en su sitio, con historial y «Deshacer». En las infografías se insertan como `<img class="ilustracion">` dentro de su bloque; en las fichas y situaciones, como `![alt](ruta)`; y en las plantillas, en el campo `image`.
+
+Las imágenes se generan **una tras otra**, no en paralelo: las cuotas solo admiten una generación en curso por usuario. Si una falla, las demás siguen adelante. Si falla la colocación, las imágenes ya generadas quedan en «Imágenes del proyecto».
+
+No se genera la infografía entera como una sola imagen: el texto dentro de las imágenes generadas sale con errores, no se puede editar y no es accesible.
+
 ## Endpoints
 
 - `GET /api/ai/images/models`: modelos habilitados, precio, si hay clave y presupuesto mensual.
 - `POST /api/projects/{id}/ai/images/estimate`: coste máximo y huella.
 - `POST /api/projects/{id}/ai/images`: genera y devuelve la imagen para previsualización. Exige sesión, CSRF, propiedad del proyecto, presupuesto, confirmación y aceptación de derechos.
+- `POST /api/projects/{id}/ai/illustrations/prompts`: `{count, style, from_content}`. La IA gratuita escribe las descripciones; no tiene coste de imagen.
+- `POST /api/projects/{id}/ai/illustrations/place/stream`: `{paths, provider?, model?}`. Es una propuesta en streaming que coloca imágenes ya guardadas en la biblioteca. Rechaza rutas que no existen (422) y tipos de recurso sin imágenes (409).
 
 La contabilidad reutiliza `AiUsage` con `mode=paid` y `reserved_tokens=0`; no hay migración. La imagen normalizada (metadatos eliminados, dimensiones limitadas y compresión si hace falta) se guarda con el endpoint normal de assets.
 
@@ -59,7 +72,7 @@ La contabilidad reutiliza `AiUsage` con `mode=paid` y `reserved_tokens=0`; no ha
 
 - Solo 1K; sin 2K/4K.
 - Solo texto a imagen; sin edición con imágenes de referencia.
-- Sin inserción automática en la actividad: el docente decide cuándo y dónde usarla.
+- La imagen suelta del panel «Imágenes del proyecto» no se inserta sola: el docente decide dónde usarla. Las ilustraciones en lote sí se colocan solas.
 - Sin generación con IA incluida ni con modelos distintos de Gemini.
 - La factura de Google es la fuente de verdad; el presupuesto interno es una estimación de EduCrea.
 

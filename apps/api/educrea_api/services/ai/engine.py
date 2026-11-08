@@ -500,12 +500,14 @@ def persist(db: Session, project_id: UUID, user_id: UUID, model: str, text: str,
         grounding = None
     if template and dua_target == template_service.DATA_PATH:
         report = template_service.check_proposal(template, draft.changes,
-                                                 audio_service.for_prompt(audio_service.audios_for(db, project_id)))
+                                                 audio_service.for_prompt(audio_service.audios_for(db, project_id)),
+                                                 brief)
         grounding["template_problems"] = report["template_problems"]
         grounding["supported"] = grounding["supported"] and report["supported"]
     elif template and not dua_target and kind != "situacion":
         report = template_service.check_proposal(template, draft.changes,
-                                                 audio_service.for_prompt(audio_service.audios_for(db, project_id)))
+                                                 audio_service.for_prompt(audio_service.audios_for(db, project_id)),
+                                                 brief)
         if grounding is None:
             grounding = report
         else:  # sources and template checks both apply

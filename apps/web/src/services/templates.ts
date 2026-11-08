@@ -51,8 +51,9 @@ ${LUCIDE_NOTICE}
 }
 
 // Guided templates served by the API (phase 7).
-export interface TemplateInfo { id: string; kind: 'interactiva' | 'infografia' | 'ficha'; names: Record<'es' | 'va' | 'en', string>; descriptions: Record<'es' | 'va' | 'en', string> }
-export interface TemplateBrief { gap_mode?: 'bank' | 'text'; title: string; language: 'es' | 'va' | 'en'; level: string; instructions: string; accessibility: { large_text: boolean; high_contrast: boolean } }
+export type TemplateGroup = 'quick' | 'games' | 'reading' | 'docs'
+export interface TemplateInfo { id: string; kind: 'interactiva' | 'infografia' | 'ficha'; names: Record<'es' | 'va' | 'en', string>; descriptions: Record<'es' | 'va' | 'en', string>; group?: TemplateGroup }
+export interface TemplateBrief { gap_mode?: 'bank' | 'text'; mix?: ('choice' | 'true_false' | 'gap')[]; title: string; language: 'es' | 'va' | 'en'; level: string; instructions: string; accessibility: { large_text: boolean; high_contrast: boolean } }
 
 async function checked(response: Response): Promise<Response> {
   if (!response.ok) {

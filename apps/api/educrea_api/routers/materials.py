@@ -90,7 +90,8 @@ def export_project_zip(project_id: UUID, user: User = Depends(current_user),
                       download_name(project.slug, ".zip"))
 
 
-SCORED_TEMPLATES = ("cuestionario", "emparejar", "ordenar", "clasificar", "huecos", "verdadero_falso", "escucha", "sopa_letras", "crucigrama")
+SCORED_TEMPLATES = ("cuestionario", "emparejar", "ordenar", "clasificar", "huecos", "verdadero_falso", "escucha",
+                    "sopa_letras", "crucigrama", "bateria")
 
 
 @router.get("/export.scorm.zip")

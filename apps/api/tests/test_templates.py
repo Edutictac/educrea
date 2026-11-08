@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -18,10 +19,11 @@ INTERACTIVE = [t.id for t in service.TEMPLATES.values() if t.kind == "interactiv
 BROWSER = shutil.which("chromium") or shutil.which("chromium-browser")
 
 
-def test_catalog_has_thirteen_trilingual_templates(client: TestClient):
+def test_catalog_has_fourteen_trilingual_templates(client: TestClient):
     headers, _ = setup_user(client)
     items = client.get("/api/templates").json()
-    assert len(items) == 13 and all(item["names"]["es"] and item["names"]["va"] and item["names"]["en"] for item in items)
+    assert len(items) == 14 and all(item["names"]["es"] and item["names"]["va"] and item["names"]["en"] for item in items)
+    assert {item["group"] for item in items} == {"quick", "games", "reading", "docs"}
 
 
 @pytest.mark.parametrize("template_id", INTERACTIVE)
@@ -61,6 +63,67 @@ def test_gaps_reject_ambiguous_or_unsolvable_items(item):
 def test_true_false_rejects_answers_that_are_not_json_booleans(answer):
     data = {"title": "X", "statements": [{"text": "El Sol es una estrella.", "answer": answer, "feedback": "Emite luz."}]}
     assert service.validate_data("verdadero_falso", service.data_js(data))
+
+
+def test_battery_accepts_the_three_block_types_and_rejects_invalid_data():
+    good = {"title": "X", "blocks": [
+        {"type": "choice", "heading": "Elige", "questions": [
+            {"text": "¿?", "options": ["a", "b"], "answer": 0, "feedback": "f"}]},
+        {"type": "true_false", "heading": "V/F", "statements": [
+            {"text": "A", "answer": True, "feedback": "f"}]},
+        {"type": "gap", "heading": "Huecos", "mode": "text", "items": [
+            {"text": "Un ___", "answers": ["a"], "feedback": "f"}]}]}
+    assert service.validate_data("bateria", service.data_js(good)) == []
+    duplicate = {**good, "blocks": [good["blocks"][0], {**good["blocks"][0]}]}
+    assert any("repitas" in problem for problem in service.validate_data("bateria", service.data_js(duplicate)))
+    assert service.validate_data("bateria", service.data_js({**good, "blocks": [{"type": "otro"}]}))
+    gap = {"type": "gap", "items": [{"text": "Sin hueco", "answers": ["a"]}]}
+    assert service.validate_data("bateria", service.data_js({**good, "blocks": [gap]}))
+    statement = {"text": "A", "answer": "true", "feedback": "f"}
+    assert service.validate_data("bateria", service.data_js({**good, "blocks": [
+        {"type": "true_false", "statements": [statement]}]}))
+    question = {"text": "¿?", "options": ["a", "b"], "answer": 0}
+    assert any("30" in problem for problem in service.validate_data("bateria", service.data_js({"title": "X", "blocks": [
+        {"type": "choice", "questions": [question] * 11},
+        {"type": "true_false", "statements": [{"text": "A", "answer": True, "feedback": "f"}] * 11},
+        {"type": "gap", "items": [{"text": "___", "answers": ["a"]}] * 11}]})))
+
+
+def test_battery_initial_files_respects_selected_types_and_gap_mode():
+    files = service.initial_files("bateria", {"title": "X", "language": "va", "mix": ["choice", "gap"],
+                                              "gap_mode": "text"})
+    data = service.parse_data(files["datos.js"])
+    assert [block["type"] for block in data["blocks"]] == ["choice", "gap"]
+    assert data["blocks"][1]["mode"] == "text"
+    assert service.validate_data("bateria", files["datos.js"]) == []
+
+
+def test_battery_instruction_names_selected_blocks():
+    text = service.instruction("bateria", {"language": "va", "mix": ["choice", "gap"], "gap_mode": "text"}, "Base")
+    assert "Bloques elegidos: opción múltiple, completar huecos." in text
+    assert "mode=text" in text
+
+
+def test_battery_rejects_blocks_not_selected_by_the_teacher():
+    data = service.initial_files("bateria", {"title": "X", "language": "es"})["datos.js"]
+    report = service.check_proposal("bateria", [SimpleNamespace(path="datos.js", content=data)],
+                                    brief={"mix": ["choice"]})
+    problems = " ".join(report["template_problems"])
+    assert "no elegidos" in problems and "true_false" in problems and "gap" in problems
+
+
+def test_battery_creation_stores_mix_and_gap_mode(client: TestClient):
+    headers, project_id = setup_user(client)
+    base = f"/api/projects/{project_id}"
+    response = client.post(f"{base}/template", headers=headers, json={
+        "template": "bateria", "brief": {"title": "Mix", "language": "va", "mix": ["choice", "true_false"],
+                                         "gap_mode": "text"}})
+    assert response.status_code == 201
+    files = {f["path"]: f for f in client.get(f"{base}/files").json()}
+    brief = json.loads(client.get(f"{base}/files/{files['activity.json']['id']}").json()["content"])
+    assert brief["mix"] == ["choice", "true_false"] and brief["gap_mode"] == "text"
+    data = service.parse_data(client.get(f"{base}/files/{files['datos.js']['id']}").json()["content"])
+    assert [block["type"] for block in data["blocks"]] == ["choice", "true_false"]
 
 
 def test_true_false_ai_requires_explanations_before_auto_applying(client: TestClient):
@@ -179,6 +242,43 @@ def test_gaps_grade_alternatives_accents_retry_and_report_score(mode, language):
     assert 'lang="ca"' in dom if language == "va" else 'lang="es"' in dom
 
 
+@pytest.mark.skipif(not (BROWSER and shutil.which("bwrap")), reason="chromium/bwrap not installed")
+def test_battery_grades_all_block_types_and_resets():
+    files = service.initial_files("bateria", {"title": "Prueba", "language": "es"})
+    data = service.parse_data(files["datos.js"])
+    data["blocks"] = [
+        {"type": "choice", "heading": "Elige", "questions": [
+            {"text": "P1", "options": ["A", "B"], "answer": 1, "feedback": "F1"}]},
+        {"type": "true_false", "heading": "VF", "statements": [
+            {"text": "S1", "answer": True, "feedback": "F2"},
+            {"text": "S2", "answer": False, "feedback": "F3"}]},
+        {"type": "gap", "heading": "Huecos", "mode": "text", "items": [
+            {"text": "La ___ es azul.", "answers": ["estrella"], "feedback": "F4"}]}]
+    files["datos.js"] = service.data_js(data)
+    actions = """
+      var check = document.querySelector('button.principal');
+      var retry = document.querySelector('.acciones button:last-child');
+      window.EduScorm = { score: function (n, total) { document.body.setAttribute('data-score', n + '/' + total) } };
+      check.click();
+      if (document.body.getAttribute('data-score') !== '0/4') throw Error('empty');
+      if (!document.querySelector('fieldset p').textContent.includes(UNANSWERED)) throw Error('unanswered');
+      document.querySelector('input[name="b0-c0"][value="1"]').click();
+      document.querySelector('input[name="b1-v0"][value="true"]').click();
+      document.querySelector('input[name="b1-v1"][value="false"]').click();
+      document.querySelector('#hueco-2-0').value = 'estrella';
+      check.click();
+      if (document.body.getAttribute('data-score') !== '4/4') throw Error('grade');
+      if (document.querySelectorAll('.bien').length !== 4) throw Error('feedback');
+      retry.click();
+      if (document.querySelector('input:checked') || document.querySelector('[aria-invalid]')) throw Error('reset');
+      if (document.activeElement !== document.querySelector('input, select')) throw Error('focus');
+      if (document.querySelector('.resultado').textContent) throw Error('result');
+      document.body.setAttribute('data-tested', 'ok');
+    """.replace('UNANSWERED', json.dumps(service.LABELS['es']['unanswered']))
+    dom = run_in_browser(inline(files).replace("</body>", f"<script>{actions}</script></body>"))
+    assert 'data-tested="ok"' in dom
+
+
 def test_apply_template_only_on_empty_projects_and_first_version_fills_only_data(client: TestClient):
     headers, project_id = setup_user(client)
     base = f"/api/projects/{project_id}"
@@ -251,6 +351,7 @@ def inline(files: dict[str, str]) -> str:
     ("escucha", ["Añade un audio", 'type="radio"']),
     ("verdadero_falso", ["Verdadero", "Falso", 'value="false"']),
     ("huecos", ["Banco de palabras", "<select", "Hueco 1"]),
+    ("bateria", ["Elige la respuesta", "Verdadero o falso", "Banco de palabras"]),
     ("clasificar", ["Seres vivos", "<select"]), ("lectura", ["Empezamos", "Continuar", "<details"])])
 def test_engines_render_in_a_real_browser(template_id, expected):
     files = service.initial_files(template_id, {"title": "Prueba", "language": "es",
@@ -368,7 +469,7 @@ def test_engine_of_existing_projects_can_be_updated_and_keeps_data(client: TestC
     assert client.post(f"{base}/template/update", headers=headers).json()["updated"] == []
 
 
-@pytest.mark.parametrize("template_id", ["cuestionario", "huecos", "verdadero_falso"])
+@pytest.mark.parametrize("template_id", ["cuestionario", "huecos", "verdadero_falso", "bateria"])
 def test_scorm_package_for_aules(client: TestClient, template_id):
     import io
     import xml.etree.ElementTree as ET

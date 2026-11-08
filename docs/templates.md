@@ -9,6 +9,7 @@ EduCrea ofrece varias plantillas, en castellano, valenciano e inglés, que se el
 | Escuchar y responder | interactiva | motor + `datos.js` + audio local | `audio`, `transcript` y `questions` a partir del texto revisado |
 | Verdadero o falso | interactiva | motor + `datos.js` | `statements` con afirmación, booleano y explicación obligatoria |
 | Completar huecos | interactiva | motor + `datos.js` | `items` con frase, respuestas válidas y explicación; banco o escritura libre |
+| Batería de ejercicios | interactiva | motor + `datos.js` | `blocks` de opción múltiple, verdadero/falso y completar huecos en una sola actividad |
 | Cuestionario | interactiva | motor + `datos.js` | `questions` (opción única, explicación) |
 | Emparejar | interactiva | motor + `datos.js` | `pairs` (desplegables, sin arrastrar) |
 | Ordenar una secuencia | interactiva | motor + `datos.js` | `items` en el orden correcto |
@@ -75,6 +76,16 @@ Cada afirmación tiene un grupo de botones de opción nativos con leyenda y resu
 «Comprobar» distingue respuestas correctas, incorrectas y vacías, muestra la explicación y comunica
 la puntuación al SCORM. «Volver a empezar» limpia selección y resultados y lleva el foco a la primera opción.
 Las etiquetas y ejemplos están disponibles en castellano y valenciano.
+
+## Batería de ejercicios (2026-11-08)
+
+La plantilla `bateria` agrupa en una sola página de 1 a 3 bloques sin repetir tipo:
+`choice` (opción múltiple), `true_false` (verdadero o falso) y `gap` (completar huecos).
+Cada bloque reutiliza el esquema de su plantilla: `questions`, `statements` o `items`, con
+imágenes locales y texto alternativo. El docente elige los tipos al crear el proyecto (los tres
+por defecto); la elección queda en `mix` dentro del encargo y la IA solo rellena los bloques
+elegidos. La guía pide 8-12 ítems en total, 2-4 por bloque; el esquema admite de 3 a 30 y una
+sola corrección con reintento y nota SCORM. El bloque de huecos conserva `mode` (`bank` o `text`).
 
 ## Escuchar y responder (2026-11-07)
 

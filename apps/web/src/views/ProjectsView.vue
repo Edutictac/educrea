@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { locale, t } from '../i18n'
-import { applyTemplate, INFOGRAPHIC_PATH, infographicTemplate, listTemplates, type TemplateInfo } from '../services/templates'
+import { applyTemplate, INFOGRAPHIC_PATH, infographicTemplate, listTemplates, type TemplateGroup, type TemplateInfo } from '../services/templates'
 import { useAuthStore } from '../stores/auth'
 import { useFilesStore } from '../stores/files'
 import { useProjectsStore } from '../stores/projects'
@@ -15,8 +15,17 @@ import { MAX_INSTRUCTIONS, fillInstructions, parseBridgeQuery, takePendingPrompt
 
 // Guided creation (phase 7): 1) what to create, 2) a few details, then the project opens in teacher mode with the
 // template files ready and the AI fills the content from the brief.
-type Choice = { id: string; kind: 'plantilla' | 'situacion' | 'libre'; name: string; description: string; icon: string }
-const ICONS: Record<string, string> = { sopa_letras: 'puzzle', crucigrama: 'puzzle', escucha: 'music', verdadero_falso: 'circle-help', huecos: 'file-text', cuestionario: 'circle-help', emparejar: 'puzzle', ordenar: 'list-ordered', tarjetas: 'layers', clasificar: 'shapes', lectura: 'book-open', infografia: 'palette', ficha: 'file-text', situacion: 'graduation-cap', libre: 'file-plus' }
+type GroupId = TemplateGroup | 'other'
+type Choice = { id: string; kind: 'plantilla' | 'situacion' | 'libre'; name: string; description: string; icon: string; group: GroupId }
+const GROUP_LABELS = { quick: 'groupQuick', games: 'groupGames', reading: 'groupReading', docs: 'groupDocs', other: 'groupOther' } as const
+const GROUP_ORDER: GroupId[] = ['quick', 'games', 'reading', 'docs', 'other']
+// Fallback for an API started before the grouped catalog existed: never hide a template because `group` is missing.
+const TEMPLATE_GROUPS: Record<string, GroupId> = {
+  bateria: 'quick', cuestionario: 'quick', verdadero_falso: 'quick', huecos: 'quick',
+  sopa_letras: 'games', crucigrama: 'games', emparejar: 'games', ordenar: 'games', tarjetas: 'games', clasificar: 'games',
+  lectura: 'reading', escucha: 'reading', infografia: 'docs', ficha: 'docs',
+}
+const ICONS: Record<string, string> = { sopa_letras: 'puzzle', crucigrama: 'puzzle', escucha: 'music', verdadero_falso: 'circle-help', huecos: 'file-text', cuestionario: 'circle-help', bateria: 'list-ordered', emparejar: 'puzzle', ordenar: 'list-ordered', tarjetas: 'layers', clasificar: 'shapes', lectura: 'book-open', infografia: 'palette', ficha: 'file-text', situacion: 'graduation-cap', libre: 'file-plus' }
 const auth = useAuthStore()
 const projects = useProjectsStore()
 const files = useFilesStore()
@@ -29,6 +38,7 @@ const language = ref<'es' | 'va' | 'en'>(locale.value === 'va' ? 'va' : locale.v
 const level = ref('primaria')
 const instructions = ref('')
 const gapMode = ref<'bank' | 'text'>('bank')
+const mix = ref<('choice' | 'true_false' | 'gap')[]>(['choice', 'true_false', 'gap'])
 const largeText = ref(false)
 const highContrast = ref(false)
 const busy = ref(false)
@@ -56,7 +66,8 @@ const budgetLeft = computed(() => imageStatus.value
 const illustrationTotal = computed(() => illustrationCount.value * (imageModel.value?.max_cost_microusd ?? 0))
 const illustrationsReady = computed(() => !canIllustrate.value || illustrationCount.value === 0
   || (illustrationCostOk.value && illustrationRightsOk.value && illustrationTotal.value <= budgetLeft.value))
-const canCreate = computed(() => !busy.value && !!title.value.trim() && (!material.value || materialRights.value) && illustrationsReady.value)
+const canCreate = computed(() => !busy.value && !!title.value.trim() && (!material.value || materialRights.value) && illustrationsReady.value
+  && (choice.value?.id !== 'bateria' || mix.value.length > 0))
 const usd = (micro: number) => `$${(micro / 1000000).toFixed(2)}`
 const error = ref('')
 const detailsHeading = ref<HTMLElement | null>(null)
@@ -64,10 +75,13 @@ const creating = ref(false)
 async function startCreating() { creating.value = true; fromPrompt.value = false; received.value = false; bridgeMessage.value = ''; bridgeError.value = ''; await nextTick(); document.querySelector<HTMLElement>('.choice')?.focus() }
 
 const choices = computed<Choice[]>(() => [
-  ...templates.value.map(item => ({ id: item.id, kind: 'plantilla' as const, name: item.names[locale.value], description: item.descriptions[locale.value], icon: ICONS[item.id] ?? 'layout-template' })),
-  { id: 'situacion', kind: 'situacion', name: t('kindSituationShort'), description: t('kindSituationDescription'), icon: ICONS.situacion },
-  { id: 'libre', kind: 'libre', name: t('blankProject'), description: t('blankProjectDescription'), icon: ICONS.libre },
+  ...templates.value.map(item => ({ id: item.id, kind: 'plantilla' as const, name: item.names[locale.value], description: item.descriptions[locale.value], icon: ICONS[item.id] ?? 'layout-template', group: item.group ?? TEMPLATE_GROUPS[item.id] ?? 'docs' })),
+  { id: 'situacion', kind: 'situacion', name: t('kindSituationShort'), description: t('kindSituationDescription'), icon: ICONS.situacion, group: 'other' },
+  { id: 'libre', kind: 'libre', name: t('blankProject'), description: t('blankProjectDescription'), icon: ICONS.libre, group: 'other' },
 ])
+const choiceGroups = computed(() => GROUP_ORDER
+  .map(group => ({ id: group, title: GROUP_LABELS[group], items: choices.value.filter(item => item.group === group) }))
+  .filter(group => group.items.length > 0))
 
 onMounted(async () => {
   const bridge = parseBridgeQuery(route.query as Record<string, unknown>)
@@ -129,6 +143,7 @@ async function create() {
     const brief = { title: title.value.trim(), language: language.value, level: level.value, instructions: instructions.value.trim(),
       accessibility: { large_text: largeText.value, high_contrast: highContrast.value },
       ...(choice.value.id === 'huecos' ? { gap_mode: gapMode.value } : {}),
+      ...(choice.value.id === 'bateria' ? { mix: [...mix.value], gap_mode: gapMode.value } : {}),
       ...(canIllustrate.value && illustrationCount.value > 0 ? { illustrations: true } : {}) }
     if (choice.value.kind === 'plantilla') {
       await applyTemplate(project.id, choice.value.id, brief, auth.csrf)
@@ -184,13 +199,16 @@ async function create() {
         <strong>{{ t('promptBridgeIncoming') }}</strong>
         <p>{{ t('promptBridgeReceived') }}</p>
       </div>
-      <ul class="choice-grid">
-        <li v-for="item in choices" :key="item.id">
-          <button type="button" class="choice" :aria-pressed="choice?.id === item.id" @click="pick(item)">
-            <span class="choice-icon"><AppIcon :name="item.icon" :size="24" /></span>
-            <strong>{{ item.name }}</strong><span>{{ item.description }}</span></button>
-        </li>
-      </ul>
+      <div v-for="group in choiceGroups" :key="group.id" class="choice-group">
+        <h3>{{ t(group.title) }}</h3>
+        <ul class="choice-grid">
+          <li v-for="item in group.items" :key="item.id">
+            <button type="button" class="choice" :aria-pressed="choice?.id === item.id" @click="pick(item)">
+              <span class="choice-icon"><AppIcon :name="item.icon" :size="24" /></span>
+              <strong>{{ item.name }}</strong><span>{{ item.description }}</span></button>
+          </li>
+        </ul>
+      </div>
       <form v-if="choice" class="form-grid details-form" @submit.prevent="create">
         <h3 ref="detailsHeading" class="full" tabindex="-1">{{ choice.name }}</h3>
         <label class="full">{{ t('activityTitle') }}<input v-model="title" required maxlength="160" :placeholder="t('titlePlaceholder')" /></label>
@@ -200,7 +218,14 @@ async function create() {
           <label>{{ t('educationLevel') }}<select v-model="level"><option value="infantil">{{ t('earlyYears') }}</option>
             <option value="primaria">{{ t('primary') }}</option><option value="secundaria">{{ t('secondary') }}</option>
             <option value="otros">{{ t('other') }}</option></select></label>
-          <label v-if="choice.id === 'huecos'" class="full">{{ t('gapMode') }}<select v-model="gapMode">
+          <fieldset v-if="choice.id === 'bateria'" class="full material-pick">
+            <legend>{{ t('batteryTypes') }}</legend>
+            <label class="check"><input v-model="mix" type="checkbox" value="choice" />{{ t('batteryChoice') }}</label>
+            <label class="check"><input v-model="mix" type="checkbox" value="true_false" />{{ t('batteryTrueFalse') }}</label>
+            <label class="check"><input v-model="mix" type="checkbox" value="gap" />{{ t('batteryGap') }}</label>
+            <p v-if="!mix.length" class="hint" role="alert">{{ t('batteryTypesRequired') }}</p>
+          </fieldset>
+          <label v-if="choice.id === 'huecos' || (choice.id === 'bateria' && mix.includes('gap'))" class="full">{{ t('gapMode') }}<select v-model="gapMode">
             <option value="bank">{{ t('gapBank') }}</option><option value="text">{{ t('gapText') }}</option>
           </select></label>
           <div v-if="fromPrompt" class="notice full">

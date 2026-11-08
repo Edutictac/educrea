@@ -116,6 +116,8 @@ p[role=alert] { color: var(--c-danger); background: var(--c-danger-50); border: 
 .project-list li { position: relative; }
 .project-list p { color: var(--c-muted); font-size: .9rem; margin: .3rem 0 0; }
 .choice-grid { --choice-tint: var(--c-sage); list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .8rem; }
+.choice-group { margin: 0 0 1.4rem; }
+.choice-group h3 { margin: 0 0 .6rem; font-size: .95rem; color: var(--c-muted); letter-spacing: .04em; text-transform: uppercase; }
 .choice {
   width: 100%; height: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: .35rem; text-align: left; padding: 1.3rem;
   background: var(--c-surface); color: var(--c-ink); border: 1px solid var(--c-line); border-radius: var(--radius); box-shadow: var(--shadow-sm); font-weight: 400;

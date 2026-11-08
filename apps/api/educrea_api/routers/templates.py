@@ -16,7 +16,8 @@ from .projects import project_for_owner
 
 router = APIRouter(tags=["templates"])
 
-BRIEF_FIELDS = ("title", "instructions", "language", "level", "accessibility", "area", "course", "illustrations", "gap_mode")
+BRIEF_FIELDS = ("title", "instructions", "language", "level", "accessibility", "area", "course", "illustrations",
+                "gap_mode", "mix")
 
 
 class ApplyTemplate(BaseModel):
@@ -39,6 +40,11 @@ def apply_template(project_id: UUID, data: ApplyTemplate, user: User = Depends(r
         raise HTTPException(409, "Las plantillas solo se aplican a proyectos vacíos")
     brief = {key: data.brief[key] for key in BRIEF_FIELDS if key in data.brief}
     if template.id == "huecos":
+        brief["gap_mode"] = "text" if brief.get("gap_mode") == "text" else "bank"
+    if template.id == "bateria":
+        mix = brief.get("mix") if isinstance(brief.get("mix"), list) else []
+        chosen = [kind for kind in ("choice", "true_false", "gap") if kind in mix]
+        brief["mix"] = chosen or ["choice", "true_false", "gap"]
         brief["gap_mode"] = "text" if brief.get("gap_mode") == "text" else "bank"
     if "illustrations" in brief:
         brief["illustrations"] = brief["illustrations"] is True  # only a flag: never text for the prompt

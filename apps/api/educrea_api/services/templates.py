@@ -12,7 +12,7 @@ import json
 import re
 import unicodedata
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
@@ -170,6 +170,44 @@ class GapsData(Base):
     items: list[GapItem] = Field(min_length=1, max_length=30)
 
 
+class ChoiceBlock(Strict):
+    type: Literal["choice"]
+    heading: str = Field(default="", max_length=160)
+    questions: list[Question] = Field(min_length=1, max_length=12)
+
+
+class TrueFalseBlock(Strict):
+    type: Literal["true_false"]
+    heading: str = Field(default="", max_length=160)
+    statements: list[Statement] = Field(min_length=1, max_length=12)
+
+
+class GapBlock(Strict):
+    type: Literal["gap"]
+    heading: str = Field(default="", max_length=160)
+    mode: Literal["bank", "text"] = "bank"
+    items: list[GapItem] = Field(min_length=1, max_length=12)
+
+
+BatteryBlock = Annotated[ChoiceBlock | TrueFalseBlock | GapBlock, Field(discriminator="type")]
+
+
+class BatteryData(Base):
+    blocks: list[BatteryBlock] = Field(min_length=1, max_length=3)
+
+    @model_validator(mode="after")
+    def unique_types_and_items(self):
+        types = [block.type for block in self.blocks]
+        if len(set(types)) != len(types):
+            raise ValueError("no repitas tipos de bloque: usa como máximo uno de cada tipo")
+        total = sum(len(block.questions) if block.type == "choice" else
+                    len(block.statements) if block.type == "true_false" else len(block.items)
+                    for block in self.blocks)
+        if total > 30:
+            raise ValueError("la batería admite como máximo 30 ítems")
+        return self
+
+
 def puzzle_word(value: str) -> str:
     """Grid spelling: ignore accents and separators, preserving Spanish ñ and Catalan ç."""
     protected = unicodedata.normalize("NFC", value.upper())
@@ -209,17 +247,17 @@ LABELS = {
            "unanswered": "Sin responder.", "score": "{n} de {total}", "choose": "Elige…", "up": "Subir", "down": "Bajar",
            "position": "posición", "allRight": "¡Todo en orden!", "inPlace": "en su sitio.",
            "flip": "Pulsa para girar", "groups": "Grupos", "next": "Continuar", "more": "Saber más",
-           "listen": "Escucha el audio", "transcript": "Transcripción o descripción del audio", "audioMissing": "Añade un audio al proyecto antes de generar la actividad.", "audioError": "No se puede reproducir el audio. Consulta la transcripción o revisa el archivo.", "true": "Verdadero", "false": "Falso", "gap": "Hueco", "wordBank": "Banco de palabras", "done": "¡Has terminado!"},
+           "listen": "Escucha el audio", "transcript": "Transcripción o descripción del audio", "audioMissing": "Añade un audio al proyecto antes de generar la actividad.", "audioError": "No se puede reproducir el audio. Consulta la transcripción o revisa el archivo.", "true": "Verdadero", "false": "Falso", "gap": "Hueco", "wordBank": "Banco de palabras", "done": "¡Has terminado!", "blockChoice": "Elige la respuesta", "blockTrueFalse": "Verdadero o falso", "blockGap": "Completa la frase"},
     "va": {"check": "Comprovar", "retry": "Tornar a començar", "correct": "Correcte!", "incorrect": "No és correcte.",
            "unanswered": "Sense respondre.", "score": "{n} de {total}", "choose": "Tria…", "up": "Pujar", "down": "Baixar",
            "position": "posició", "allRight": "Tot en ordre!", "inPlace": "al seu lloc.",
            "flip": "Prem per a girar", "groups": "Grups", "next": "Continuar", "more": "Saber-ne més",
-           "listen": "Escolta l’àudio", "transcript": "Transcripció o descripció de l’àudio", "audioMissing": "Afig un àudio al projecte abans de generar l’activitat.", "audioError": "No es pot reproduir l’àudio. Consulta la transcripció o revisa el fitxer.", "true": "Vertader", "false": "Fals", "gap": "Buit", "wordBank": "Banc de paraules", "done": "Has acabat!"},
+           "listen": "Escolta l’àudio", "transcript": "Transcripció o descripció de l’àudio", "audioMissing": "Afig un àudio al projecte abans de generar l’activitat.", "audioError": "No es pot reproduir l’àudio. Consulta la transcripció o revisa el fitxer.", "true": "Vertader", "false": "Fals", "gap": "Buit", "wordBank": "Banc de paraules", "done": "Has acabat!", "blockChoice": "Tria la resposta", "blockTrueFalse": "Vertader o fals", "blockGap": "Completa la frase"},
     "en": {"check": "Check", "retry": "Start again", "correct": "Correct!", "incorrect": "Not correct.",
            "unanswered": "Unanswered.", "score": "{n} of {total}", "choose": "Choose…", "up": "Move up", "down": "Move down",
            "position": "position", "allRight": "All in order!", "inPlace": "in place.",
            "flip": "Tap to flip", "groups": "Groups", "next": "Continue", "more": "Learn more",
-           "listen": "Listen to the audio", "transcript": "Transcript or description of the audio", "audioMissing": "Add an audio to the project before generating the activity.", "audioError": "The audio cannot be played. Check the transcript or the file.", "true": "True", "false": "False", "gap": "Gap", "wordBank": "Word bank", "done": "You have finished!"},
+           "listen": "Listen to the audio", "transcript": "Transcript or description of the audio", "audioMissing": "Add an audio to the project before generating the activity.", "audioError": "The audio cannot be played. Check the transcript or the file.", "true": "True", "false": "False", "gap": "Gap", "wordBank": "Word bank", "done": "You have finished!", "blockChoice": "Choose the answer", "blockTrueFalse": "True or false", "blockGap": "Complete the sentence"},
 }
 
 PUZZLE_LABELS = {
@@ -343,6 +381,42 @@ SAMPLES = {
             {"heading": "Let us start", "text": "Write the first part of the text here.", "more": "Optional extended information.",
              "question": {"text": "Have you understood this part?", "options": ["Yes", "No"], "answer": 0}},
             {"heading": "Let us continue", "text": "Write the second part here."}]}},
+    "bateria": {
+        "es": {"instructions": "Responde a los tres bloques. Puedes volver a intentarlo al terminar.", "blocks": [
+            {"type": "choice", "heading": "Elige la respuesta", "questions": [
+                {"text": "¿Qué instrumento es de viento metal?", "options": ["Violín", "Trompeta", "Tambor"], "answer": 1,
+                 "feedback": "La trompeta suena al vibrar los labios en la boquilla."}]},
+            {"type": "true_false", "heading": "Verdadero o falso", "statements": [
+                {"text": "El Sol es una estrella.", "answer": True, "feedback": "El Sol produce su propia luz y calor."},
+                {"text": "La Luna produce su propia luz.", "answer": False,
+                 "feedback": "La Luna refleja la luz del Sol."}]},
+            {"type": "gap", "heading": "Completa la frase", "mode": "bank", "items": [
+                {"text": "La ___ nos da luz durante el día.", "answers": ["estrella"],
+                 "feedback": "El Sol es la estrella más cercana a la Tierra."}]}]},
+        "va": {"instructions": "Respon als tres blocs. Pots tornar-ho a intentar en acabar.", "blocks": [
+            {"type": "choice", "heading": "Tria la resposta", "questions": [
+                {"text": "Quin instrument és de vent metall?", "options": ["Violí", "Trompeta", "Tambor"], "answer": 1,
+                 "feedback": "La trompeta sona quan vibren els llavis en el broquet."}]},
+            {"type": "true_false", "heading": "Vertader o fals", "statements": [
+                {"text": "El Sol és una estrela.", "answer": True,
+                 "feedback": "El Sol produeix la seua pròpia llum i calor."},
+                {"text": "La Lluna produeix la seua pròpia llum.", "answer": False,
+                 "feedback": "La Lluna reflecteix la llum del Sol."}]},
+            {"type": "gap", "heading": "Completa la frase", "mode": "bank", "items": [
+                {"text": "L’___ ens dona llum durant el dia.", "answers": ["estrela"],
+                 "feedback": "El Sol és l’estrela més pròxima a la Terra."}]}]},
+        "en": {"instructions": "Answer the three blocks. You can try again when you finish.", "blocks": [
+            {"type": "choice", "heading": "Choose the answer", "questions": [
+                {"text": "Which instrument is a brass instrument?", "options": ["Violin", "Trumpet", "Drum"], "answer": 1,
+                 "feedback": "The trumpet sounds when the lips vibrate in the mouthpiece."}]},
+            {"type": "true_false", "heading": "True or false", "statements": [
+                {"text": "The Sun is a star.", "answer": True,
+                 "feedback": "The Sun produces its own light and heat."},
+                {"text": "The Moon produces its own light.", "answer": False,
+                 "feedback": "The Moon reflects the light of the Sun."}]},
+            {"type": "gap", "heading": "Complete the sentence", "mode": "bank", "items": [
+                {"text": "The ___ gives us light during the day.", "answers": ["sun"],
+                 "feedback": "The Sun is the star closest to the Earth."}]}]}},
 }
 
 for puzzle_id, instructions in {
@@ -409,6 +483,19 @@ TEMPLATES = {t.id: t for t in (
              "{text (exactamente un hueco ___ por frase), answers (1-10 respuestas válidas, la primera se usa en "
              "el banco), feedback (explicación breve), image y alt opcionales}. No incluyas la solución en text. "
              "Se ignoran mayúsculas y espacios sobrantes, pero se respetan tildes y ñ."),
+    Template("bateria", "interactiva", BatteryData,
+             {"es": "Batería de ejercicios", "va": "Bateria d’exercicis", "en": "Exercise set"},
+             {"es": "Varios ejercicios cortos en una sola actividad: opción múltiple, verdadero o falso y completar huecos.",
+              "va": "Diversos exercicis curts en una sola activitat: opció múltiple, vertader o fals i omplir buits.",
+              "en": "Several short exercises in one activity: multiple choice, true or false and fill in the gaps."},
+             "blocks: 1-3 bloques sin repetir tipo, en este orden: choice, true_false, gap. "
+             "choice: {type, heading, questions: 1-12 {text, options (2-6 textos), answer (índice desde 0), "
+             "feedback, image y alt opcionales}}. true_false: {type, heading, statements: 1-12 {text, answer "
+             "(booleano JSON true o false, nunca texto ni número), feedback obligatorio, image y alt opcionales}}. "
+             "gap: {type, heading, mode (bank|text), items: 1-12 {text con exactamente un hueco ___ por frase, "
+             "answers (1-10 respuestas válidas), feedback, image y alt opcionales}}. Genera 8-12 ítems en total, "
+             "2-4 por bloque, con variedad y sin repetir ideas. Incluye solo los tipos elegidos y conserva mode del "
+             "bloque de huecos. No inventes imágenes ni recursos."),
     Template("cuestionario", "interactiva", QuizData, {"es": "Cuestionario", "va": "Qüestionari", "en": "Quiz"},
              {"es": "Preguntas de opción única con corrección y explicación.",
               "va": "Preguntes d’opció única amb correcció i explicació.",
@@ -452,8 +539,18 @@ TEMPLATES = {t.id: t for t in (
 )}
 
 
+GROUPS = {
+    "bateria": "quick", "cuestionario": "quick", "verdadero_falso": "quick", "huecos": "quick",
+    "sopa_letras": "games", "crucigrama": "games", "emparejar": "games", "ordenar": "games",
+    "tarjetas": "games", "clasificar": "games",
+    "lectura": "reading", "escucha": "reading",
+    "infografia": "docs", "ficha": "docs",
+}
+
+
 def catalog() -> list[dict]:
-    return [{"id": t.id, "kind": t.kind, "names": t.names, "descriptions": t.descriptions} for t in TEMPLATES.values()]
+    return [{"id": t.id, "kind": t.kind, "names": t.names, "descriptions": t.descriptions,
+             "group": GROUPS.get(t.id, "docs")} for t in TEMPLATES.values()]
 
 
 def get(template_id: str) -> Template:
@@ -509,12 +606,27 @@ def initial_files(template_id: str, brief: dict) -> dict[str, str]:
     safe_title = title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     index = (TEMPLATE_DIR / "index.html").read_text(encoding="utf-8")
     index = index.replace("{LANG}", "ca" if language == "va" else language).replace("{TITLE}", safe_title)
-    data = {"title": title, "language": language,
-            "accessibility": {"large_text": accessibility.get("large_text") is True,
-                              "high_contrast": accessibility.get("high_contrast") is True},
-            "labels": LABELS[language], **SAMPLES[template_id][language]}
-    if template_id == "huecos":
-        data["mode"] = "text" if brief.get("gap_mode") == "text" else "bank"
+    common = {"title": title, "language": language,
+              "accessibility": {"large_text": accessibility.get("large_text") is True,
+                                "high_contrast": accessibility.get("high_contrast") is True},
+              "labels": LABELS[language]}
+    if template_id == "bateria":
+        mix = brief.get("mix") if isinstance(brief.get("mix"), list) else []
+        chosen = [kind for kind in ("choice", "true_false", "gap") if kind in mix] or ["choice", "true_false", "gap"]
+        sample = SAMPLES["bateria"][language]
+        blocks = []
+        for block in sample["blocks"]:
+            if block["type"] not in chosen:
+                continue
+            block = {**block}
+            if block["type"] == "gap":
+                block["mode"] = "text" if brief.get("gap_mode") == "text" else "bank"
+            blocks.append(block)
+        data = {**common, "instructions": sample["instructions"], "blocks": blocks}
+    else:
+        data = {**common, **SAMPLES[template_id][language]}
+        if template_id == "huecos":
+            data["mode"] = "text" if brief.get("gap_mode") == "text" else "bank"
     script = (TEMPLATE_DIR / f"{template_id}.js").read_text(encoding="utf-8")
     if template_id in ("sopa_letras", "crucigrama"):
         data["labels"] = {**LABELS[language], **PUZZLE_LABELS[language]}
@@ -534,6 +646,13 @@ def instruction(template_id: str, brief: dict, base: str) -> str:
         if template_id == "huecos":
             mode = "text" if brief.get("gap_mode") == "text" else "bank"
             base += f"\nModalidad elegida: mode={mode}. Conserva esta modalidad."
+        if template_id == "bateria":
+            mix = brief.get("mix") if isinstance(brief.get("mix"), list) else []
+            chosen = [kind for kind in ("choice", "true_false", "gap") if kind in mix] or ["choice", "true_false", "gap"]
+            names = {"choice": "opción múltiple", "true_false": "verdadero o falso", "gap": "completar huecos"}
+            mode = "text" if brief.get("gap_mode") == "text" else "bank"
+            base += (f"\nBloques elegidos: {', '.join(names[kind] for kind in chosen)}. "
+                     f"Para el bloque de huecos, mode={mode}. Incluye solo esos bloques.")
         return (f"{base}\n\nEste proyecto usa la plantilla «{template.names['es']}». NO modifiques index.html, style.css, "
                 f"comun.js ni script.js: son el motor accesible de la plantilla. Modifica SOLO {DATA_PATH} y devuelve su "
                 "contenido completo con la forma exacta window.EDUCREA_DATA = {...}; donde {...} es JSON válido "
@@ -549,7 +668,8 @@ def instruction(template_id: str, brief: dict, base: str) -> str:
             "SVG en línea, iconos ya incluidos y el aviso de licencia de Lucide), sin recursos externos.")
 
 
-def check_proposal(template_id: str, changes: list, audio_resources: list[dict] | None = None) -> dict:
+def check_proposal(template_id: str, changes: list, audio_resources: list[dict] | None = None,
+                   brief: dict | None = None) -> dict:
     """Grounding report for a proposal on a template project."""
     template = get(template_id)
     paths = {change.path for change in changes}
@@ -563,6 +683,14 @@ def check_proposal(template_id: str, changes: list, audio_resources: list[dict] 
             problems.append(f"no modifica {DATA_PATH}")
         else:
             problems += validate_data(template_id, data)
+            if template_id == "bateria" and brief and not problems:
+                value = parse_data(data)
+                mix = brief.get("mix") if isinstance(brief.get("mix"), list) else []
+                chosen = [kind for kind in ("choice", "true_false", "gap") if kind in mix] or ["choice", "true_false", "gap"]
+                types = [block.get("type") for block in value.get("blocks", []) if isinstance(block, dict)]
+                extra = sorted({kind for kind in types if kind not in chosen})
+                if extra:
+                    problems.append("incluye bloques no elegidos: " + ", ".join(extra))
             if template_id == "escucha" and not problems:
                 value = parse_data(data)
                 audio = next((a for a in audio_resources or [] if a["path"] == value.get("audio")), None)

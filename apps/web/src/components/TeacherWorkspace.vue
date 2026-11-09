@@ -237,10 +237,11 @@ async function generateFirstVersion() {
       <IllustratePanel class="full" v-if="!loading && !blocked && file && !generating" :project-id="projectId" :disabled="dirty"
         :brief="{ kind: activity.kind, template: typeof original.template === 'string' ? original.template : undefined }"
         @placed="emit('generated'); if (documentKind) emit('openMaterials')" />
-      <fieldset class="full"><legend>{{ t('accessibility') }}</legend>
+      <details class="full accessibility-options">
+        <summary>{{ t('accessibility') }} <span class="hint">({{ t('optional') }})</span></summary>
         <label class="check"><input v-model="activity.accessibility.large_text" type="checkbox" />{{ t('largeText') }}</label>
         <label class="check"><input v-model="activity.accessibility.high_contrast" type="checkbox" />{{ t('highContrast') }}</label>
-      </fieldset>
+      </details>
       <div class="full actions"><button type="submit" :disabled="!dirty && !!file">{{ t('saveActivity') }}</button>
         <span v-if="dirty">{{ t('unsaved') }}</span><span v-else-if="file" role="status">{{ t('saved') }}</span></div>
     </form>
@@ -256,6 +257,7 @@ async function generateFirstVersion() {
 
 
 <style scoped>
+.accessibility-options { border: 1px solid var(--c-line); border-radius: var(--radius); padding: .4rem 1rem; margin: 1rem 0; background: var(--c-surface); }
 .develop-sections { border: 1px solid var(--c-line); border-radius: var(--radius); padding: .4rem 1rem; margin: 1rem 0; background: var(--c-surface); }
 .section-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0 1rem; }
 </style>

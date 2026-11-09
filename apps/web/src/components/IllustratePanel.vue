@@ -80,7 +80,7 @@ async function run() {
 
 <template>
   <details v-if="target && status?.models.length" class="illustrate">
-    <summary>{{ t('illustrateTitle') }}</summary>
+    <summary>{{ t('illustrateTitle') }} <span class="hint">({{ t('optional') }})</span></summary>
     <p class="hint">{{ t('illustrateHint') }}</p>
     <p v-if="!status.configured" class="notice">{{ t('illustrateNeedsKey') }}
       <RouterLink to="/ai/providers">{{ t('myProviders') }}</RouterLink></p>

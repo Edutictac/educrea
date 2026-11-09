@@ -19,6 +19,16 @@ La demostración es local y no llama a proveedores de IA. La portada explica el 
 propias y el acceso restringido a la IA incluida, sin enlazar el formulario privado de beta.
 El editor y las otras vistas se cargan al abrirlas para aligerar la entrada pública.
 
+## Creación de materiales
+
+Al elegir un tipo de material en `/projects`, EduCrea crea un borrador con el nombre del
+material y abre directamente el editor docente. El título, las instrucciones y los demás
+ajustes se completan allí, sin repetir un formulario previo. La selección no inicia la IA:
+la generación se solicita desde el editor, con «Siguiente paso» justo debajo de «Guardar
+actividad». Durante la creación se bloquean las tarjetas
+para evitar duplicados; si falla la preparación, se muestra el error y se permite reintentar.
+Los encargos recibidos desde EduTicTac Prompt se conservan en las instrucciones del borrador.
+
 ## Estilo de la aplicación
 
 La portada y el espacio de trabajo comparten una paleta marfil y azul petróleo, con acentos

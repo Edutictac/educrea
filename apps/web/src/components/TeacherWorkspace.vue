@@ -178,12 +178,6 @@ async function generateFirstVersion() {
     <p>{{ t('teacherIntro') }}</p>
     <p v-if="error" role="alert">{{ error }}</p>
     <p v-if="success" role="status">{{ success }}</p>
-    <div v-if="!dirty && file" class="actions first-version"><span class="badge">{{ t('nextStep') }}</span>
-      <button type="button" :disabled="generating" @click="generateFirstVersion">
-        {{ generating ? t('generatingFirstVersion') : generated ? t('regenerateFirstVersion')
-          : activity.kind === 'situacion' ? t('generateSituation') : activity.kind === 'ficha' ? t('generateWorksheet') : t('generateFirstVersion') }}</button>
-
-    </div>
     <AiProgress v-if="generating" :stage="progress.stage" :ai="progress.ai" :passages="progress.passages" :chars="progress.chars" :retry="progress.retry" :section="progress.section" />
     <div v-if="generating" class="actions"><button type="button" class="secondary" @click="controller?.abort()">{{ t('cancel') }}</button></div>
     <p v-if="generated" class="notice ok" role="status">{{ activity.kind === 'situacion' ? t('situationReady') : activity.kind === 'ficha' ? t('worksheetReady') : t('firstVersionReady') }}
@@ -250,6 +244,11 @@ async function generateFirstVersion() {
       <div class="full actions"><button type="submit" :disabled="!dirty && !!file">{{ t('saveActivity') }}</button>
         <span v-if="dirty">{{ t('unsaved') }}</span><span v-else-if="file" role="status">{{ t('saved') }}</span></div>
     </form>
+    <div v-if="!dirty && file" class="actions first-version"><span class="badge">{{ t('nextStep') }}</span>
+      <button type="button" :disabled="generating" @click="generateFirstVersion">
+        {{ generating ? t('generatingFirstVersion') : generated ? t('regenerateFirstVersion')
+          : activity.kind === 'situacion' ? t('generateSituation') : activity.kind === 'ficha' ? t('generateWorksheet') : t('generateFirstVersion') }}</button>
+    </div>
     <p v-if="needsProvider" class="notice">{{ t('needProviderFirst') }} <RouterLink to="/ai/providers">{{ t('myProviders') }}</RouterLink></p>
     <p v-if="!generated && !generating && !dirty && file" class="hint">{{ t('teacherNext') }}</p>
   </section>

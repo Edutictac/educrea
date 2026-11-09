@@ -1,20 +1,16 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { locale, t, type Locale } from '../i18n'
+import { locale, t } from '../i18n'
 import { applyTemplate, INFOGRAPHIC_PATH, infographicTemplate, listTemplates, type TemplateGroup, type TemplateInfo } from '../services/templates'
 import { useAuthStore } from '../stores/auth'
 import { useFilesStore } from '../stores/files'
 import { useProjectsStore } from '../stores/projects'
 import AppIcon from '../components/AppIcon.vue'
 import IncludedAiQuota from '../components/IncludedAiQuota.vue'
-import { MATERIAL_ACCEPT, uploadSource } from '../services/sources'
-import { imageModels, includedLeft, type ImageModels } from '../services/images'
-import { MAX_ILLUSTRATIONS, createIllustrations, illustrationPrompts, templateIllustrable, type IllustrationStyle } from '../services/illustrations'
-import { MAX_INSTRUCTIONS, fillInstructions, parseBridgeQuery, takePendingPrompt } from '../services/promptBridge'
+import { fillInstructions, parseBridgeQuery, takePendingPrompt } from '../services/promptBridge'
 
-// Guided creation (phase 7): 1) what to create, 2) a few details, then the project opens in teacher mode with the
-// template files ready and the AI fills the content from the brief.
+// Open the selected draft directly; the brief is completed only in the editor.
 type GroupId = TemplateGroup | 'other'
 type Choice = { id: string; kind: 'plantilla' | 'situacion' | 'libre'; name: string; description: string; icon: string; group: GroupId }
 const GROUP_LABELS = { quick: 'groupQuick', games: 'groupGames', reading: 'groupReading', docs: 'groupDocs', other: 'groupOther' } as const
@@ -33,52 +29,16 @@ const router = useRouter()
 const route = useRoute()
 const templates = ref<TemplateInfo[]>([])
 const choice = ref<Choice | null>(null)
-const title = ref('')
-const language = ref<Locale>(locale.value)
-const level = ref('primaria')
-const instructions = ref('')
-const gapMode = ref<'bank' | 'text'>('bank')
-const mix = ref<('choice' | 'true_false' | 'gap')[]>(['choice', 'true_false', 'gap'])
-const largeText = ref(false)
-const highContrast = ref(false)
 const busy = ref(false)
-const material = ref<File | null>(null)
-const materialRights = ref(false)
-const progress = ref('')
+const instructions = ref('')
 // Handoff from EduTicTac Prompt: open the guided creation and help paste the prompt into the brief.
 const fromPrompt = ref(false)
 const received = ref(false)
 const bridgeMessage = ref('')
 const bridgeError = ref('')
-const instructionsEl = ref<HTMLTextAreaElement | null>(null)
-// Optional AI illustrations (paid BYOK images), generated before the first version so the AI can place them.
-const imageStatus = ref<ImageModels | null>(null)
-const illustrationCount = ref(0)
-const illustrationStyle = ref<IllustrationStyle>('plana')
-const illustrationCostOk = ref(false)
-const illustrationRightsOk = ref(false)
-const imageModel = computed(() => imageStatus.value?.models.find(item => item.model === imageStatus.value?.default)
-  ?? imageStatus.value?.models[0])
-// Infographics, worksheets and every template whose data has an image field (not word search, crossword, listening).
-const canIllustrate = computed(() => !!choice.value && choice.value.kind === 'plantilla'
-  && templateIllustrable(templates.value.find(item => item.id === choice.value?.id) ?? { id: choice.value.id })
-  && !!imageModel.value && imageStatus.value?.configured === true)
-const budgetLeft = computed(() => imageStatus.value
-  ? imageStatus.value.budget.monthly_limit_microusd - imageStatus.value.budget.spent_or_reserved_microusd : 0)
-const illustrationTotal = computed(() => illustrationCount.value * (imageModel.value?.max_cost_microusd ?? 0))
-// With IA EduCrea the teacher pays nothing: no cost confirmation, the count is capped by the images left this week.
-const includedImages = computed(() => includedLeft(imageStatus.value, imageModel.value?.model))
-const maxIllustrations = computed(() => includedImages.value === null ? MAX_ILLUSTRATIONS : Math.min(MAX_ILLUSTRATIONS, includedImages.value))
-const illustrationsReady = computed(() => !canIllustrate.value || illustrationCount.value === 0
-  || (includedImages.value !== null ? illustrationRightsOk.value && illustrationCount.value <= includedImages.value
-    : illustrationCostOk.value && illustrationRightsOk.value && illustrationTotal.value <= budgetLeft.value))
-const canCreate = computed(() => !busy.value && !!title.value.trim() && (!material.value || materialRights.value) && illustrationsReady.value
-  && (choice.value?.id !== 'bateria' || mix.value.length > 0))
-const usd = (micro: number) => `$${(micro / 1000000).toFixed(2)}`
 const error = ref('')
-const detailsHeading = ref<HTMLElement | null>(null)
 const creating = ref(false)
-async function startCreating() { creating.value = true; fromPrompt.value = false; received.value = false; bridgeMessage.value = ''; bridgeError.value = ''; await nextTick(); document.querySelector<HTMLElement>('.choice')?.focus() }
+async function startCreating() { creating.value = true; choice.value = null; instructions.value = ''; fromPrompt.value = false; received.value = false; bridgeMessage.value = ''; bridgeError.value = ''; await nextTick(); document.querySelector<HTMLElement>('.choice')?.focus() }
 
 const choices = computed<Choice[]>(() => [
   ...templates.value.map(item => ({ id: item.id, kind: 'plantilla' as const, name: item.names[locale.value], description: item.descriptions[locale.value], icon: ICONS[item.id] ?? 'layout-template', group: item.group ?? TEMPLATE_GROUPS[item.id] ?? 'docs' })),
@@ -100,14 +60,13 @@ onMounted(async () => {
   if (bridge.openCreate) creating.value = true
   if (bridge.openCreate || bridge.fromPrompt) router.replace({ path: '/projects' })
   if (!auth.user) { router.replace('/explore'); return }
-  void imageModels().then(value => { imageStatus.value = value }).catch(() => undefined)
   try { [templates.value] = await Promise.all([listTemplates(), projects.load()]); creating.value = bridge.openCreate || projects.items.length === 0 }
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 })
 async function pick(item: Choice) {
-  choice.value = item; error.value = ''
-  await nextTick(); detailsHeading.value?.focus()
-  if (fromPrompt.value && !received.value && item.kind !== 'libre') { await nextTick(); instructionsEl.value?.focus() }
+  if (busy.value) return
+  choice.value = item
+  await create()
 }
 async function pasteFromClipboard() {
   bridgeMessage.value = ''; bridgeError.value = ''
@@ -120,7 +79,6 @@ async function pasteFromClipboard() {
     instructions.value = result.text
     received.value = true
     bridgeMessage.value = t('promptBridgePasted')
-    await nextTick(); instructionsEl.value?.focus()
   } catch {
     bridgeError.value = t('promptBridgeNoClipboard')
   }
@@ -144,45 +102,28 @@ async function create() {
   error.value = ''; busy.value = true
   let projectId = ''
   try {
-    const project = await projects.create(title.value, '')
+    const project = await projects.create(choice.value.name, '')
     projectId = project.id
-    const brief = { title: title.value.trim(), language: language.value, level: level.value, instructions: instructions.value.trim(),
-      accessibility: { large_text: largeText.value, high_contrast: highContrast.value },
-      ...(choice.value.id === 'huecos' ? { gap_mode: gapMode.value } : {}),
-      ...(choice.value.id === 'bateria' ? { mix: [...mix.value], gap_mode: gapMode.value } : {}),
-      ...(canIllustrate.value && illustrationCount.value > 0 ? { illustrations: true } : {}) }
+    const brief = { title: choice.value.name, language: locale.value, level: 'primaria', instructions: instructions.value.trim(),
+      accessibility: { large_text: false, high_contrast: false } }
     if (choice.value.kind === 'plantilla') {
       await applyTemplate(project.id, choice.value.id, brief, auth.csrf)
       if (choice.value.id === 'infografia') {
         const html = infographicTemplate(brief.title, brief.language)
-        const htmlLang = language.value === 'va' ? 'ca-ES-valencia' : language.value
+        const htmlLang = brief.language === 'va' ? 'ca-ES-valencia' : brief.language
         await files.create(project.id, INFOGRAPHIC_PATH, html.replace('<html lang="es">', `<html lang="${htmlLang}">`))
       }
-    } else if (choice.value.kind === 'situacion') {
-      await files.create(project.id, 'activity.json', JSON.stringify({ kind: 'situacion', ...brief, sessions: 4 }, null, 2) + '\n')
+    } else if (choice.value.kind === 'situacion' || instructions.value.trim()) {
+      await files.create(project.id, 'activity.json', JSON.stringify({
+        kind: choice.value.kind === 'situacion' ? 'situacion' : 'actividad', ...brief,
+        ...(choice.value.kind === 'situacion' ? { sessions: 4 } : {}),
+      }, null, 2) + '\n')
     }
-    if (material.value && choice.value.kind !== 'libre') {
-      progress.value = t('materialReading')
-      // The project is already useful without the material: a failed upload is reported, never rolled back.
-      try { await uploadSource(project.id, material.value, material.value.name.replace(/\.[^.]+$/, ''), auth.csrf) }
-      catch (cause) { alert(`${t('materialFailed')} ${cause instanceof Error ? cause.message : ''}`) }
-    }
-    if (canIllustrate.value && illustrationCount.value > 0 && imageModel.value) {
-      // The project is useful without images: failures are reported, never rolled back.
-      try {
-        progress.value = t('illustrationsWriting')
-        const prompts = await illustrationPrompts(project.id, illustrationCount.value, illustrationStyle.value, auth.csrf)
-        const result = await createIllustrations(project.id, prompts, imageModel.value.model, auth.csrf,
-          (index, total) => { progress.value = t('illustrationProgress').replace('{n}', String(index)).replace('{total}', String(total)) },
-          includedImages.value === null)
-        if (result.errors.length) alert(`${t('illustrationsPartial').replace('{n}', String(result.saved))} ${result.errors[0]}`)
-      } catch (cause) { alert(`${t('illustrationsFailed')} ${cause instanceof Error ? cause.message : ''}`) }
-    }
-    router.push(`/projects/${project.id}`)
+    await router.push(`/projects/${project.id}`)
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : t('error')
     if (projectId) await projects.remove(projectId).catch(() => undefined)  // do not leave a half-created project
-  } finally { busy.value = false; progress.value = '' }
+  } finally { busy.value = false }
 }
 </script>
 
@@ -194,90 +135,32 @@ async function create() {
     <p v-if="error" role="alert">{{ error }}</p>
     <section v-if="creating" class="card create-card" :aria-label="t('create')">
       <div class="create-head"><h2>{{ t('createGuided') }}</h2>
-        <button v-if="projects.items.length" type="button" class="ghost icon-only" :title="t('cancel')" @click="creating = false; choice = null"><AppIcon name="x" /><span class="sr-only">{{ t('cancel') }}</span></button></div>
+        <button v-if="projects.items.length" type="button" :disabled="busy" class="ghost icon-only" :title="t('cancel')" @click="creating = false; choice = null"><AppIcon name="x" /><span class="sr-only">{{ t('cancel') }}</span></button></div>
       <ol class="stepper" :aria-label="t('steps')">
-        <li class="step" :class="choice ? 'done' : 'current'"><span class="num">1</span>{{ t('stepChoose') }}</li>
+        <li class="step current"><span class="num">1</span>{{ t('stepChoose') }}</li>
         <li aria-hidden="true"><AppIcon name="chevron-right" :size="16" /></li>
-        <li class="step" :class="choice ? 'current' : ''"><span class="num">2</span>{{ t('stepDetails') }}</li>
+        <li class="step"><span class="num">2</span>{{ t('stepDetails') }}</li>
         <li aria-hidden="true"><AppIcon name="chevron-right" :size="16" /></li>
         <li class="step"><span class="num">3</span>{{ t('stepGenerate') }}</li>
       </ol>
-      <div v-if="fromPrompt && received" class="notice">
+      <div v-if="fromPrompt" class="notice">
         <strong>{{ t('promptBridgeIncoming') }}</strong>
-        <p>{{ t('promptBridgeReceived') }}</p>
+        <p>{{ received ? t('promptBridgeReceived') : t('promptBridgeDocumentHint') }}</p>
+        <button v-if="!received" type="button" class="secondary" :disabled="busy" @click="pasteFromClipboard">{{ t('promptBridgePaste') }}</button>
+        <p v-if="bridgeMessage" role="status">{{ bridgeMessage }}</p>
+        <p v-if="bridgeError" role="alert">{{ bridgeError }}</p>
       </div>
+      <p v-if="busy" role="status">{{ t('creating') }}</p>
       <div v-for="group in choiceGroups" :key="group.id" class="choice-group">
         <h3>{{ t(group.title) }}</h3>
         <ul class="choice-grid">
           <li v-for="item in group.items" :key="item.id">
-            <button type="button" class="choice" :aria-pressed="choice?.id === item.id" @click="pick(item)">
+            <button type="button" class="choice" :disabled="busy" :aria-pressed="choice?.id === item.id" @click="pick(item)">
               <span class="choice-icon"><AppIcon :name="item.icon" :size="24" /></span>
               <strong>{{ item.name }}</strong><span>{{ item.description }}</span></button>
           </li>
         </ul>
       </div>
-      <form v-if="choice" class="form-grid details-form" @submit.prevent="create">
-        <h3 ref="detailsHeading" class="full" tabindex="-1">{{ choice.name }}</h3>
-        <label class="full">{{ t('activityTitle') }}<input v-model="title" required maxlength="160" :placeholder="t('titlePlaceholder')" /></label>
-        <div v-if="received" class="actions full handoff-actions"><button type="submit" :disabled="!canCreate">{{ busy ? t('creating') : t('createAndOpen') }}</button><span class="hint">{{ t('promptBridgeCreateHint') }}</span></div>
-        <template v-if="choice.kind !== 'libre'">
-          <label>{{ t('language') }}<select v-model="language"><option value="es">{{ t('languageSpanish') }}</option><option value="ca">{{ t('languageCatalan') }}</option><option value="va">{{ t('languageValencian') }}</option><option value="en">{{ t('languageEnglish') }}</option></select></label>
-          <label>{{ t('educationLevel') }}<select v-model="level"><option value="infantil">{{ t('earlyYears') }}</option>
-            <option value="primaria">{{ t('primary') }}</option><option value="secundaria">{{ t('secondary') }}</option>
-            <option value="otros">{{ t('other') }}</option></select></label>
-          <fieldset v-if="choice.id === 'bateria'" class="full material-pick">
-            <legend>{{ t('batteryTypes') }}</legend>
-            <label class="check"><input v-model="mix" type="checkbox" value="choice" />{{ t('batteryChoice') }}</label>
-            <label class="check"><input v-model="mix" type="checkbox" value="true_false" />{{ t('batteryTrueFalse') }}</label>
-            <label class="check"><input v-model="mix" type="checkbox" value="gap" />{{ t('batteryGap') }}</label>
-            <p v-if="!mix.length" class="hint" role="alert">{{ t('batteryTypesRequired') }}</p>
-          </fieldset>
-          <label v-if="choice.id === 'huecos' || (choice.id === 'bateria' && mix.includes('gap'))" class="full">{{ t('gapMode') }}<select v-model="gapMode">
-            <option value="bank">{{ t('gapBank') }}</option><option value="text">{{ t('gapText') }}</option>
-          </select></label>
-          <div v-if="fromPrompt" class="notice full">
-            <strong>{{ t('promptBridgeIncoming') }}</strong>
-            <p>{{ received ? t('promptBridgeReceived') : t('promptBridgeDocumentHint') }}</p>
-            <button v-if="!received" type="button" class="secondary" @click="pasteFromClipboard">{{ t('promptBridgePaste') }}</button>
-            <p v-if="bridgeMessage" role="status">{{ bridgeMessage }}</p>
-            <p v-if="bridgeError" role="alert">{{ bridgeError }}</p>
-          </div>
-          <label class="full">{{ t('whatAbout') }}<textarea ref="instructionsEl" v-model="instructions" :maxlength="MAX_INSTRUCTIONS" rows="3" :placeholder="t('whatAboutPlaceholder')" /></label>
-          <div class="full material-pick">
-            <label>{{ t('startingMaterial') }} <span class="hint">({{ t('optional') }})</span>
-              <input type="file" :accept="MATERIAL_ACCEPT" @change="material = ($event.target as HTMLInputElement).files?.[0] ?? null" /></label>
-            <p class="hint">{{ t('startingMaterialIntro') }}</p>
-            <label v-if="material" class="check"><input v-model="materialRights" type="checkbox" required />{{ t('sourceRights') }}</label>
-          </div>
-          <fieldset v-if="canIllustrate" class="full material-pick">
-            <legend>{{ t('illustrationsTitle') }} <span class="hint">({{ t('optional') }})</span></legend>
-            <label>{{ t('illustrationsCount') }}<select v-model.number="illustrationCount">
-              <option :value="0">{{ t('illustrationsNone') }}</option><option v-for="n in maxIllustrations" :key="n" :value="n">{{ n }}</option></select></label>
-            <p v-if="includedImages !== null" class="hint">{{ includedImages > 0 ? t('includedImagesLeft').replace('{n}', String(includedImages)).replace('{total}', String(imageStatus?.included?.weekly_limit ?? 0)) : t('includedImagesNone') }}</p>
-            <template v-if="illustrationCount > 0">
-              <label>{{ t('illustrationsStyle') }}<select v-model="illustrationStyle">
-                <option value="plana">{{ t('styleFlat') }}</option><option value="acuarela">{{ t('styleWatercolor') }}</option>
-                <option value="realista">{{ t('styleRealistic') }}</option><option value="colorear">{{ t('styleColoring') }}</option></select></label>
-              <p class="hint">{{ t('illustrationsIntro') }}</p>
-              <template v-if="includedImages === null">
-                <p v-if="illustrationTotal > budgetLeft" role="alert">{{ t('illustrationsOverBudget') }}
-                  <RouterLink to="/ai/providers">{{ t('changeBudget') }}</RouterLink></p>
-                <label class="check"><input v-model="illustrationCostOk" type="checkbox" />
-                  {{ t('illustrationsCost').replace('{cost}', usd(illustrationTotal)) }}</label>
-              </template>
-              <label class="check"><input v-model="illustrationRightsOk" type="checkbox" />{{ t('imageRightsNoPersonal') }}</label>
-            </template>
-          </fieldset>
-          <details class="full"><summary>{{ t('accessibility') }}</summary>
-            <label class="check"><input v-model="largeText" type="checkbox" />{{ t('largeText') }}</label>
-            <label class="check"><input v-model="highContrast" type="checkbox" />{{ t('highContrast') }}</label>
-          </details>
-        </template>
-        <div class="actions full"><button type="submit" :disabled="!canCreate">{{ busy ? t('creating') : t('createAndOpen') }}</button>
-          <span v-if="progress" class="hint" role="status">{{ progress }}</span>
-          <button type="button" class="secondary" @click="choice = null">{{ t('cancel') }}</button></div>
-        <p v-if="choice.kind !== 'libre'" class="hint full">{{ t('guidedNext') }}</p>
-      </form>
     </section>
     <template v-if="projects.items.length">
       <h2 class="list-title">{{ t('yourProjects') }} <span class="badge">{{ projects.items.length }}</span></h2>
@@ -299,8 +182,6 @@ async function create() {
 <style scoped>
 .create-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 .stepper { list-style: none; padding: 0; }
-.material-pick { border: 1px dashed var(--c-line-2); border-radius: var(--radius); padding: 0 1rem .4rem; background: var(--c-surface-2); }
-.details-form { margin-top: 1.2rem; padding-top: .4rem; border-top: 1px solid var(--c-line); }
 .card-action { position: absolute; top: .6rem; right: .6rem; z-index: 1; display: flex; gap: .25rem; }
 .list-title { display: flex; align-items: center; gap: .5rem; margin-top: 1.6rem; }
 .project-icon { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: rgba(255, 255, 255, .7); color: var(--c-brand); margin-bottom: 1rem; }

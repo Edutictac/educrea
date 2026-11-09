@@ -183,7 +183,7 @@ export const en = {
   promptBridgeEmpty: 'There is no brief. Open this page from EduTicTac Prompt.',
   promptBridgeBackProjects: 'Back to my projects',
   promptBridgeReceiving: 'Preparing the EduTicTac Prompt brief…',
-  promptBridgeReceived: 'Brief received in Instructions. Choose what to create, add a title and press “Create and open”.',
+  promptBridgeReceived: 'Brief received. Choose what to create and review it in the editor.',
   promptBridgeCreateHint: 'The brief is already in Instructions; add a title to create.',
   promptBridgeInvalid: 'The brief could not be received. Open it again from EduTicTac Prompt or paste it into Instructions.',
   promptBridgeDocumentHint: 'These briefs work best for documents (worksheet, learning situation or free project). For interactive activities, use the template form.',

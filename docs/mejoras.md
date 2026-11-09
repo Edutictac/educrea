@@ -38,6 +38,8 @@ Lista acordada con el usuario el 2026-11-06 para ir implementando poco a poco. M
 - [ ] Biblioteca compartida entre docentes (nivel 2 de Commons): publicar una plantilla rellenada para que otros la dupliquen.
 - [ ] Prototipo de monetización con Stripe en modo de pruebas, cuando estén revisados los bloqueantes legales de [monetizacion.md](monetizacion.md).
 
+- [x] (2026-11-09; implementación local, pendiente de commit y despliegue) **Entrada directa al editor:** elegir un tipo de material abre su borrador sin el formulario intermedio de «Crear y abrir». Los datos se completan en el editor y la IA solo se inicia al solicitarla allí, con «Siguiente paso» debajo de «Guardar actividad». Se conserva el encargo del puente con Prompt y se bloquean clics repetidos durante la creación.
+
 ## Otras notas de la revisión
 
 - Las filas del diff (`DiffView.vue`) usan `role="row"` sin celdas `role="cell"`; revisarlo en la auditoría de accesibilidad.

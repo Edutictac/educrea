@@ -2,7 +2,7 @@ import { apiError } from '../i18n/apiErrors'
 // BYOK image generation with Gemini Nano Banana. The image is returned for review and is only saved to the
 // project when the teacher accepts the preview through the normal asset library.
 import { temporaryKeyHeaders } from './temporaryKeys'
-import type { BudgetStatus } from './ai'
+import { notifyAiUsage, type BudgetStatus } from './ai'
 
 export interface ImageModel {
   provider: string
@@ -14,7 +14,8 @@ export interface ImageModel {
 }
 
 // Images with IA EduCrea for invited accounts: institutional key, weekly count, nothing to pay.
-export interface IncludedImages { model: string; weekly_limit: number; used: number; remaining: number; renews_at: string }
+export interface IncludedImages { model: string; weekly_limit: number; used: number; remaining: number;
+  available_remaining?: number; renews_at: string }
 export interface ImageModels {
   configured: boolean
   own_key?: boolean
@@ -74,18 +75,20 @@ export async function estimateImage(projectId: string, prompt: string, model: st
 
 export async function generateImage(projectId: string, prompt: string, model: string, aspectRatio: string,
   estimate: ImageEstimate, csrf: string, paid = true): Promise<GeneratedImage> {
-  return await (await checked(await fetch(`/api/projects/${projectId}/ai/images`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, ...temporaryKeyHeaders() },
-    body: JSON.stringify({
-      prompt, model, aspect_ratio: aspectRatio,
-      paid_authorized: paid,  // false with IA EduCrea: the API refuses to charge the teacher's own key
-      approved_max_cost_microusd: estimate.maximum_cost_microusd,
-      approved_estimate_fingerprint: estimate.fingerprint,
-      rights_acknowledged: true,
-      no_personal_data: true,
-    }),
-  }))).json() as GeneratedImage
+  try {
+    return await (await checked(await fetch(`/api/projects/${projectId}/ai/images`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, ...temporaryKeyHeaders() },
+      body: JSON.stringify({
+        prompt, model, aspect_ratio: aspectRatio,
+        paid_authorized: paid,  // false with IA EduCrea: the API refuses to charge the teacher's own key
+        approved_max_cost_microusd: estimate.maximum_cost_microusd,
+        approved_estimate_fingerprint: estimate.fingerprint,
+        rights_acknowledged: true,
+        no_personal_data: true,
+      }),
+    }))).json() as GeneratedImage
+  } finally { notifyAiUsage() }
 }
 
 /** IA EduCrea images left for the given model, or null when that model is paid with the teacher's own key. */

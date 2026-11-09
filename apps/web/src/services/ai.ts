@@ -187,7 +187,7 @@ async function readEvents(response: Response, onEvent: (event: AiStreamEvent) =>
         boundary = buffer.indexOf('\n\n')
       }
     }
-  } finally { reader.releaseLock(); if (typeof window !== 'undefined') window.dispatchEvent(new Event('educrea-ai-usage')) }
+  } finally { reader.releaseLock(); notifyAiUsage() }
   if (!completed) throw new Error(t('incompleteResponse'))
 }
 
@@ -203,7 +203,12 @@ export async function streamTeacherAction(projectId: string, action: 'from-brief
 }
 
 
+export function notifyAiUsage() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('educrea-ai-usage'))
+}
+
 export interface IncludedStatus { authorized: boolean; access_status: 'invited' | 'not_invited' | 'revoked'; enabled: boolean; available: boolean; period_key: string;
+  images?: import('./images').IncludedImages | null; videos?: import('./videos').VideoQuota | null;
   quota_period?: 'weekly' | 'monthly'; credits_limit?: number; credits_used?: number;
   monthly_credits_limit: number; monthly_credits_used: number; remaining_credits: number; renews_at: string }
 export async function includedStatus(): Promise<IncludedStatus> {

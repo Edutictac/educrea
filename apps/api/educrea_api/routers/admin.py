@@ -8,7 +8,7 @@ from ..db import get_db
 from ..models import User
 from ..security import current_user, require_csrf
 from ..services import beta_admin, beta_invitations
-from ..services.ai import access, included
+from ..services.ai import access, included, videos
 
 router = APIRouter(prefix='/admin/beta', tags=['admin'])
 
@@ -25,6 +25,12 @@ class InviteInput(BaseModel):
 
 class ImageLimitsInput(BaseModel):
     weekly_limit: int = Field(ge=0)
+    global_daily_limit: int = Field(ge=0)
+    model_config = ConfigDict(extra='forbid')
+
+
+class VideoLimitsInput(BaseModel):
+    daily_limit: int = Field(ge=0)
     global_daily_limit: int = Field(ge=0)
     model_config = ConfigDict(extra='forbid')
 
@@ -66,3 +72,14 @@ def get_image_limits(_admin: User = Depends(administrator), db: Session = Depend
 def update_image_limits(data: ImageLimitsInput, user: User = Depends(require_csrf),
                         _admin: User = Depends(administrator), db: Session = Depends(get_db)):
     return included.set_image_limits(db, data.weekly_limit, data.global_daily_limit, actor_id=user.id)
+
+
+@router.get('/video-limits')
+def get_video_limits(_admin: User = Depends(administrator), db: Session = Depends(get_db)):
+    return videos.limits_info(db)
+
+
+@router.put('/video-limits')
+def update_video_limits(data: VideoLimitsInput, user: User = Depends(require_csrf),
+                        _admin: User = Depends(administrator), db: Session = Depends(get_db)):
+    return videos.set_limits(db, data.daily_limit, data.global_daily_limit, actor_id=user.id)

@@ -33,6 +33,7 @@ def test_invited_account_generates_with_the_institutional_key_and_weekly_quota(c
     status = client.get("/api/ai/images/models").json()
     assert status["configured"] is True and status["own_key"] is False and status["default"] == MODEL
     assert status["included"]["remaining"] == 2 and status["included"]["weekly_limit"] == 2
+    assert client.get("/api/ai/included").json()["images"]["remaining"] == 2
     seen: list = []
     app.dependency_overrides[get_gemini_image_provider] = lambda: StubImage(key_seen=seen)
     route = f"/api/projects/{project}/ai/images"
@@ -43,6 +44,7 @@ def test_invited_account_generates_with_the_institutional_key_and_weekly_quota(c
     assert seen == ["institutional-gemini-test"] * 2
     assert "institutional-gemini" not in response.text
     assert client.get("/api/ai/images/models").json()["included"]["remaining"] == 0
+    assert client.get("/api/ai/included").json()["images"]["remaining"] == 0
     exhausted = client.post(route, headers=headers, json=PROMPT)
     assert exhausted.status_code == 429 and "semana" in exhausted.json()["detail"]
     with Session(engine) as db:

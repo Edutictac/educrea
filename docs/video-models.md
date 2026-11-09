@@ -20,12 +20,15 @@ Vacío por defecto: ningún vídeo puede gastar dinero hasta que el administrado
 ```sh
 EDUCREA_VIDEO_MODELS_JSON={"gemini":{"gemini-omni-1.2-flash":{"360p":{"second_microusd":23000},"720p":{"second_microusd":70000},"input_microusd_per_million":1500000}}}
 EDUCREA_AI_DAILY_VIDEO_REQUESTS=10
+EDUCREA_AI_DAILY_GLOBAL_VIDEO_REQUESTS=0
 EDUCREA_VIDEO_REQUEST_TIMEOUT_SECONDS=300
 ```
 
 - `second_microusd`: precio por segundo en micro-USD.
 - `input_microusd_per_million`: tarifa de entrada del prompt en micro-USD por millón de tokens, estimada con `bytes UTF-8 + 1024`.
-- Reinicia la API después de cambiar la configuración.
+- Reinicia la API después de cambiar las variables de configuración.
+- Los límites de solicitudes se pueden editar en Administración de la beta sin reiniciar: por persona y día y total diario de la instalación. Los valores guardados prevalecen sobre las variables del servidor. Un 0 por persona bloquea los vídeos; un 0 global desactiva ese tope. Se cuentan también las solicitudes fallidas, igual que en el límite diario anterior.
+- Aplica `0022_video_limits` para los límites editables. Su downgrade elimina solo las dos columnas nuevas y restaura los límites definidos en el servidor.
 - Aplica la migración `0018_project_videos` (`alembic upgrade head`).
 
 ## Clave BYOK
@@ -76,3 +79,15 @@ La contabilidad reutiliza `AiUsage` con `mode=paid` y `reserved_tokens=0`. La re
 - Adaptador con transporte simulado: respuesta `steps`, MP4 válido, 429, 403 y timeout.
 - API: estimación, confirmación exacta, derechos, CSRF/propiedad, invitado con clave temporal, límite diario, reserva y devolución, guardado, reproducción y borrado.
 - Prueba manual con clave de pago: generar un clip de 4–6 s, previsualizarlo, guardarlo y comprobar reproducción y consumo en el presupuesto.
+
+## Contadores para el usuario
+
+`GET /api/ai/videos/models` incluye `quota`: límite diario, solicitudes usadas, restantes,
+restantes efectivos según el tope compartido y renovación a las 00:00 UTC. `GET /api/ai/included`
+añade los contadores `images` (cuota semanal incluida) y `videos` (cuota diaria BYOK) al uso de texto.
+El panel de IA muestra ambos contadores y distingue los vídeos con clave propia de las imágenes
+incluidas. Si el catálogo de vídeo está deshabilitado, lo indica; disponer de cuota no sustituye
+la clave ni el presupuesto personal. Las generaciones de imágenes y vídeos actualizan el panel
+automáticamente, incluso cuando fallan, para recoger el consumo o las devoluciones de cuota.
+El control diario y la reserva comparten bloqueo transaccional para evitar superar el tope con
+peticiones simultáneas.

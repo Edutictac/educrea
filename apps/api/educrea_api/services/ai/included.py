@@ -510,11 +510,15 @@ def image_status(db, user_id):
     model = image_model()
     if model is None or access.status(db, user_id) != "invited":
         return None
-    weekly_limit, _ = image_limits(db)
+    weekly_limit, global_daily_limit = image_limits(db)
     start, end = week_window(now_utc())
     used = len(_image_rows(db, start, user_id))
+    remaining = max(0, weekly_limit - used)
+    today = now_utc().replace(hour=0, minute=0, second=0, microsecond=0)
+    available = (min(remaining, max(0, global_daily_limit - len(_image_rows(db, today))))
+                 if global_daily_limit else remaining)
     return {"model": model, "weekly_limit": weekly_limit, "used": used,
-            "remaining": max(0, weekly_limit - used), "renews_at": end.isoformat()}
+            "remaining": remaining, "available_remaining": available, "renews_at": end.isoformat()}
 
 
 def reserve_image(db, user_id, model, maximum_cost):

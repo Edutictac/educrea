@@ -281,3 +281,26 @@ def test_admin_can_adjust_image_limits_with_csrf_validation_and_audit(client, ad
         audit = db.scalar(select(BetaAdminAudit).where(BetaAdminAudit.action == 'image_limits_updated'))
         assert audit.actor_id == actor
         assert db.scalar(select(func.count()).select_from(BetaAdminAudit)) == 1
+
+
+def test_admin_video_limits_require_role_csrf_and_are_audited(client, admin):
+    headers, actor = admin
+    path = '/api/admin/beta/video-limits'
+    assert client.get(path).headers['cache-control'] == 'no-store'
+    assert client.put(path, json={'daily_limit': 2, 'global_daily_limit': 10}).status_code == 403
+    response = client.put(path, headers=headers, json={'daily_limit': 2, 'global_daily_limit': 10})
+    assert response.status_code == 200
+    assert response.json()['daily_custom'] == 2
+    assert client.get('/api/admin/beta').json()['video_limits']['global_daily_limit'] == 10
+    for body in ({'daily_limit': -1, 'global_daily_limit': 10},
+                 {'daily_limit': 2, 'global_daily_limit': -1},
+                 {'daily_limit': 2},
+                 {'daily_limit': 2, 'global_daily_limit': 10, 'enabled': True}):
+        assert client.put(path, headers=headers, json=body).status_code == 422
+    with Session(engine) as db:
+        audit = db.scalar(select(BetaAdminAudit).where(BetaAdminAudit.action == 'video_limits_updated'))
+        assert audit.actor_id == actor
+        db.get(User, actor).is_admin = False
+        db.commit()
+    assert client.get(path).status_code == 403
+    assert client.put(path, headers=headers, json={'daily_limit': 0, 'global_daily_limit': 0}).status_code == 403

@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     # BYOK video generation. Admin-approved models and per-second prices; empty by default.
     video_models_json: str = "{}"
     ai_daily_video_requests: int = Field(default=10, gt=0)
+    ai_daily_global_video_requests: int = Field(default=0, ge=0)
     video_request_timeout_seconds: int = Field(default=300, ge=30, le=600)
     # Included institutional AI. No personal credentials or implicit paid-model activation.
     free_ai_enabled: bool = False

@@ -41,6 +41,7 @@ def video_models(user: User = Depends(current_user), db: Session = Depends(get_d
             "default": default,
             "default_resolution": video_service.default_resolution(default) if default else None,
             "models": video_service.models(),
+            "quota": video_service.quota_status(db, user.id),
             "budget": quotas.budget_summary(db, user.id)}
 
 
@@ -63,9 +64,7 @@ async def generate_video(project_id: UUID, data: VideoGenerateInput, user: User 
             or data.approved_estimate_fingerprint != estimate["fingerprint"]):
         raise HTTPException(403, "Confirma la estimación actual antes de generar el vídeo")
     key = video_service.api_key(db, user.id)
-    video_service.check_daily_limit(db, user.id)
-    reservation = quotas.reserve_fixed(db, user.id, video_service.PROVIDER, data.model,
-                                       estimate["maximum_cost_microusd"])
+    reservation = video_service.reserve(db, user.id, data.model, estimate["maximum_cost_microusd"])
     maximum = estimate["maximum_cost_microusd"]
     try:
         generated = await provider.generate(key, data.model, data.prompt, data.aspect_ratio,

@@ -208,3 +208,97 @@ def test_video_adapter_request_and_errors():
             assert error.value.status_code == 429
 
     asyncio.run(run())
+
+
+def test_editable_video_limits_are_enforced_and_reported_per_account(client, videos):
+    from educrea_api.models import User
+    headers, project_id = setup_user(client)
+    with Session(engine) as db:
+        user = db.scalar(select(User))
+        user.is_admin = True
+        db.commit()
+    limits = '/api/admin/beta/video-limits'
+    assert client.put(limits, headers=headers, json={'daily_limit': 1, 'global_daily_limit': 1}).status_code == 200
+    videos.ai_daily_video_requests = 99  # the persisted override must win
+    budget(client, headers)
+    est = estimate(client, headers, project_id)
+    app.dependency_overrides[get_gemini_video_provider] = lambda: StubVideo()
+    quota = client.get('/api/ai/included').json()['videos']
+    assert quota['remaining'] == 1 and quota['daily_limit'] == 1
+    assert client.post(f'/api/projects/{project_id}/ai/videos', headers=headers, json=body(est)).status_code == 200
+    quota = client.get('/api/ai/videos/models').json()['quota']
+    assert quota['remaining'] == 0 and quota['used'] == 1
+    assert client.get('/api/ai/included').json()['videos']['remaining'] == 0
+    assert client.post(f'/api/projects/{project_id}/ai/videos', headers=headers, json=body(est)).status_code == 429
+    # A second account has its own allowance, but cannot bypass the shared cap.
+    client.cookies.clear()
+    other_headers = {'X-CSRF-Token': register(client, 'other-video@example.org')}
+    other_project = client.post('/api/projects', headers=other_headers, json={'title': 'Otro vídeo'}).json()['id']
+    assert client.put('/api/ai/providers/gemini/key', headers=other_headers,
+                      json={'api_key': 'test-only-gemini-key'}).status_code == 204
+    budget(client, other_headers)
+    other_est = estimate(client, other_headers, other_project)
+    quota = client.get('/api/ai/included').json()['videos']
+    assert quota['remaining'] == 1 and quota['used'] == 0 and quota['available_remaining'] == 0
+    denied = client.post(f'/api/projects/{other_project}/ai/videos', headers=other_headers, json=body(other_est))
+    assert denied.status_code == 429 and 'instalación' in denied.json()['detail']
+
+
+def test_zero_video_limit_blocks_generation_without_calling_provider(client, videos):
+    from educrea_api.models import User
+    headers, project = setup_user(client)
+    with Session(engine) as db:
+        user = db.scalar(select(User))
+        user.is_admin = True
+        db.commit()
+    assert client.put('/api/admin/beta/video-limits', headers=headers,
+                      json={'daily_limit': 0, 'global_daily_limit': 0}).status_code == 200
+    budget(client, headers)
+    est = estimate(client, headers, project)
+    seen = []
+    app.dependency_overrides[get_gemini_video_provider] = lambda: StubVideo(key_seen=seen)
+    assert client.post(f'/api/projects/{project}/ai/videos', headers=headers, json=body(est)).status_code == 429
+    assert not seen
+    assert client.get('/api/ai/budget').json()['spent_or_reserved_microusd'] == 0
+
+
+def test_video_quota_resets_at_utc_midnight_and_global_zero_is_unlimited(client, videos, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    headers, project = setup_user(client)
+    budget(client, headers)
+    est = estimate(client, headers, project)
+    app.dependency_overrides[get_gemini_video_provider] = lambda: StubVideo()
+    assert client.post(f'/api/projects/{project}/ai/videos', headers=headers, json=body(est)).status_code == 200
+    quota = client.get('/api/ai/videos/models').json()['quota']
+    assert quota['used'] == 1 and quota['available_remaining'] == 4
+    tomorrow = datetime.fromisoformat(quota['renews_at'])
+    assert tomorrow.hour == tomorrow.minute == 0 and tomorrow.utcoffset() == timedelta(0)
+    with Session(engine) as db:
+        row = db.scalar(select(AiUsage))
+        row.created_at = datetime.now(timezone.utc) - timedelta(days=1)
+        db.commit()
+    assert client.get('/api/ai/included').json()['videos']['remaining'] == 5
+
+
+def test_video_limits_migration_preserves_image_limits_and_is_reversible(tmp_path, monkeypatch):
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import create_engine, text, inspect
+    from educrea_api import config
+    url = 'sqlite:///' + str(tmp_path / 'video-limits.db')
+    monkeypatch.setattr(config, 'get_settings', lambda: Settings(database_url=url))
+    cfg = Config('alembic.ini')
+    command.upgrade(cfg, '0021_included_ai_limits')
+    migration_engine = create_engine(url)
+    with migration_engine.begin() as conn:
+        conn.execute(text("INSERT INTO included_ai_limits (id, images_weekly_limit, images_global_daily_limit, updated_at) VALUES (1, 3, 20, CURRENT_TIMESTAMP)"))
+    command.upgrade(cfg, '0022_video_limits')
+    with migration_engine.connect() as conn:
+        row = conn.execute(text('SELECT images_weekly_limit, videos_daily_limit FROM included_ai_limits')).one()
+        assert tuple(row) == (3, None)
+    command.downgrade(cfg, '0021_included_ai_limits')
+    assert 'videos_daily_limit' not in {c['name'] for c in inspect(migration_engine).get_columns('included_ai_limits')}
+    with migration_engine.connect() as conn:
+        assert conn.scalar(text('SELECT images_weekly_limit FROM included_ai_limits')) == 3
+    command.upgrade(cfg, '0022_video_limits')
+    migration_engine.dispose()

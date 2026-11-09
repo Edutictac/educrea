@@ -15,7 +15,7 @@ from ..services.ai import agent, engine, sections as section_service
 from ..services import sources as source_service
 from ..services.ai import quotas
 from ..services.ai import pricing
-from ..services.ai import included
+from ..services.ai import included, videos
 from ..services.ai.routing import TaskContext, get_router
 from ..services.ai.credentials import encrypt_key, personal_credential
 from ..services.ai.providers.base import ProviderError
@@ -29,7 +29,15 @@ router = APIRouter(tags=["ai"])
 
 @router.get("/ai/included")
 def included_status(user: User = Depends(current_user), db: Session = Depends(get_db)) -> dict:
-    return included.summary(db, user.id)
+    user_id = user.id
+    result = included.summary(db, user_id)
+    # An unavailable optional media catalog must not hide the account's text quota.
+    for name, load in (("images", included.image_status), ("videos", videos.quota_status)):
+        try:
+            result[name] = load(db, user_id)
+        except HTTPException:
+            result[name] = None
+    return result
 
 
 @router.get("/ai/included/history")

@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { intlLocale, t } from '../i18n'
 import { useAuthStore } from '../stores/auth'
-import { betaDashboard, changeBetaAccess, sendBetaInvitation, revokeBetaInvitation, updateImageLimits, type BetaDashboard } from '../services/betaAdmin'
+import { betaDashboard, changeBetaAccess, sendBetaInvitation, revokeBetaInvitation, updateImageLimits, updateVideoLimits, type BetaDashboard } from '../services/betaAdmin'
 
 const auth = useAuthStore()
 const dashboard = ref<BetaDashboard | null>(null)
@@ -12,11 +12,15 @@ const busy = ref(false)
 const email = ref('')
 const weeklyLimit = ref(0)
 const dailyLimit = ref(0)
+const videoDailyLimit = ref(0)
+const videoGlobalDailyLimit = ref(0)
 async function refresh() {
   try {
     dashboard.value = await betaDashboard()
     weeklyLimit.value = dashboard.value.image_limits.weekly_limit
     dailyLimit.value = dashboard.value.image_limits.global_daily_limit
+    videoDailyLimit.value = dashboard.value.video_limits.daily_limit
+    videoGlobalDailyLimit.value = dashboard.value.video_limits.global_daily_limit
   }
   catch (cause) { error.value = cause instanceof Error ? cause.message : t('error') }
 }
@@ -29,6 +33,9 @@ async function perform(action: () => Promise<unknown>) {
 }
 async function saveLimits() {
   await perform(() => updateImageLimits(weeklyLimit.value, dailyLimit.value, auth.csrf))
+}
+async function saveVideoLimits() {
+  await perform(() => updateVideoLimits(videoDailyLimit.value, videoGlobalDailyLimit.value, auth.csrf))
 }
 async function setAccess(id: string, authorized: boolean) {
   if (!authorized && !confirm(t('adminRevokeConfirm'))) return
@@ -68,6 +75,16 @@ function stateLabel(state: string) {
           <form @submit.prevent="saveLimits">
             <label>{{ t('adminImagesWeekly') }}<input v-model.number="weeklyLimit" type="number" min="0" step="1" required /></label>
             <label>{{ t('adminImagesDaily') }}<input v-model.number="dailyLimit" type="number" min="0" step="1" required /></label>
+            <button type="submit" :disabled="busy">{{ t('save') }}</button>
+          </form>
+        </section>
+        <section class="card">
+          <h2>{{ t('adminVideoLimits') }}</h2>
+          <p>{{ t('adminVideoLimitsHint') }}</p>
+          <p v-if="!dashboard.video_limits.enabled" class="notice">{{ t('adminVideoLimitsDisabled') }}</p>
+          <form @submit.prevent="saveVideoLimits">
+            <label>{{ t('adminVideosDaily') }}<input v-model.number="videoDailyLimit" type="number" min="0" step="1" required /></label>
+            <label>{{ t('adminVideosGlobalDaily') }}<input v-model.number="videoGlobalDailyLimit" type="number" min="0" step="1" required /></label>
             <button type="submit" :disabled="busy">{{ t('save') }}</button>
           </form>
         </section>

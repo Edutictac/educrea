@@ -6,7 +6,7 @@ from sqlalchemy import select
 from fastapi import HTTPException
 
 from ..models import User, IncludedAiWaitlist, IncludedAiAccess, BetaAdminAudit, BetaInvitation
-from .ai import access, included
+from .ai import access, included, videos
 from . import beta_mail
 
 
@@ -31,7 +31,7 @@ def dashboard(db, limit=100):
         BetaInvitation.created_at.desc()).limit(limit))]
     return {'waitlist': waiting, 'guests': guests, 'invitations': invites,
             'mail_ready': beta_mail.ready(), 'metrics': included.metrics(db),
-            'image_limits': included.image_limits_info(db)}
+            'image_limits': included.image_limits_info(db), 'video_limits': videos.limits_info(db)}
 
 
 def invitation_out(item):

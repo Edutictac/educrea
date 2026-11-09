@@ -2,7 +2,7 @@ import { apiError } from '../i18n/apiErrors'
 // BYOK short-video generation with Gemini Omni Flash. The clip is previewed before it is saved to the
 // project video library; unlike images it is not embedded into PDF/DOCX exports.
 import { temporaryKeyHeaders } from './temporaryKeys'
-import type { BudgetStatus } from './ai'
+import { notifyAiUsage, type BudgetStatus } from './ai'
 
 export interface VideoModel {
   provider: string
@@ -18,7 +18,11 @@ export interface VideoModels {
   default_resolution: string | null
   models: VideoModel[]
   budget: BudgetStatus
+  quota?: VideoQuota
 }
+
+export interface VideoQuota { daily_limit: number; used: number; remaining: number;
+  available_remaining: number; renews_at: string; enabled: boolean }
 
 export interface VideoEstimate {
   provider: string
@@ -85,18 +89,20 @@ export async function estimateVideo(projectId: string, prompt: string, model: st
 
 export async function generateVideo(projectId: string, prompt: string, model: string, resolution: string,
   duration: number, aspectRatio: string, estimate: VideoEstimate, csrf: string): Promise<GeneratedVideo> {
-  return await (await checked(await fetch(`/api/projects/${projectId}/ai/videos`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, ...temporaryKeyHeaders() },
-    body: JSON.stringify({
-      prompt, model, resolution, duration, aspect_ratio: aspectRatio,
-      paid_authorized: true,
-      approved_max_cost_microusd: estimate.maximum_cost_microusd,
-      approved_estimate_fingerprint: estimate.fingerprint,
-      rights_acknowledged: true,
-      no_personal_data: true,
-    }),
-  }))).json() as GeneratedVideo
+  try {
+    return await (await checked(await fetch(`/api/projects/${projectId}/ai/videos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, ...temporaryKeyHeaders() },
+      body: JSON.stringify({
+        prompt, model, resolution, duration, aspect_ratio: aspectRatio,
+        paid_authorized: true,
+        approved_max_cost_microusd: estimate.maximum_cost_microusd,
+        approved_estimate_fingerprint: estimate.fingerprint,
+        rights_acknowledged: true,
+        no_personal_data: true,
+      }),
+    }))).json() as GeneratedVideo
+  } finally { notifyAiUsage() }
 }
 
 export async function listVideos(projectId: string): Promise<ProjectVideo[]> {

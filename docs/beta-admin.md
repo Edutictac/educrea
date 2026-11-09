@@ -27,6 +27,15 @@ solo se realiza desde el servidor. El rol no concede automáticamente cuota ni a
 - Participantes admitidos y revocados; concesión y revocación del permiso de IA EduCrea.
 - Invitaciones por correo, estado del envío, caducidad y revocación.
 - Usuarios activos, créditos consumidos y coste/presupuesto estimados del mes.
+- Límites de imágenes incluidas por docente y semana y en total por día.
+- Límites de solicitudes de vídeo BYOK por persona y día y en total por día. No habilitan vídeos incluidos ni sustituyen la clave personal o la confirmación del coste.
+
+Los límites de vídeo se guardan con `PUT /api/admin/beta/video-limits` (rol administrador y CSRF),
+se auditan y se aplican a nuevas reservas sin reiniciar la API. Un 0 por persona bloquea la generación;
+un 0 global deja ese tope sin límite. Cambiar el límite conserva el consumo de hoy y las cuotas de imágenes.
+Sin valores guardados se usan `EDUCREA_AI_DAILY_VIDEO_REQUESTS` (10) y
+`EDUCREA_AI_DAILY_GLOBAL_VIDEO_REQUESTS` (0). El día empieza a las 00:00 UTC.
+Requiere la migración reversible `0022_video_limits`, que añade dos columnas opcionales sin cambiar los límites existentes.
 
 Se muestran hasta 100 registros por lista. Las solicitudes se admiten sobre la cuenta concreta y se
 reutiliza el servicio de permisos existente: no cambian las claves BYOK ni se reinicia el consumo mensual.

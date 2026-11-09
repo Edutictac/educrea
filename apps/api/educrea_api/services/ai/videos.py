@@ -1,5 +1,5 @@
 """BYOK video generation with Gemini Omni Flash: short clips, per-second prices and preview before saving."""
-from datetime import datetime, time, timezone
+from datetime import datetime, time, timedelta, timezone
 import hashlib
 import json
 import re
@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ...config import get_settings
-from ...models import AiUsage
+from ...models import AiUsage, IncludedAiLimits, BetaAdminAudit
 from .. import videos as video_service
 from .credentials import decrypt_key, personal_credential
 from .pricing import Price, cost
@@ -126,19 +126,78 @@ def api_key(db: Session, user_id: UUID) -> str:
     return decrypt_key(credential.ciphertext)
 
 
-def daily_count(db: Session, user_id: UUID) -> int:
+def daily_count(db: Session, user_id: UUID | None = None) -> int:
     today = datetime.combine(datetime.now(timezone.utc).date(), time.min, tzinfo=timezone.utc)
     video_models = list(catalog().get(PROVIDER, {}))
     if not video_models:
         return 0
-    return int(db.scalar(select(func.count(AiUsage.id)).where(
-        AiUsage.user_id == user_id, AiUsage.provider == PROVIDER, AiUsage.model.in_(video_models),
-        AiUsage.created_at >= today)) or 0)
+    query = select(func.count(AiUsage.id)).where(
+        AiUsage.provider == PROVIDER, AiUsage.model.in_(video_models), AiUsage.created_at >= today)
+    if user_id is not None:
+        query = query.where(AiUsage.user_id == user_id)
+    return int(db.scalar(query) or 0)
+
+
+def limits_info(db: Session) -> dict:
+    settings = get_settings()
+    row = db.get(IncludedAiLimits, 1, populate_existing=True)
+    daily = row.videos_daily_limit if row else None
+    global_daily = row.videos_global_daily_limit if row else None
+    return {"daily_limit": daily if daily is not None else settings.ai_daily_video_requests,
+            "global_daily_limit": (global_daily if global_daily is not None
+                                   else settings.ai_daily_global_video_requests),
+            "daily_custom": daily, "global_daily_custom": global_daily, "enabled": bool(models())}
+
+
+def set_limits(db: Session, daily: int, global_daily: int, actor_id: UUID) -> dict:
+    from .included import lock, now_utc
+    from ..beta_admin import require_role
+    lock(db)
+    try:
+        require_role(db, actor_id)
+        row = db.get(IncludedAiLimits, 1, populate_existing=True)
+        if row is None:
+            row = IncludedAiLimits(id=1, updated_at=now_utc())
+            db.add(row)
+        row.videos_daily_limit = daily
+        row.videos_global_daily_limit = global_daily
+        row.updated_at = now_utc()
+        db.add(BetaAdminAudit(actor_id=actor_id, action="video_limits_updated"))
+        db.commit()
+        return limits_info(db)
+    except BaseException:
+        db.rollback()
+        raise
+
+
+def quota_status(db: Session, user_id: UUID) -> dict:
+    limits = limits_info(db)
+    used = daily_count(db, user_id)
+    global_remaining = (max(0, limits["global_daily_limit"] - daily_count(db))
+                        if limits["global_daily_limit"] else None)
+    tomorrow = datetime.combine(datetime.now(timezone.utc).date() + timedelta(days=1),
+                                time.min, tzinfo=timezone.utc)
+    remaining = max(0, limits["daily_limit"] - used)
+    return {"daily_limit": limits["daily_limit"], "used": used, "remaining": remaining,
+            "available_remaining": min(remaining, global_remaining) if global_remaining is not None else remaining,
+            "renews_at": tomorrow.isoformat(), "enabled": limits["enabled"]}
 
 
 def check_daily_limit(db: Session, user_id: UUID) -> None:
-    if daily_count(db, user_id) >= get_settings().ai_daily_video_requests:
+    limits = limits_info(db)
+    if daily_count(db, user_id) >= limits["daily_limit"]:
         raise HTTPException(429, "Has alcanzado el límite diario de vídeos generados")
+    if limits["global_daily_limit"] and daily_count(db) >= limits["global_daily_limit"]:
+        raise HTTPException(429, "La instalación ha alcanzado hoy su límite de vídeos generados")
+
+
+def reserve(db: Session, user_id: UUID, model: str, maximum_cost: int) -> UUID:
+    from . import quotas
+    from .included import lock
+    # Same transaction lock as paid reservations: two users cannot bypass the shared daily cap.
+    lock(db)
+    check_daily_limit(db, user_id)
+    return quotas.reserve_fixed(db, user_id, PROVIDER, model, maximum_cost)
 
 
 def validate_generated(data: bytes) -> str:

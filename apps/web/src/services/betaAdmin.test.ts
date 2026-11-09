@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { betaDashboard, changeBetaAccess, sendBetaInvitation, revokeBetaInvitation, updateImageLimits } from './betaAdmin'
+import { betaDashboard, changeBetaAccess, sendBetaInvitation, revokeBetaInvitation, updateImageLimits, updateVideoLimits } from './betaAdmin'
 afterEach(() => vi.unstubAllGlobals())
 
 it('uses authenticated admin endpoints with CSRF for mutations and no client role assignments', async () => {
@@ -31,4 +31,15 @@ it('saves image limits through the protected admin endpoint', async () => {
   expect(fetchMock.mock.calls[0][1].method).toBe('PUT')
   expect(fetchMock.mock.calls[0][1].headers['X-CSRF-Token']).toBe('csrf')
   expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ weekly_limit: 5, global_daily_limit: 50 })
+})
+
+
+it('saves video limits through the protected admin endpoint', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+  vi.stubGlobal('fetch', fetchMock)
+  await updateVideoLimits(2, 10, 'csrf')
+  expect(fetchMock.mock.calls[0][0]).toBe('/api/admin/beta/video-limits')
+  expect(fetchMock.mock.calls[0][1].method).toBe('PUT')
+  expect(fetchMock.mock.calls[0][1].headers['X-CSRF-Token']).toBe('csrf')
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ daily_limit: 2, global_daily_limit: 10 })
 })

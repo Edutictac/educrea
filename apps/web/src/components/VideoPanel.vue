@@ -39,7 +39,8 @@ const cost = (micro: number) => `$${(micro / 1000000).toFixed(4)}`
 const budgetOk = computed(() => budgetLimit.value > 0 && !!estimate.value
   && budgetSpent.value + estimate.value.maximum_cost_microusd <= budgetLimit.value)
 const canGenerate = computed(() => configured.value && !!estimate.value && costConfirmed.value && rights.value
-  && noPersonalData.value && prompt.value.trim().length >= 3 && budgetOk.value && !busy.value)
+  && noPersonalData.value && prompt.value.trim().length >= 3 && budgetOk.value && !busy.value
+  && (status.value?.quota?.available_remaining ?? 1) > 0)
 
 function revokePreview() {
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
@@ -121,6 +122,7 @@ onBeforeUnmount(revokePreview)
   <section class="card panel-embedded" :aria-label="t('projectVideos')">
     <h2>{{ t('videoGeneratorTitle') }}</h2>
     <p class="hint">{{ t('videoGeneratorIntro') }}</p>
+    <p v-if="status?.quota" class="hint">{{ t('quotaVideosRemaining').replace('{n}', String(status.quota.remaining)).replace('{total}', String(status.quota.daily_limit)) }}</p>
     <p v-if="status && !models.length" class="notice">{{ t('videoNoModels') }}</p>
     <p v-else-if="status && !configured" class="notice">
       {{ t('videoNeedsKey') }} <RouterLink to="/ai/providers">{{ t('myProviders') }}</RouterLink>

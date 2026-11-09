@@ -42,6 +42,8 @@ Lista acordada con el usuario el 2026-11-06 para ir implementando poco a poco. M
 
 - [x] (2026-11-09) **Opciones del encargo plegadas:** «Material de partida» se abre bajo demanda, como «Ilustrar este recurso»; ambos paneles se sitúan justo debajo de las instrucciones del formulario docente. Las preferencias de accesibilidad también se muestran plegadas y los tres apartados llevan la indicación «opcional».
 
+- [x] (2026-11-09) **Cuotas de medios visibles y vídeos configurables:** contador de imágenes semanales incluidas y vídeos diarios BYOK en el panel de consumo, actualización al generar y límites diarios de vídeo editables por persona e instalación en la administración. Requiere `0022_video_limits`.
+
 ## Otras notas de la revisión
 
 - Las filas del diff (`DiffView.vue`) usan `role="row"` sin celdas `role="cell"`; revisarlo en la auditoría de accesibilidad.

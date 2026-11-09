@@ -39,8 +39,8 @@ async function remove(source: Source) {
 </script>
 
 <template>
-  <section class="material" :aria-label="t('startingMaterial')">
-    <h3><AppIcon name="file-text" :size="18" />{{ t('startingMaterial') }} <span class="hint">({{ t('optional') }})</span></h3>
+  <details class="material">
+    <summary><AppIcon name="file-text" :size="18" /> {{ t('startingMaterial') }} <span class="hint">({{ t('optional') }})</span></summary>
     <p class="hint">{{ t('startingMaterialIntro') }}</p>
     <ul v-if="items.length" class="material-list">
       <li v-for="source in items" :key="source.id"><AppIcon name="file-text" :size="16" /><strong>{{ source.title }}</strong>
@@ -52,12 +52,12 @@ async function remove(source: Source) {
       <input ref="input" class="sr-only" type="file" :accept="ACCEPT" :disabled="busy || !rights" @change="upload" /></label>
     <p v-if="status" class="hint" role="status">{{ status }}</p>
     <p v-if="error" role="alert">{{ error }}</p>
-  </section>
+  </details>
 </template>
 
 <style scoped>
 .material { border: 1px dashed var(--c-line-2); border-radius: var(--radius); padding: .4rem 1rem .8rem; margin: 1rem 0; background: var(--c-surface-2); }
-.material h3 { display: flex; align-items: center; gap: .4rem; margin: .6rem 0 .2rem; }
+.material summary svg { vertical-align: middle; }
 .material-list { list-style: none; padding: 0; margin: .5rem 0; }
 .material-list li { display: flex; align-items: center; gap: .5rem; padding: .3rem 0; border-bottom: 1px solid var(--c-line); }
 .material-list li strong { margin-right: auto; overflow-wrap: anywhere; }

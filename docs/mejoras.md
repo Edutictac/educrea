@@ -40,6 +40,8 @@ Lista acordada con el usuario el 2026-11-06 para ir implementando poco a poco. M
 
 - [x] (2026-11-09; implementación local, pendiente de commit y despliegue) **Entrada directa al editor:** elegir un tipo de material abre su borrador sin el formulario intermedio de «Crear y abrir». Los datos se completan en el editor y la IA solo se inicia al solicitarla allí, con «Siguiente paso» debajo de «Guardar actividad». Se conserva el encargo del puente con Prompt y se bloquean clics repetidos durante la creación.
 
+- [x] (2026-11-09) **Opciones del encargo plegadas:** «Material de partida» se abre bajo demanda, como «Ilustrar este recurso»; ambos paneles se sitúan justo debajo de las instrucciones del formulario docente.
+
 ## Otras notas de la revisión
 
 - Las filas del diff (`DiffView.vue`) usan `role="row"` sin celdas `role="cell"`; revisarlo en la auditoría de accesibilidad.

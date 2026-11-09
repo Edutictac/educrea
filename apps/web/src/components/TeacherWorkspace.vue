@@ -201,11 +201,7 @@ async function generateFirstVersion() {
       <div class="actions"><button type="button" :disabled="!chosenSections.length || dirty" @click="developSections">{{ t('developSectionsRun') }}</button>
         <button type="button" class="ghost" @click="chosenSections = chosenSections.length === SECTIONS.length ? [] : [...SECTIONS]">{{ t('selectAll') }}</button></div>
     </details>
-    <IllustratePanel v-if="!loading && !blocked && file && !generating" :project-id="projectId" :disabled="dirty"
-      :brief="{ kind: activity.kind, template: typeof original.template === 'string' ? original.template : undefined }"
-      @placed="emit('generated'); if (documentKind) emit('openMaterials')" />
     <AudioPanel v-if="template?.id === 'escucha'" :project-id="projectId" @changed="generated = false; emit('resourceChanged')" />
-    <StartingMaterial v-if="!loading && !blocked && file" :project-id="projectId" @changed="generated = false" />
     <form v-if="!loading && !blocked" class="form-grid" @submit.prevent="save">
       <p v-if="template" class="full notice ok"><strong>{{ t('templateLabel') }}: {{ template.names[locale] }}</strong> · {{ template.descriptions[locale] }}</p>
       <template v-else>
@@ -237,6 +233,10 @@ async function generateFirstVersion() {
         </details>
       </template>
       <label class="full">{{ t('instructions') }}<textarea v-model="activity.instructions" :maxlength="MAX_INSTRUCTIONS" rows="6" /></label>
+      <StartingMaterial class="full" v-if="!loading && !blocked && file" :project-id="projectId" @changed="generated = false" />
+      <IllustratePanel class="full" v-if="!loading && !blocked && file && !generating" :project-id="projectId" :disabled="dirty"
+        :brief="{ kind: activity.kind, template: typeof original.template === 'string' ? original.template : undefined }"
+        @placed="emit('generated'); if (documentKind) emit('openMaterials')" />
       <fieldset class="full"><legend>{{ t('accessibility') }}</legend>
         <label class="check"><input v-model="activity.accessibility.large_text" type="checkbox" />{{ t('largeText') }}</label>
         <label class="check"><input v-model="activity.accessibility.high_contrast" type="checkbox" />{{ t('highContrast') }}</label>

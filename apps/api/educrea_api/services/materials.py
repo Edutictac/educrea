@@ -14,6 +14,7 @@ EXPORT_STYLE = (
     "table{border-collapse:collapse}th,td{border:1px solid #888;padding:.3rem .6rem}"
     "pre{background:#f3f3f3;padding:.8rem;overflow:auto}code{font-family:ui-monospace,monospace}"
     "blockquote{border-left:4px solid #bbb;margin-left:0;padding-left:1rem;color:#444}img{max-width:100%;height:auto}"
+    ".credits{border-top:1px solid #bbb;margin-top:2rem;padding-top:.8rem;font-size:.9rem;color:#444}"
 )
 
 
@@ -55,6 +56,14 @@ def render_markdown(source: str, assets: list | None = None) -> str:
     return _MD.render(source, {"images": images})
 
 
+def credits_html(assets: list | None = None) -> str:
+    rows = [f"<li>{html.escape(asset.path)}: {html.escape(asset.alt)} — "
+            f"{html.escape(asset.credit or 'sin crédito indicado')}</li>" for asset in assets or []]
+    if not rows:
+        return ""
+    return '<footer class="credits"><h2>Créditos de las imágenes</h2><ul>' + "".join(rows) + "</ul></footer>"
+
+
 def title_of(path: str, source: str) -> str:
     for line in source.splitlines():
         if line.startswith("# "):
@@ -68,7 +77,7 @@ def export_html(path: str, source: str, lang: str = "es", assets: list | None = 
             f'<meta http-equiv="Content-Security-Policy" content="{EXPORT_CSP}">\n'
             f'<meta name="viewport" content="width=device-width, initial-scale=1">\n'
             f"<title>{title}</title>\n<style>{EXPORT_STYLE}</style>\n</head>\n<body>\n"
-            f"<main>\n{render_markdown(source, assets)}</main>\n</body>\n</html>\n")
+            f"<main>\n{render_markdown(source, assets)}</main>\n{credits_html(assets)}</body>\n</html>\n")
 
 
 LUCIDE_LICENSE = Path(__file__).resolve().parent.parent / "data" / "lucide-LICENSE.txt"

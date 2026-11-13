@@ -67,6 +67,10 @@ def test_import_stores_the_image_with_attribution(client: TestClient, monkeypatc
     assert asset["path"] == "imagenes/arasaac-2249.png" and asset["alt"] == "Casa"
     assert "Sergio Palao" in asset["credit"] and "CC BY-NC-SA 4.0" in asset["credit"]
     assert client.get(f"{base}/assets/{asset['id']}/content").content == PNG
+    md = "# Casa\n\n![Casa](imagenes/arasaac-2249.png)\n"
+    file = client.post(f"{base}/files", headers=headers, json={"path": "ficha.md", "content": md}).json()
+    exported = client.get(f"{base}/files/{file['id']}/export.html").text
+    assert "Sergio Palao" in exported and "CC BY-NC-SA 4.0" in exported
     assert client.post(f"{base}/assets/from-bank", headers=headers,
                        json={"provider": "arasaac", "id": 2249, "alt": "Otra casa"}).status_code == 409
     assert client.post(f"{base}/assets/from-bank", json={"provider": "arasaac", "id": 2249, "alt": "x"}).status_code == 403

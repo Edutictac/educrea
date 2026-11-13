@@ -24,7 +24,7 @@ Después de la beta se podrá probar un cursor con IA **solo para el docente dur
 
 ## Bancos de imágenes libres (ARASAAC)
 
-El panel «Imágenes del proyecto» incluye una pestaña de bancos libres. La búsqueda, las miniaturas y la descarga las hace la API de EduCrea, nunca el navegador: así no se amplía la CSP ni se exponen claves. ARASAAC devuelve pictogramas en PNG; al importarlos se guardan en la biblioteca del proyecto como una imagen más, con texto alternativo y el crédito «Sergio Palao / ARASAAC / CC BY-NC-SA 4.0» más el enlace al pictograma. La licencia exige atribución y no permite uso comercial; la interfaz lo advierte antes de añadir.
+El panel «Imágenes del proyecto» incluye una pestaña de bancos libres. La búsqueda, las miniaturas y la descarga las hace la API de EduCrea, nunca el navegador: así no se amplía la CSP ni se exponen claves. ARASAAC devuelve pictogramas en PNG; al importarlos se guardan en la biblioteca del proyecto como una imagen más, con texto alternativo y el crédito «Sergio Palao / ARASAAC / CC BY-NC-SA 4.0» más el enlace al pictograma. La licencia exige atribución y no permite uso comercial; la interfaz lo advierte antes de añadir. Las exportaciones HTML, DOCX y PDF incluyen un bloque visible «Créditos de las imágenes»; el ZIP añade `imagenes/CREDITOS.txt`. El PNG estático queda pendiente de un pie de créditos visible.
 
 ## Vídeo BYOK (desactivado en esta iteración)
 

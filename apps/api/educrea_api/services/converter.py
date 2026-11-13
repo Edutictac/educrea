@@ -5,6 +5,7 @@ no database. Raw HTML/TeX in the source is disabled. Time, size and concurrency 
 """
 
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -46,6 +47,18 @@ def _sandbox(workdir: Path, command: list[str], extra_ro: tuple[str, ...] = ()) 
             "--setenv", "LANG", "C.UTF-8", "--setenv", "LC_ALL", "C.UTF-8", *command]
 
 
+def _markdown_text(value: str) -> str:
+    return re.sub(r"([\\`*_{}\[\]()<>#!|])", r"\\\1", " ".join(str(value).split()))
+
+
+def credits_markdown(assets: list | None = None) -> str:
+    rows = [f"- {_markdown_text(asset.path)}: {_markdown_text(asset.alt)} — "
+            f"{_markdown_text(asset.credit or 'sin crédito indicado')}" for asset in assets or []]
+    if not rows:
+        return ""
+    return "\n\n---\n\n**Créditos de las imágenes**\n\n" + "\n".join(rows) + "\n"
+
+
 def lua_filter(image_paths: list[str]) -> str:
     # Asset paths only contain [a-z0-9._/-] (see services/assets.py), so they are safe inside a Lua string.
     table = ", ".join(f'["{path}"] = true' for path in image_paths if all(c.isalnum() or c in "._/-" for c in path))
@@ -64,7 +77,7 @@ def convert(source: str, title: str, fmt: str, assets: list | None = None) -> by
     try:
         with tempfile.TemporaryDirectory(prefix="educrea-convert-") as tmp:
             workdir = Path(tmp)
-            (workdir / "input.md").write_text(source, encoding="utf-8")
+            (workdir / "input.md").write_text(source + credits_markdown(assets), encoding="utf-8")
             (workdir / "metadata.yaml").write_text(json.dumps({"title": title}, ensure_ascii=False), encoding="utf-8")
             (workdir / "filter.lua").write_text(lua_filter([asset.path for asset in assets or []]), encoding="utf-8")
             for asset in assets or []:  # only library images are copied; pandoc reads nothing else

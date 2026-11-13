@@ -60,6 +60,7 @@ def test_images_are_embedded_in_reading_view_exports_and_known_to_the_ai(client:
     assert "example.org" not in rendered and "remota" in rendered  # remote images are never loaded
     exported = client.get(f"{base}/files/{file['id']}/export.html").text
     assert "img-src data:" in exported and "data:image/png;base64," in exported
+    assert "Créditos de las imágenes" in exported and "Dibujo propio" in exported
     archive = zipfile.ZipFile(io.BytesIO(client.get(f"{base}/export.zip").content))
     assert archive.read("imagenes/trompeta.png") == PNG
     assert "Una trompeta — Dibujo propio" in archive.read("imagenes/CREDITOS.txt").decode()
@@ -91,6 +92,8 @@ def test_docx_and_pdf_include_library_images_only(client: TestClient):
     assert docx.status_code == 200, docx.text
     media = [name for name in zipfile.ZipFile(io.BytesIO(docx.content)).namelist() if name.startswith("word/media/")]
     assert len(media) == 1
+    document_xml = zipfile.ZipFile(io.BytesIO(docx.content)).read("word/document.xml").decode()
+    assert "Créditos de las imágenes" in document_xml and "Dibujo propio" in document_xml
     pdf = client.get(f"{base}/files/{file['id']}/export.pdf")
     assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF") and b"/Image" in pdf.content
 

@@ -6,8 +6,6 @@ import IncludedAiQuota from '../components/IncludedAiQuota.vue'
 import ProviderGuide from '../components/ProviderGuide.vue'
 import { providerGuides, suggestedProvider } from '../services/providerGuide'
 import { t } from '../i18n'
-import { imageModels, type ImageModel } from '../services/images'
-import { videoModels, type VideoModel } from '../services/videos'
 import { useAuthStore } from '../stores/auth'
 import { budgetStatus, confirmProviderModel, disableProviderModel, providersStatus, revokeProviderKey, saveProviderKey, updateBudget,
   type BudgetStatus, type ProviderName, type ProviderStatuses } from '../services/ai'
@@ -23,11 +21,7 @@ const providerLoadState = ref<'loading' | 'ready' | 'error'>('loading')
 const providerLoadError = ref('')
 const providerSelected = ref(false)
 const budget = ref<BudgetStatus | null>(null)
-// Paid image and video models also spend the monthly budget, even when no paid text model is enabled.
-const paidImages = ref<ImageModel[]>([])
-const paidVideos = ref<VideoModel[]>([])
-const mediaPaid = computed(() => provider.value === 'gemini' && (paidImages.value.length + paidVideos.value.length) > 0)
-const hasPaid = computed(() => !!status.value?.paid_models.length || mediaPaid.value)
+const hasPaid = computed(() => !!status.value?.paid_models.length)
 const usd = (micro: number) => `$${(micro / 1000000).toFixed(4)}`
 const budgetError = ref('')
 const monthlyDollars = ref('0')
@@ -45,8 +39,6 @@ onMounted(async () => {
   if (!auth.user) { router.replace('/login'); return }
   void loadProviders()
   void loadBudget()
-  void Promise.all([imageModels().catch(() => null), videoModels().catch(() => null)])
-    .then(([images, videos]) => { paidImages.value = images?.models ?? []; paidVideos.value = videos?.models ?? [] })
 })
 async function loadProviders() {
   providerLoadState.value = 'loading'; providerLoadError.value = ''
@@ -154,20 +146,6 @@ async function saveBudget() {
             ${{ (item.input_rate_microusd / 1000000).toFixed(4) }} / ${{ (item.output_rate_microusd / 1000000).toFixed(4) }}
             {{ t('perMillionTokens') }}
             <span v-if="status.verified_free_models.includes(item.model)" class="hint"> · {{ t('alsoFreeModel') }}</span></li></ul>
-        </template>
-        <template v-if="setupMode === 'paid' && mediaPaid">
-          <template v-if="paidImages.length">
-            <h3>{{ t('paidImageModels') }}</h3>
-            <ul><li v-for="item in paidImages" :key="item.model">{{ item.model }} ·
-              <span v-for="(price, size) in item.prices" :key="size">{{ usd(price) }} {{ t('perImage') }} ({{ size }})</span></li></ul>
-          </template>
-          <template v-if="paidVideos.length">
-            <h3>{{ t('paidVideoModels') }}</h3>
-            <ul><li v-for="item in paidVideos" :key="item.model">{{ item.model }} ·
-              <span v-for="(price, resolution, index) in item.resolutions" :key="resolution">{{ index ? ' · ' : '' }}{{ usd(price.second_microusd) }}
-                {{ t('perSecond') }} ({{ resolution }})</span></li></ul>
-          </template>
-          <p class="hint">{{ t('paidMediaWhere') }}</p>
         </template>
         <p v-if="setupMode === 'paid' && budgetError" role="alert">{{ budgetError }}</p>
         <form v-if="setupMode === 'paid' && budget && hasPaid" @submit.prevent="saveBudget">

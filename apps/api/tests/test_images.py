@@ -20,6 +20,9 @@ from test_ai import setup_user
 from test_auth_projects import register
 from conftest import engine
 
+pytestmark = pytest.mark.skip(reason="Generación de imagen y vídeo desactivada en esta iteración; el código se conserva para reactivarla.")
+
+
 FIXTURES = Path(__file__).parent / "fixtures"
 PNG = (FIXTURES / "trompeta.png").read_bytes()
 MODEL = "gemini-3.1-flash-lite-image"

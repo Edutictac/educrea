@@ -19,6 +19,9 @@ from test_ai import setup_user
 from test_auth_projects import register
 from conftest import engine
 
+pytestmark = pytest.mark.skip(reason="Generación de imagen y vídeo desactivada en esta iteración; el código se conserva para reactivarla.")
+
+
 MODEL = "gemini-omni-1.2-flash"
 CATALOG = json.dumps({"gemini": {MODEL: {
     "360p": {"second_microusd": 23000},

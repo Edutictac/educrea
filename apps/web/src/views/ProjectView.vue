@@ -11,7 +11,6 @@ import CapabilitiesPanel from '../components/CapabilitiesPanel.vue'
 import SourcesPanel from '../components/SourcesPanel.vue'
 import HistoryPanel from '../components/HistoryPanel.vue'
 import AssetsPanel from '../components/AssetsPanel.vue'
-import VideoPanel from '../components/VideoPanel.vue'
 import AudioPanel from '../components/AudioPanel.vue'
 import ProjectViewer from '../components/ProjectViewer.vue'
 import { PROMPT_APP_URL } from '../services/promptBridge'
@@ -25,7 +24,7 @@ import { useFilesStore } from '../stores/files'
 // On smaller screens the viewer becomes the «Vista previa» tab. Tabs use v-show so unsaved edits survive switching.
 type Workspace = { hasUnsavedChanges: () => boolean }
 type Tab = 'work' | 'assistant' | 'export' | 'tools' | 'preview'
-type Tool = 'sources' | 'images' | 'audio' | 'video' | 'dua' | 'history' | 'capabilities' | 'prompt' | 'settings'
+type Tool = 'sources' | 'images' | 'audio' | 'dua' | 'history' | 'capabilities' | 'prompt' | 'settings'
 const route = useRoute()
 const router = useRouter()
 const projects = useProjectsStore()
@@ -61,8 +60,6 @@ const tools = computed(() => [
   { id: 'sources' as const, icon: 'library', label: t('sources') },
   { id: 'images' as const, icon: 'image', label: t('projectImages') },
   { id: 'audio' as const, icon: 'music', label: t('projectAudio') },
-  // Video only fits interactive web activities (index.html): not printable worksheets, documents or infographics.
-  ...(hasActivity.value ? [{ id: 'video' as const, icon: 'monitor', label: t('projectVideos') }] : []),
   { id: 'dua' as const, icon: 'layers', label: t('duaTitle') },
   { id: 'history' as const, icon: 'history', label: t('history') },
   ...(mode.value === 'advanced' ? [{ id: 'capabilities' as const, icon: 'panel-right', label: t('capabilities') }] : []),
@@ -70,7 +67,6 @@ const tools = computed(() => [
   { id: 'settings' as const, icon: 'settings', label: t('projectSettings') },
 ])
 watch(wide, value => { if (value && tab.value === 'preview') tab.value = 'work' })
-watch(hasActivity, value => { if (!value && tool.value === 'video') tool.value = 'sources' })
 watch(mode, () => { if (tool.value === 'capabilities') tool.value = 'sources' })
 
 function hasUnsavedChanges() { return detailsDirty.value || (workspace.value?.hasUnsavedChanges() ?? false) }
@@ -179,7 +175,6 @@ async function remove() {
             <SourcesPanel v-if="tool === 'sources'" :project-id="id" embedded @changed="sourcesVersion += 1" />
             <AssetsPanel v-else-if="tool === 'images'" :project-id="id" embedded />
             <AudioPanel v-else-if="tool === 'audio'" :project-id="id" @changed="viewer?.show()" />
-            <VideoPanel v-else-if="tool === 'video'" :project-id="id" />
             <DuaPanel v-else-if="tool === 'dua'" :project-id="id" :refresh-key="workspaceKey" :auto-apply="mode === 'teacher'" :can-generate="canGenerate" embedded @changed="generated" />
             <HistoryPanel v-else-if="tool === 'history'" :project-id="id" embedded @restored="refreshWorkspace" />
             <CapabilitiesPanel v-else-if="tool === 'capabilities'" :project-id="id" embedded />

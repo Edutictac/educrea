@@ -4,7 +4,7 @@ from sqlalchemy import text
 from .db import engine
 from .routers import billing
 from .services import history as _history  # noqa: F401  registers the file-history listener
-from .routers import admin, ai, assets, audios, auth, capabilities, templates, files, history, illustrations, images, materials, oidc, projects, sources, video_ai, videos
+from .routers import admin, ai, assets, audios, auth, capabilities, templates, files, history, image_banks, materials, oidc, projects, sources
 
 from .services.ai.temporary_credentials import TemporaryCredentialMiddleware
 
@@ -22,11 +22,8 @@ app.include_router(materials.router, prefix="/api")
 app.include_router(history.router, prefix="/api")
 app.include_router(capabilities.router, prefix="/api")
 app.include_router(assets.router, prefix="/api")
-app.include_router(images.router, prefix="/api")
-app.include_router(illustrations.router, prefix="/api")
-app.include_router(videos.router, prefix="/api")
+app.include_router(image_banks.router, prefix="/api")
 app.include_router(audios.router, prefix="/api")
-app.include_router(video_ai.router, prefix="/api")
 app.include_router(templates.router, prefix="/api")
 
 

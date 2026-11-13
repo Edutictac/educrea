@@ -39,7 +39,9 @@ solicitud. El registro y los proveedores personales se pueden utilizar mientras 
 La gestión operativa se describe en [included-ai.md](included-ai.md#invitaciones-y-lista-de-espera).
 El despliegue público sigue siendo una acción posterior.
 
-## Generación de imágenes BYOK (implementada el 2026-11-07)
+## Generación de imágenes BYOK (implementada el 2026-11-07; desactivada el 2026-11-13)
+
+> Desactivada en la interfaz y en las rutas de la API el 2026-11-13. El código, las tablas y las pruebas se conservan para reactivarla.
 
 Comprobado el 2026-11-06: el nivel gratuito de Gemini no ofrece cuota para ningún modelo de imagen (`gemini-2.5-flash-image`, `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image`, `gemini-3-pro-image`…): todos responden 429 desde la primera petición, mientras que el texto funciona con la misma clave. La generación se implementa solo con **modelos de pago BYOK** y queda documentada en [image-models.md](image-models.md):
 
@@ -49,7 +51,9 @@ Comprobado el 2026-11-06: el nivel gratuito de Gemini no ofrece cuota para ning�
 - Invitados con clave temporal de Gemini; usuarios registrados con clave cifrada. La IA incluida no genera imágenes.
 - Sin personas reales identificables ni datos del alumnado. Hace falta activar la facturación en un proyecto de Google.
 
-## Generación de vídeo BYOK (prototipo implementado el 2026-11-07)
+## Generación de vídeo BYOK (prototipo implementado el 2026-11-07; desactivado el 2026-11-13)
+
+> Desactivado en la interfaz y en las rutas de la API el 2026-11-13. El código, las tablas y las pruebas se conservan para reactivarlo.
 
 Prototipo con **Gemini Omni Flash** (`gemini-omni-1.2-flash`), solo clips de 4–6 s, 360p/720p y 16:9/9:16. Usa la clave BYOK de Gemini, con estimación por segundo, presupuesto, confirmación expresa y previsualización antes de guardar en una biblioteca de vídeos separada de las imágenes. Documentado en [video-models.md](video-models.md).
 

@@ -26,6 +26,8 @@ Lista acordada con el usuario el 2026-11-06 para ir implementando poco a poco. M
 
 ## 4. Nuevas funciones
 
+- [x] (2026-11-13) **Generación de imagen y vídeo retirada de esta iteración:** desaparecen de la interfaz el generador de imágenes, las ilustraciones en lote, la herramienta de vídeo, las cuotas de medios y los límites de administración; las rutas de generación dejan de registrarse en la API. Se conservan servicios, proveedores, tablas y pruebas (marcadas como omitidas) para reactivarla más adelante. La nota del 10 % desaparece de la portada.
+- [x] (2026-11-13) **Bancos de imágenes libres por API (ARASAAC):** búsqueda en castellano, valenciano/catalán e inglés, descarga en el servidor, importación a la biblioteca del proyecto con texto alternativo y atribución (Sergio Palao / ARASAAC / CC BY-NC-SA 4.0). Sin nuevos orígenes en la CSP y sin claves.
 - [x] (2026-11-08) **Català i valencià separats:** `ca` i `va` se eligen y detectan por separado, con `lang="ca"`/`lang="ca-ES-valencia"`, plantillas, etiquetas y preferencia compartida de EduTicTac. Implementación local; pendiente de despliegue.
 - [x] (2026-11-07) **Completar huecos:** banco de palabras o escritura libre, respuestas alternativas, explicaciones y puntuación SCORM; castellano y valenciano. Implementación local; pendiente de despliegue.
 - [x] (2026-11-07) **Verdadero o falso:** afirmaciones con explicación obligatoria, reintento y puntuación SCORM; castellano y valenciano. Implementación local; pendiente de despliegue.

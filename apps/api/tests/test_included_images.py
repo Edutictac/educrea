@@ -14,6 +14,9 @@ from conftest import engine
 from test_images import CATALOG, MODEL, StubImage
 from test_included_ai import account
 
+pytestmark = pytest.mark.skip(reason="Generación de imagen y vídeo desactivada en esta iteración; el código se conserva para reactivarla.")
+
+
 PROMPT = {"prompt": "Un laúd medieval", "model": MODEL, "aspect_ratio": "1:1",
           "rights_acknowledged": True, "no_personal_data": True}
 

@@ -31,6 +31,22 @@ encabezado `@license lucide-static … ISC`.
 
 Esta auditoría es técnica, no asesoramiento jurídico; para un servicio comercial (fase 9) conviene una revisión legal.
 
+## ARASAAC (pictogramas) — 2026-11-13
+
+**Uso:** banco de imágenes libres integrado por API en el panel de imágenes del proyecto. No se copian SVG ni se
+cargan recursos desde una CDN: la API de EduCrea busca y descarga el PNG en el servidor, lo valida por firma y tamaño
+y lo guarda en la biblioteca del proyecto.
+
+- **Autoría y procedencia:** Sergio Palao para ARASAAC (Portal Aragonés de la Comunicación Aumentativa y Alternativa,
+  Gobierno de Aragón), https://arasaac.org.
+- **Licencia:** CC BY-NC-SA 4.0. Exige atribución, no permite uso comercial y obliga a compartir las adaptaciones
+  bajo la misma licencia.
+- **Atribución que se guarda:** cada imagen importada lleva en su crédito «Sergio Palao / ARASAAC / CC BY-NC-SA 4.0»
+  y el enlace al pictograma de origen. La interfaz muestra la licencia y el enlace antes de importar.
+- **Límite de uso:** el servicio de pago de EduCrea no debe reutilizar estos pictogramas en materiales vendidos sin
+  revisar la cláusula NC. Para uso docente sin ánimo de lucro encaja; si se comercializa, hay que filtrar el banco o
+  sustituirlo.
+
 ## Pie común de EduTicTac Commons
 
 La hoja `apps/web/src/styles/edutictac-footer.css` es copia sin modificar del pie canónico

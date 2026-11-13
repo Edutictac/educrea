@@ -37,25 +37,6 @@ onUnmounted(() => window.removeEventListener('educrea-ai-usage', refresh))
       <p v-else-if="!status.available">{{ t('includedPaused') }}</p>
     </template>
     <p v-else>{{ t('includedPaused') }}</p>
-    <ul class="media-quotas">
-      <li v-if="status.images">
-        {{ t('quotaImagesRemaining').replace('{n}', String(status.images.remaining)).replace('{total}', String(status.images.weekly_limit)) }}
-        <span class="hint"> · {{ t('includedRenews') }} {{ new Date(status.images.renews_at).toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long', timeZone: 'UTC' }) }}.</span>
-        <p v-if="status.images.available_remaining !== undefined && status.images.available_remaining < status.images.remaining" class="hint">{{ t('quotaMediaSharedCap').replace('{n}', String(status.images.available_remaining)) }}</p>
-      </li>
-      <li v-else>{{ t('quotaImagesUnavailable') }}</li>
-      <li v-if="status.videos">
-        {{ t('quotaVideosRemaining').replace('{n}', String(status.videos.remaining)).replace('{total}', String(status.videos.daily_limit)) }}
-        <p class="hint">{{ status.videos.enabled ? t('quotaVideosByok') : t('adminVideoLimitsDisabled') }}</p>
-        <p v-if="status.videos.available_remaining < status.videos.remaining" class="hint">{{ t('quotaMediaSharedCap').replace('{n}', String(status.videos.available_remaining)) }}</p>
-      </li>
-    </ul>
     <RouterLink to="/ai/providers">{{ t('includedByok') }}</RouterLink>
   </section>
 </template>
-
-<style scoped>
-.media-quotas { padding-left: 1.2rem; }
-.media-quotas li { margin: .5rem 0; }
-.media-quotas p { margin: .2rem 0; }
-</style>

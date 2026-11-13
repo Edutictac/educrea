@@ -9,7 +9,6 @@ import { useFilesStore, type ProjectFile } from '../stores/files'
 import { listTemplates, templateStatus, updateTemplateEngine, type TemplateInfo } from '../services/templates'
 import StartingMaterial from './StartingMaterial.vue'
 import AudioPanel from './AudioPanel.vue'
-import IllustratePanel from './IllustratePanel.vue'
 import AiProgress from './AiProgress.vue'
 import { choiceBody } from '../services/aiChoice'
 import { describeAiError, useAiProgress } from '../services/aiProgress'
@@ -234,9 +233,6 @@ async function generateFirstVersion() {
       </template>
       <label class="full">{{ t('instructions') }}<textarea v-model="activity.instructions" :maxlength="MAX_INSTRUCTIONS" rows="6" /></label>
       <StartingMaterial class="full" v-if="!loading && !blocked && file" :project-id="projectId" @changed="generated = false" />
-      <IllustratePanel class="full" v-if="!loading && !blocked && file && !generating" :project-id="projectId" :disabled="dirty"
-        :brief="{ kind: activity.kind, template: typeof original.template === 'string' ? original.template : undefined }"
-        @placed="emit('generated'); if (documentKind) emit('openMaterials')" />
       <details class="full accessibility-options">
         <summary>{{ t('accessibility') }} <span class="hint">({{ t('optional') }})</span></summary>
         <label class="check"><input v-model="activity.accessibility.large_text" type="checkbox" />{{ t('largeText') }}</label>

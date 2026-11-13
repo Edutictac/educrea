@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -9,6 +10,7 @@ from ..db import get_db
 from ..models import ProjectAsset, User
 from ..security import current_user, require_csrf
 from ..services import assets as service
+from ..services import image_banks
 from .projects import project_for_owner
 
 router = APIRouter(prefix="/projects/{project_id}/assets", tags=["assets"])
@@ -25,6 +27,13 @@ class AssetOut(BaseModel):
 
 
 class AssetUpdate(BaseModel):
+    alt: str = Field(min_length=1, max_length=300)
+    credit: str = Field(default="", max_length=300)
+
+
+class BankImport(BaseModel):
+    provider: Literal["arasaac"]
+    id: int = Field(ge=1, le=10_000_000)
     alt: str = Field(min_length=1, max_length=300)
     credit: str = Field(default="", max_length=300)
 
@@ -54,6 +63,16 @@ async def upload_asset(project_id: UUID, request: Request, filename: str = Query
         raise HTTPException(413, "La imagen supera los 2 MB")
     data = await request.body()
     return service.add(db, project_id, filename, data, alt, credit)
+
+
+@router.post("/from-bank", response_model=AssetOut, status_code=201)
+def import_from_bank(project_id: UUID, data: BankImport, user: User = Depends(require_csrf),
+                     db: Session = Depends(get_db)) -> ProjectAsset:
+    """Downloads a free image server-side and stores it in the project library with its attribution."""
+    project_for_owner(db, project_id, user.id)
+    image = image_banks.pictogram(data.id, 500)
+    credit = data.credit.strip() or image_banks.credit_for(data.id)
+    return service.add(db, project_id, f"arasaac-{data.id}.png", image, data.alt, credit)
 
 
 @router.get("/{asset_id}/content")

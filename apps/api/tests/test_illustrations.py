@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 from educrea_api.main import app
@@ -7,6 +9,9 @@ from educrea_api.services.ai import engine, illustrations
 from educrea_api.services.ai.providers.base import ProviderChunk, ProviderError, ProviderResult
 from educrea_api.services.ai.providers.gemini import get_gemini_provider
 from test_ai import setup_user
+
+pytestmark = pytest.mark.skip(reason="Generación de imagen y vídeo desactivada en esta iteración; el código se conserva para reactivarla.")
+
 
 BRIEF = {"title": "El ciclo del agua", "language": "es", "level": "primaria",
          "instructions": "Tarjetas sobre evaporación, condensación y precipitación"}
